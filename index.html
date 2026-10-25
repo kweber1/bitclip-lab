@@ -1,0 +1,1450 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head><body>
+<title>Bit-Clip Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;600;700&family=Chivo+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-screen instrument. Top bar (room, version). 3D room fills the left with a layers popover and a
+   selected-spot card floating on it, the update timeline under it. Right panel = tabs (Moves / Search / Drop test / Data),
+   with Banjo's start and target pinned above the tabs. Stacks on phones. */
+:root{
+  --bg:#e9edeb; --panel:#fbfcfb; --sunk:#f1f4f2; --ink:#16201c; --muted:#5a6863; --line:#d3dbd7; --line-soft:#e3e8e5;
+  --accent:#0f6f63; --accent-soft:#d7ebe6; --accent-ink:#ffffff;
+  --hold:#cf3f2b; --clip:#7a35c2; --crack:#1d67b0; --roof:#b97d0c; --slope:#0d8a5a; --hit5:#d4357a; --prop:#b5651d; --free:#3b80c0; --land:#2f8a49; --pop:#d47c15;
+  --view:#d9dfdc; --mesh-floor:#b4bfb6; --mesh-wall:#97a39b; --mesh-ceil:#8b8f9c;
+  --shadow:0 6px 24px rgba(20,32,28,.14);
+  --f-ui:"Chivo",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; --f-mono:"Chivo Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1312; --panel:#151b19; --sunk:#111715; --ink:#e3eae6; --muted:#8d9b95; --line:#26302c; --line-soft:#1e2724;
+  --accent:#43c3a5; --accent-soft:#16352e; --accent-ink:#06120f;
+  --hold:#ff6a52; --clip:#bd8bff; --crack:#5aaeff; --roof:#ffc04d; --slope:#4fe0a0; --hit5:#ff6fae; --prop:#e8954d; --free:#6db6ff; --land:#6fd486; --pop:#ffad4d;
+  --view:#0a0e0d; --mesh-floor:#4a5650; --mesh-wall:#36413c; --mesh-ceil:#3b3d4b; --shadow:0 8px 28px rgba(0,0,0,.45); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1312; --panel:#151b19; --sunk:#111715; --ink:#e3eae6; --muted:#8d9b95; --line:#26302c; --line-soft:#1e2724;
+  --accent:#43c3a5; --accent-soft:#16352e; --accent-ink:#06120f;
+  --hold:#ff6a52; --clip:#bd8bff; --crack:#5aaeff; --roof:#ffc04d; --slope:#4fe0a0; --hit5:#ff6fae; --prop:#e8954d; --free:#6db6ff; --land:#6fd486; --pop:#ffad4d;
+  --view:#0a0e0d; --mesh-floor:#4a5650; --mesh-wall:#36413c; --mesh-ceil:#3b3d4b; --shadow:0 8px 28px rgba(0,0,0,.45); color-scheme:dark}
+html,body{height:100%}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:14px;line-height:1.4;margin:0}
+.app{display:grid;grid-template-rows:auto minmax(0,1fr);height:100%}
+
+/* ---- top bar */
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding-block:9px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;white-space:nowrap}
+.brand svg{flex:none}
+.brand b{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.brand span{color:var(--muted);font-size:12.5px}
+.ctl{display:flex;align-items:center;gap:7px}
+.lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
+#dtInfo{color:var(--muted);font-family:var(--f-mono);font-size:11.5px;margin-left:auto}
+
+/* ---- controls */
+select,input[type=number],input[type=text]{font:inherit;font-family:var(--f-mono);font-size:12.5px;background:var(--sunk);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 7px;min-width:0;width:100%}
+select{font-family:var(--f-ui);font-size:13.5px}
+#mapSel{width:auto;max-width:min(300px,60vw)}
+#digSel{width:auto;max-width:170px}
+input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input[type=checkbox]{accent-color:var(--accent);margin:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--sunk)}
+.seg button{border:0;background:transparent;color:var(--ink);font:inherit;font-weight:600;font-size:13px;padding:4px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:7px;padding:5px 11px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink);border-color:var(--line)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.mini{padding:2px 8px;font-size:12px;font-weight:500}
+.btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px}
+.field{display:grid;gap:3px;min-width:0} .field>span{font-size:11px;color:var(--muted)}
+p.note{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5}
+code{font-family:var(--f-mono);font-size:.92em}
+.badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:999px;border:1px solid currentColor;vertical-align:1px}
+.ok{color:var(--land)}
+
+/* ---- main split */
+main{--side:clamp(400px,32vw,580px);display:grid;grid-template-columns:minmax(0,1fr) var(--side);min-height:0}
+.stage{display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:0;min-width:0}
+#view{position:relative;background:var(--view);min-height:260px;overflow:hidden}
+#view canvas{display:block;width:100%;height:100%}
+#loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:15px}
+.float{position:absolute;background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);backdrop-filter:blur(6px)}
+
+/* layers popover */
+.spotfilter{right:12px;top:12px;display:flex;align-items:center;gap:8px;padding:5px 8px;font-size:13px}
+.spotfilter select{width:auto;padding:4px 6px;font-size:12.5px}
+.extnote{left:50%;transform:translateX(-50%);bottom:64px;max-width:min(560px,calc(100% - 32px));padding:10px 12px;font-size:13.5px;line-height:1.5;z-index:5}
+.extnote a{color:var(--accent);font-weight:700}
+.extnote .btn{margin-left:6px}
+.spotfilter .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
+@media (max-width:900px){.spotfilter{top:58px}.spotfilter .seg button{padding:4px 8px}}
+.layers{left:12px;top:12px;font-size:13px;min-width:0;max-width:calc(100% - 24px)}
+.layers>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 11px;font-weight:600}
+.layers>summary::-webkit-details-marker{display:none}
+.layers>summary .sum{font-weight:400;color:var(--muted);font-family:var(--f-mono);font-size:11.5px}
+.layers .body{display:grid;gap:6px;padding:4px 12px 11px;border-top:1px solid var(--line-soft);min-width:230px}
+.layers .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600;margin-top:6px}
+.layers label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.layers label .n{margin-left:auto;color:var(--muted);font-family:var(--f-mono);font-size:11.5px;padding-left:8px}
+.sw{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+.slice input[type=range]{width:100%;accent-color:var(--accent)}
+
+/* selected spot card */
+.spot{left:12px;bottom:12px;width:min(340px,calc(100% - 24px));padding:10px 12px;display:grid;gap:8px}
+.spot h3{margin:0;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.spot h3 .k{width:9px;height:9px;border-radius:50%}
+.spot h3 button{margin-left:auto}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12.5px;margin:0}
+.slcases{display:flex;flex-wrap:wrap;gap:4px;max-height:150px;overflow:auto}
+.slcases .btn{font-family:var(--f-mono);font-size:11px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--f-mono);font-size:11.5px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.hint{right:12px;bottom:12px;font-size:11.5px;color:var(--muted);padding:5px 9px;max-width:min(560px,calc(100% - 24px))}
+.hint>summary{cursor:pointer;font-weight:600;color:var(--ink);list-style:none;display:flex;align-items:center;gap:6px}
+.hint>summary::-webkit-details-marker{display:none}
+.hint>summary::after{content:"▴";color:var(--muted);font-size:10px}
+.hint[open]>summary{margin-bottom:4px} .hint[open]>summary::after{content:"▾"}
+.hint .keys{line-height:1.7}
+.hint kbd{font-family:var(--f-mono);font-size:10.5px;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--ink)}
+
+/* timeline */
+.timeline{border-top:1px solid var(--line);background:var(--panel);padding-block:8px;padding-inline:14px;display:grid;gap:6px}
+.trow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#scrub{flex:1;min-width:140px;accent-color:var(--accent)}
+#uLabel{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.chips{display:flex;gap:3px;overflow-x:auto;padding-bottom:2px}
+.chip{flex:0 0 auto;width:30px;font-family:var(--f-mono);font-size:10.5px;border:1px solid var(--line);border-radius:5px;background:var(--sunk);color:var(--muted);text-align:center;cursor:pointer;padding:2px 0;line-height:1.15}
+.chip b{display:block;font-size:12px;color:var(--ink);font-weight:600}
+.chip.lag{border-color:var(--hold)} .chip.lag b{color:var(--hold)}
+.chip.cur{outline:2px solid var(--accent);outline-offset:-1px}
+.chip .t{display:block;height:3px;border-radius:2px;margin:2px 4px 0}
+.timeline.empty .chips,.timeline.empty #prevU,.timeline.empty #nextU,.timeline.empty #playU,.timeline.empty #followB,.timeline.empty #scrub{display:none}
+
+/* ---- side panel */
+aside{position:relative;border-left:1px solid var(--line);background:var(--panel);display:grid;grid-template-rows:auto auto minmax(0,1fr);min-height:0;min-width:0}
+/* drag the panel's left edge to make it wider or narrower (remembered per viewer) */
+/* a wide strip between the room view and the panel: scroll the panel with the wheel here (tables and fields fill the panel), drag to resize */
+aside{padding-left:18px}
+.resizer{position:absolute;left:0;top:0;bottom:0;width:18px;cursor:col-resize;z-index:6;touch-action:none;background:var(--sunk);border-right:1px solid var(--line)}
+.resizer::after{content:"";position:absolute;left:8px;top:0;bottom:0;width:2px;background:transparent;transition:background .15s}
+.resizer::before{content:"";position:absolute;left:6px;top:50%;width:6px;height:28px;margin-top:-14px;border-left:2px dotted var(--line);border-right:2px dotted var(--line)}
+.resizer:hover::after,.resizer.drag::after,.resizer:focus-visible::after{background:var(--accent)}
+body.resizing{cursor:col-resize;user-select:none}
+.pin{padding:12px 14px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.pin .who{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 10px;align-items:center;font-size:12.5px}
+.pin .who .v{display:block;font-family:var(--f-mono);font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pin .who .v.set{color:var(--ink)}
+.mark{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--accent-ink)}
+.mark.s{background:var(--land)} .mark.t{background:var(--clip)}
+.pin details summary{cursor:pointer;color:var(--muted);font-size:12px}
+.lip{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;align-items:center}
+.lip .note{grid-column:1/-1;font-size:12px}
+.lip .note b{color:var(--ink);font-weight:600}
+.pin details[open] summary{margin-bottom:8px}
+.tabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{font:inherit;font-size:13px;font-weight:600;color:var(--muted);background:none;border:0;border-bottom:2px solid transparent;padding:10px 10px 8px;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs button:hover{color:var(--ink)}
+.panes{overflow-y:auto;min-height:0}
+.pane{padding:14px;display:grid;gap:14px;align-content:start}
+/* run / stop / progress stay in reach at the bottom of the panel while the settings above scroll */
+.act{position:sticky;bottom:0;z-index:3;display:grid;gap:7px;margin-inline:-14px;padding:10px 14px 12px;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -6px 14px -10px rgba(20,32,28,.35)}
+.act .note:empty{display:none}
+.sec{display:grid;gap:8px}
+.sec h4{margin:0;font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:8px}
+.sec h4 .r{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500}
+details.help summary{cursor:pointer;color:var(--muted);font-size:12px;width:max-content}
+details.help p{margin:6px 0 0}
+.macros{display:flex;flex-wrap:wrap;gap:4px}
+.verdict{font-family:var(--f-mono);font-size:12px;padding:8px 10px;border-radius:7px;background:var(--sunk);border:1px solid var(--line);overflow-wrap:anywhere}
+.verdict.clip{border-color:var(--clip);color:var(--clip)} .verdict.thrown{border-color:var(--pop)} .verdict.stable{border-color:var(--hold);color:var(--hold)}
+.tablewrap{overflow:auto;max-height:240px;border:1px solid var(--line);border-radius:7px;background:var(--sunk)}
+table{border-collapse:collapse;font-family:var(--f-mono);font-size:11px;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:3px 6px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line-soft)}
+th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:500;z-index:1}
+tr.sel td{background:var(--accent-soft)}
+tr.click{cursor:pointer}
+td.tag{text-align:left;font-weight:600}
+.t-HOLD{color:var(--hold)} .t-POP{color:var(--pop)} .t-FREE{color:var(--free)} .t-LAND{color:var(--land)}
+.t-PUSH{color:var(--pop)} .t-GROUND{color:var(--land)} .t-AIR{color:var(--free)}
+.movetbl{font-family:var(--f-ui);font-size:12px}
+.movetbl td,.movetbl th{padding:3px 4px}
+.movetbl input[type=number],.movetbl input[type=text]{padding:3px 5px;font-size:12px}
+.movetbl td.btns{white-space:nowrap}
+.toggles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 10px;font-size:13px}
+.toggles label{display:flex;gap:7px;align-items:center;cursor:pointer}
+.toggles.withmax .tg{display:grid;grid-template-columns:minmax(0,1fr) 54px;gap:6px;align-items:center}
+.toggles.withmax .tg input[type=number]{padding:2px 5px;font-size:12px;text-align:right}
+.toggles.withmax .hdr{display:grid;grid-template-columns:minmax(0,1fr) 54px;gap:6px;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.reslist{display:grid;gap:6px}
+.res{border:1px solid var(--line);border-left-width:3px;border-radius:7px;padding:7px 9px;font:inherit;font-size:12.5px;cursor:pointer;background:var(--sunk);text-align:left;color:var(--ink)}
+.res b{font-weight:700} .res .m{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.res.clip{border-left-color:var(--clip)} .res.hold{border-left-color:var(--hold)} .res.reach{border-left-color:var(--land)}
+.bestlist{max-height:260px;overflow:auto}
+#recSlider{width:100%}
+.bestlist .res.cur{outline:2px solid var(--accent)}
+.res .tg{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:0 5px;border-radius:4px;margin-right:4px;background:color-mix(in srgb,var(--clip) 22%,transparent)}
+.sec h4 .r{float:right}
+.res:hover{border-color:var(--muted)}
+.prog{height:4px;border-radius:2px;background:var(--line-soft);overflow:hidden} .prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.empty{color:var(--muted);font-size:13px}
+@media (max-width:900px){
+  .app{height:auto;min-height:100%}
+  main{grid-template-columns:1fr;grid-template-rows:minmax(340px,58vh) auto}
+  aside{border-left:0;border-top:1px solid var(--line);grid-template-rows:auto auto auto}
+  .panes{overflow:visible}
+  .hint{display:none}
+  .spot .kv dt:nth-of-type(n+2),.spot .kv dd:nth-of-type(n+2){display:none}
+  #dtInfo{margin-left:0}
+  .resizer{display:none}
+  aside{padding-left:0}
+  .act{position:static;box-shadow:none;border-top:0;padding-inline:0;margin-inline:0;padding-top:0}
+}
+@media (max-width:1400px){.brand>span:last-child{display:none}}
+@media (max-width:600px){.layers>summary .sum{display:none}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto;transition:none!important}}
+</style>
+
+<div class="app">
+<header>
+  <div class="brand">
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="5" fill="var(--accent)"/><path d="M5 14.5 11 8l6 6.5" fill="none" stroke="var(--accent-ink)" stroke-width="2"/><path d="M11 8v9" stroke="var(--accent-ink)" stroke-width="1.4" stroke-dasharray="1.6 1.6"/></svg>
+    <b>Bit-Clip Lab</b><span class="badge" id="partTag" hidden></span><span>Banjo-Kazooie collision</span>
+  </div>
+  <div class="ctl"><label class="lbl" for="mapSel">Room</label><select id="mapSel" aria-label="Room"></select></div>
+  <div class="ctl"><span class="lbl">Version</span>
+    <div class="seg" role="group" aria-label="Game version"><button id="vPAL" aria-pressed="true">PAL</button><button id="vNTSC" aria-pressed="false">NTSC</button></div></div>
+  <div class="ctl"><label class="lbl" for="digSel">Digits</label><select id="digSel" aria-label="Number of digits shown" title="How many digits every number on the page shows">
+    <option value="0">Normal</option><option value="2">+2 decimals</option><option value="4">+4 decimals</option><option value="exact" title="9 significant figures: every f32 bit">Exact (f32)</option></select></div>
+  <div id="dtInfo"></div>
+</header>
+<main>
+  <div class="stage">
+    <div id="view">
+      <div id="loading">Loading room…</div>
+      <div class="float extnote" id="extNote" role="status" hidden></div>
+      <div class="float spotfilter" role="group" aria-label="Spot filter"><span class="lbl">Show</span><div class="seg">
+        <button data-sf="all" aria-pressed="true" title="Every spot layer">All spots</button>
+        <button data-sf="hold" aria-pressed="false" title="Only spots that hold: 5-hit holds and 5-collision spots">Holds</button>
+        <button data-sf="clip" aria-pressed="false" title="Only spots where a clip was found: holds that clip, beak-buster clips, and cracks / 5-collision spots at those positions">Clips</button>
+        <button data-sf="holdclip" aria-pressed="false" title="Only holds that then clip (both required)">Hold + clip</button></div>
+        <select id="sfRel" hidden aria-label="Clip reliability" title="How reliable the clip has to be. Odds come from re-running every test drop at the spot (with and without a lag frame) and counting how many clip.">
+          <option value="any">Any clip</option><option value="multi">2+ setups clip</option><option value="often">10%+ of tries clip</option><option value="nolag">Clips without lag</option><option value="void">Falls out of the map</option></select></div>
+      <details class="float layers" id="legend">
+        <summary><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1 13 4.5 7 8 1 4.5Z M1 7.5 7 11l6-3.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>Layers <span class="sum" id="layerSum"></span></summary>
+        <div class="body">
+          <div class="grp">Spots</div>
+          <label><input type="checkbox" id="showCracks" checked> <span class="sw" style="background:var(--crack)"></span> Floor cracks <span class="n" id="nCracks"></span></label>
+          <label><input type="checkbox" id="showSCracks" checked> <span class="sw" style="background:var(--crack);opacity:.6"></span> Slope cracks <span class="n" id="nSCracks"></span></label>
+          <label><input type="checkbox" id="showHolds" checked> <span class="sw" style="background:var(--hold)"></span> 5-hit holds (<span id="holdsVer">PAL</span>) <span class="n" id="nHolds"></span></label>
+          <label><input type="checkbox" id="showHit5" checked> <span class="sw" style="background:var(--hit5)"></span> 5 collisions (one update) <span class="n" id="nHit5"></span></label>
+          <label><input type="checkbox" id="showSlope" checked> <span class="sw" style="background:var(--slope)"></span> Slope clips (buster) <span class="n" id="nSlope"></span></label>
+          <label><input type="checkbox" id="showRoof" checked> <span class="sw" style="background:var(--roof)"></span> Roof cracks (bee) <span class="n" id="nRoof"></span></label>
+          <div class="grp">Room</div>
+          <label><input type="checkbox" id="showSpawns" checked> <span class="sw" style="background:var(--pop)"></span> Load-in points <span class="n" id="nSpawns"></span></label>
+          <label title="Loading zones: the boxes that send Banjo to another room when his position is inside them. Click the dot in the middle to select one."><input type="checkbox" id="showExits" checked> <span class="sw" style="background:var(--accent)"></span> Exits (loading zones) <span class="n" id="nExits"></span></label>
+          <label><input type="checkbox" id="showCauldrons" checked> <span class="sw" style="background:var(--clip)"></span> Warp cauldrons <span class="n" id="nCauldrons"></span></label>
+          <label title="Warp cauldrons, Dingpot, beehives, moving platforms and other objects whose collision animates or moves. Their collision is taken in its rest pose at the spawn point (an approximation), so searches and runs can't pass through them."><input type="checkbox" id="usePose" checked> <span class="sw" style="background:var(--pop)"></span> Animated objects (rest pose) <span class="n" id="nPose"></span></label>
+          <label><input type="checkbox" id="showProps" checked> <span class="sw" style="background:var(--prop)"></span> Static objects <span class="n" id="nProps"></span></label>
+          <label><input type="checkbox" id="showXlu" checked> Transparent collision</label>
+          <label><input type="checkbox" id="hideCeil" checked> Hide ceilings</label>
+          <label><input type="checkbox" id="floorTint" checked> Shade each floor triangle</label>
+          <label><input type="checkbox" id="showBanjo" checked> Banjo model</label>
+          <label><input type="checkbox" id="showSphere" checked> Collision sphere (r 35, +80)</label>
+          <div class="grp">Camera</div>
+          <div class="grp" style="display:flex;justify-content:space-between;margin-top:0"><label for="camSpeed" style="cursor:default">Fly speed (WASD)</label><span id="camSpeedVal" style="font-family:var(--f-mono);text-transform:none;letter-spacing:0">1×</span></div>
+          <input type="range" id="camSpeed" min="-3" max="3" step="0.1" value="0" aria-label="Camera fly speed">
+          <label><input type="checkbox" id="camGlide" checked> Glide after moving (off = stop instantly)</label>
+          <div class="grp slice" style="display:flex;justify-content:space-between"><label for="cutY" style="cursor:default">Slice above y</label><span id="cutVal" style="font-family:var(--f-mono);text-transform:none;letter-spacing:0">off</span></div>
+          <div class="slice"><input type="range" id="cutY" min="0" max="1" step="1" value="1" aria-label="Slice height"></div>
+          <div class="row"><button class="btn mini" id="cutSpot" title="Slice just above the selected spot or Banjo">At spot</button><button class="btn mini" id="cutOff">Off</button></div>
+        </div>
+      </details>
+      <div class="float spot" id="spotCard" hidden>
+        <h3><span class="k" id="spotDot"></span><span id="spotTitle">Selected spot</span><button class="btn ghost mini" id="spotClose" aria-label="Close">✕</button></h3>
+        <div id="spotInfo"></div>
+        <div class="row"><button class="btn mini" id="setStart">Set as start</button><button class="btn mini" id="setTarget">Set as target</button><button class="btn mini" id="zoomSpot">Zoom</button></div>
+      </div>
+      <details class="float hint" id="hint" open><summary>Mouse and keys</summary><div class="keys"><kbd>drag</kbd> orbit · <kbd>right-drag</kbd> pan · <kbd>scroll</kbd> zoom · <kbd>double-click</kbd> zoom to point · <kbd>click</kbd> a spot · <kbd>Alt+click</kbd> any floor point · <kbd>WASD</kbd>/<kbd>arrows</kbd> fly where the camera looks, then <kbd>drag</kbd> to look around (<kbd>Q</kbd>/<kbd>E</kbd> down/up, <kbd>Shift</kbd> faster)</div></details>
+    </div>
+    <div class="timeline empty" id="timeline">
+      <div class="trow">
+        <button class="btn" id="prevU" aria-label="Previous update">◀</button>
+        <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Update">
+        <button class="btn" id="nextU" aria-label="Next update">▶</button>
+        <button class="btn" id="playU">Play</button>
+        <button class="btn" id="followB" aria-pressed="false" title="Keep the camera centred on Banjo while scrubbing">Follow Banjo</button>
+        <span id="uLabel">No run yet. Run moves or a drop test to see each update here.</span>
+      </div>
+      <div class="chips" id="chips" aria-label="Frames per update (click to change)"></div>
+    </div>
+  </div>
+  <aside>
+    <div class="resizer" id="resizer" role="separator" aria-orientation="vertical" aria-label="Drag to resize the panel" tabindex="0" title="Scroll here to scroll the panel · drag to resize it (double-click to reset)"></div>
+    <div class="pin" id="banjoCard">
+      <div class="who">
+        <span class="mark s" aria-hidden="true">S</span><span>Start <span class="v" id="startSum">not set</span></span><span class="badge ok" title="Movement ported from the decomp; matched update for update with BizHawk (PAL)">exact</span>
+        <span class="mark t" aria-hidden="true">T</span><span>Target <span class="v" id="tgtSum">not set</span></span><span></span>
+      </div>
+      <div class="lip"><label class="lbl" for="spawnSel">Load-in</label><select id="spawnSel" aria-label="Start at a load-in point"><option value="">Start where Banjo loads in…</option></select>
+        <p class="note" id="spawnNote" hidden></p></div>
+      <details id="startEdit"><summary>Edit start, facing and camera</summary>
+        <div class="grid3">
+          <label class="field"><span>Start x</span><input type="number" id="bx" step="any"></label>
+          <label class="field"><span>Start y</span><input type="number" id="by" step="any"></label>
+          <label class="field"><span>Start z</span><input type="number" id="bz" step="any"></label>
+          <label class="field"><span>Facing °</span><input type="number" id="byaw" step="any" value="0"></label>
+          <label class="field"><span>Camera yaw °</span><input type="number" id="bcam" step="any" value="0" title="The game turns the stick into a direction using the camera's yaw. Directions here are world directions; exported stick values assume this camera yaw."></label>
+          <span></span>
+          <label class="field"><span>Target x</span><input type="number" id="btx" step="any" placeholder="x"></label>
+          <label class="field"><span>Target y</span><input type="number" id="bty" step="any" placeholder="y"></label>
+          <label class="field"><span>Target z</span><input type="number" id="btz" step="any" placeholder="z"></label>
+        </div>
+        <p class="note" style="margin-top:6px">Directions are world yaw: 0 = +z, 90 = +x. Banjo starts standing still. Type a target or pick a crack in the room and press Set as target; a typed target within 0.5 of a crack takes that crack's seam (paste the exact floats for an exact spot).</p>
+      </details>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Tools">
+      <button role="tab" data-tab="moves" aria-selected="true">Moves</button>
+      <button role="tab" data-tab="setup" aria-selected="false">Clip setup</button>
+      <button role="tab" data-tab="search" aria-selected="false">Route search</button>
+      <button role="tab" data-tab="drop" aria-selected="false">Drop test</button>
+      <button role="tab" data-tab="data" aria-selected="false">Data</button>
+    </div>
+    <div class="panes">
+      <!-- Moves -->
+      <section class="pane" data-pane="moves" role="tabpanel">
+        <div class="sec">
+          <h4>Add moves</h4>
+          <div class="macros" id="macros"></div>
+        </div>
+        <div class="sec">
+          <h4>Inputs <span class="r"><button class="btn ghost mini" id="mAdd">+ Row</button><button class="btn ghost mini" id="mClear">Clear</button></span></h4>
+          <div class="tablewrap" style="max-height:230px"><table class="movetbl"><thead><tr><th>Updates</th><th>Dir °</th><th>Stick</th><th>A</th><th>B</th><th>Z</th><th title="C-Left (talon trot from a crouch)">C◀</th><th></th></tr></thead><tbody id="mrows"></tbody></table></div>
+          <details class="help"><summary>How rows work</summary><p class="note">Each row holds the stick and buttons for a number of updates. Leave the direction empty for no stick. Runs use the full movement engine with exact collision. The chips under the timeline set the frames of each update (lag).</p></details>
+          <div class="row"><button class="btn primary" id="mRun">Run moves</button></div>
+          <div id="mVerdict" class="verdict" hidden></div>
+        </div>
+        <div class="tablewrap" id="mRowsWrap" hidden><table><thead><tr><th>#</th><th>VI</th><th>state</th><th>tag</th><th>x</th><th>y</th><th>z</th><th>vy</th><th>speed</th><th>yaw</th></tr></thead><tbody id="mRowsT"></tbody></table></div>
+        <div class="sec">
+          <h4>Export</h4>
+          <div class="row"><button class="btn mini" id="mExportCsv">Inputs (CSV)</button><button class="btn mini" id="mExportLua">BizHawk Lua (PAL)</button></div>
+          <p class="note">The Lua saves as <code>.lua.txt</code>; drop the <code>.txt</code> before loading it in BizHawk.</p>
+        </div>
+      </section>
+      <!-- Clip setup -->
+      <section class="pane" data-pane="setup" role="tabpanel" hidden>
+        <div class="sec">
+          <h4>Target crack</h4>
+          <p class="note" id="cTarget">Select a crack or hold in the room, then Set as target.</p>
+        </div>
+        <div class="sec">
+          <h4>Final move</h4>
+          <label class="field"><span>The move that lands Banjo on the crack (shared by Clip setup, Route search and the reliable-clip list)</span><select id="cFinal" class="finalSel"><option value="auto">Any move</option><option value="jump">Jump</option><option value="jumpBuster">Jump → beak buster</option><option value="bflip">Backflip</option><option value="bflipBuster">Backflip → beak buster</option><option value="punch">Punch</option><option value="punchCancel">Punch cancel</option><option value="punchCancelBuster">Punch cancel → beak buster</option><option value="barge">Beak barge</option><option value="roll">Roll (twirl)</option><option value="slide">Crouch slide</option><option value="skid">Skid turn</option><option value="trotJump">Talon trot jump</option><option value="trotWalk">Talon trot walk</option></select></label>
+          <p class="note" id="cFinalNote"></p>
+        </div>
+        <div class="sec best" id="cBest">
+          <h4>Pick a reliable clip <span class="r"><button class="btn ghost mini" id="cBestToggle" aria-expanded="false">Show list</button></span></h4>
+          <div id="cBestBody" hidden>
+            <div class="grid2">
+              <label class="field"><span>Reliability</span><select id="cBestRel"><option value="often" selected>10%+ of tries clip</option><option value="multi">2+ setups clip</option><option value="nolag">Clips without lag</option><option value="void">Falls out of the map</option><option value="any">Any clip</option></select></label>
+              <label class="field"><span>Order</span><select id="cBestSort"><option value="rel">Most reliable first</option><option value="near">Nearest to the start first</option></select></label>
+              <label class="field"><span>Kinds</span><select id="cBestKind"><option value="all">Holds + busters</option><option value="hold">Hold clips</option><option value="slope">Buster clips</option></select></label>
+              <label class="field"><span>Search the top</span><select id="cBestN"><option value="3">3</option><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option></select></label>
+            </div>
+            <p class="note" id="cBestStat"></p>
+            <div class="reslist bestlist" id="cBestList"></div>
+            <div class="row"><button class="btn" id="cBestRun">Find setups for each</button></div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <h4>Move timings</h4>
+          <p class="note" id="cMoveNote"></p>
+          <div class="grid2">
+            <label class="field" id="cCancelF"><span>A this many updates after B</span><input type="text" id="cCancel" value="1-4"></label>
+            <label class="field" id="cHoldF"><span>A held (updates)</span><input type="text" id="cHold" value="2,4,6,7,10,14"></label>
+            <label class="field" id="cBustF" hidden><span>Z on update</span><input type="text" id="cBust" value="3,5,7,9,11"></label>
+          </div>
+        </div>
+        <div class="sec">
+          <h4>Facing and lag</h4>
+          <div class="grid2">
+            <label class="field"><span>Facing °</span><input type="text" id="cFacing" placeholder="any" title="An exact facing to try (for example 207.782958984375). Leave empty to try evenly spread directions."></label>
+            <label class="field"><span>Directions to try</span><select id="cDirs"><option value="0">Only the facing above</option><option value="8">8</option><option value="16" selected>16</option><option value="32">32</option></select></label>
+            <label class="field"><span>Show</span><select id="cShow"><option value="clip" selected>Clips only</option><option value="holdclip">Hold, then clip (both required)</option><option value="all">Holds and clips</option></select></label>
+            <label class="field"><span>Lag</span><select id="cLags"><option value="0">None</option><option value="1" selected>One long update anywhere (80 frames)</option><option value="2">Up to two near the landing</option></select></label>
+          </div>
+          <details class="help"><summary>How this works</summary><p class="note">Banjo starts standing still. The move is played once on a flat test floor to find the update where his feet come down through the floor, and the exact distance he moves on each update. Those steps are then walked backwards from the crack, float by float, to the exact standing spot that lands him on it. Each setup is then played in this room with every lag pattern. One long update means one update of 3 or more frames; every length from 3 frames up has the same effect, because the game caps the time step. The window covers 40 updates (80 frames). A start spot next to a wall can't be stood on, because the wall pushes Banjo off it; those are counted and skipped.</p></details>
+        </div>
+        <div class="act">
+          <div class="row"><button class="btn primary" id="cRun">Find setups</button><button class="btn" id="cStop" disabled>Stop</button></div>
+          <div class="prog"><i id="cBar"></i></div>
+          <p class="note" id="cStat"></p>
+        </div>
+        <p class="note" id="cCounts"></p>
+        <div class="reslist" id="cRes"></div>
+      </section>
+      <!-- Route search -->
+      <section class="pane" data-pane="search" role="tabpanel" hidden>
+        <div class="sec">
+          <h4>Search type</h4>
+          <div class="seg" role="group" aria-label="Search type" id="sTypeSeg"><button data-stype="deep" aria-pressed="true">Run-up + jump</button><button data-stype="quick" aria-pressed="false">Run-up + any move</button><button data-stype="chain" aria-pressed="false">Chain of moves</button><button data-stype="exact" aria-pressed="false">Exact (810 method)</button></div>
+          <p class="note" id="sTypeNote">Run-up searches run with the stick in straight lines, then do the final move onto the crack. <b>Chain of moves</b> builds the route from whole moves (punches, punch cancels, crouch turns, first-person twirls, talon trot, walks, pauses…) with Banjo standing still between them, like the 810 routes. <b>Exact (810 method)</b> is the old 810 GPU search: crouch-face turns from the camera, an exact table back from the crack, and every move sequence forward from the start.</p>
+        </div>
+        <div class="sec">
+          <h4>Final move</h4>
+          <label class="field"><span>The move that lands Banjo on the crack (shared by Clip setup, Route search and the reliable-clip list)</span><select id="sFinal" class="finalSel"><option value="auto">Any move</option><option value="jump">Jump</option><option value="jumpBuster">Jump → beak buster</option><option value="bflip">Backflip</option><option value="bflipBuster">Backflip → beak buster</option><option value="punch">Punch</option><option value="punchCancel">Punch cancel</option><option value="punchCancelBuster">Punch cancel → beak buster</option><option value="barge">Beak barge</option><option value="roll">Roll (twirl)</option><option value="slide">Crouch slide</option><option value="skid">Skid turn</option><option value="trotJump">Talon trot jump</option><option value="trotWalk">Talon trot walk</option></select></label>
+          <p class="note" id="sFinalNote"></p>
+        </div>
+        <div class="sec best" id="sBest">
+          <h4>Pick a reliable clip <span class="r"><button class="btn ghost mini" id="sBestToggle" aria-expanded="false">Show list</button></span></h4>
+          <div id="sBestBody" hidden>
+            <div class="grid2">
+              <label class="field"><span>Reliability</span><select id="sBestRel"><option value="often" selected>10%+ of tries clip</option><option value="multi">2+ setups clip</option><option value="nolag">Clips without lag</option><option value="void">Falls out of the map</option><option value="any">Any clip</option></select></label>
+              <label class="field"><span>Order</span><select id="sBestSort"><option value="rel">Most reliable first</option><option value="near">Nearest to the start first</option></select></label>
+              <label class="field"><span>Kinds</span><select id="sBestKind"><option value="all">Holds + busters</option><option value="hold">Hold clips</option><option value="slope">Buster clips</option></select></label>
+              <label class="field"><span>Search the top</span><select id="sBestN"><option value="3">3</option><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option></select></label>
+            </div>
+            <p class="note" id="sBestStat"></p>
+            <div class="reslist bestlist" id="sBestList"></div>
+            <div class="row"><button class="btn" id="sBestRun">Search each</button></div>
+          </div>
+        </div>
+
+        <div class="sec" id="chainSec" hidden>
+          <h4>Chain moves <span class="r"><button class="btn ghost mini" data-all="chain">All on</button><button class="btn ghost mini" data-none="chain">All off</button></span></h4>
+          <p class="note">A chain route is a list of whole moves from the start, each played to the end with Banjo standing still after it (like the 810 punch / punch-cancel / crouch-turn routes), then the final move. Pick the moves the search may use; every route is played in the exact engine, so what it finds replays exactly.</p>
+          <div class="toggles" id="chainToggles"><div class="hdr"><span>Move</span><span style="text-align:right">Max</span></div><div class="hdr"><span>Move</span><span style="text-align:right">Max</span></div></div>
+          <div class="grid2">
+            <label class="field"><span>Goal</span><select id="chGoal"><option value="clip">Clip or hold at the target</option><option value="reach">Just get to the spot (no clip)</option></select></label>
+            <label class="field" data-reach hidden><span>Stand within</span><select id="chReachTol"><option value="0">Exact (same float bits)</option><option value="0.001">0.001 units</option><option value="0.1">0.1 units</option><option value="1" selected>1 unit</option><option value="5">5 units</option><option value="25">25 units</option></select></label>
+            <label class="field" data-reach hidden><span>Facing ° (empty = any)</span><input type="number" id="chFace" step="any" placeholder="any"></label>
+            <label class="field" data-reach hidden><span>Facing within ±°</span><select id="chFaceTol"><option value="0.001">0.001 (exact)</option><option value="0.5">0.5</option><option value="2" selected>2</option><option value="10">10</option><option value="45">45</option></select></label>
+            <label class="field"><span>Best route</span><select id="chObjective"><option value="moves">Fewest moves</option><option value="time">Quickest (fewest frames)</option></select></label>
+            <label class="field"><span>Moves before the final move (up to)</span><select id="chDepth"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>17</option><option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option>23</option><option>24</option><option>25</option><option>26</option><option>27</option><option>28</option><option>29</option><option>30</option></select></label>
+            <label class="field"><span>Standing spots kept per step</span><select id="chBeam"><option value="40">40 (fast)</option><option value="100" selected>100</option><option value="250">250</option><option value="600">600</option><option value="2500">2,500</option><option value="10000">10,000</option><option value="0">Every standing spot (no limit)</option></select></label>
+            <label class="field"><span>Which spots go on</span><select id="chKeep"><option value="spread" selected>Half nearest, half spread over the room</option><option value="near">Only the nearest to the target</option></select></label>
+            <label class="field"><span>When a round ends early</span><select id="chWiden"><option value="1" selected>Run again keeping twice as many, until the time is up</option><option value="0">Stop</option></select></label>
+            <label class="field"><span>Stick directions</span><select id="chDirs"><option value="4">4 (U, R, D, L)</option><option value="8" selected>8 (with diagonals)</option><option value="16">16</option><option value="32">32</option></select></label>
+            <label class="field"><span>Walk lengths (updates)</span><input type="text" id="chWalk" value="1,2,3,4,6,9"></label>
+            <label class="field"><span>Pause lengths (updates)</span><input type="text" id="chPause" value="1,5"></label>
+            <label class="field"><span>Punch cancel: A held (updates)</span><input type="text" id="chCancelH" value="1,2,3,6,14"></label>
+            <label class="field"><span>Jump / backflip: A held (updates)</span><input type="text" id="chJumpH" value="2,6,14"></label>
+            <label class="field"><span>Wait before the final move (updates)</span><input type="text" id="chWait" value="0,2"></label>
+            <label class="field"><span>First-person twirl: steps of 3.6° (up to)</span><input type="number" id="chTwirl" value="50" min="1" max="100"></label>
+            <label class="field"><span>Barge: Z held after B (updates)</span><input type="text" id="chBargeRel" value="5"></label>
+            <label class="field"><span>Barge + Z: Z kept (updates)</span><input type="text" id="chBargeKeep" value="50"></label>
+            <label class="field" style="grid-column:1/-1"><span>Crouch-face: exact facings ° (from BizHawk, comma separated; used by "Crouch-face (exact facings)")</span><input type="text" id="chFaces" placeholder="e.g. 46.142975, 98.945984"></label>
+            <label class="field"><span>Crouch-face camera x (static camera)</span><input type="number" id="chCamX" step="any" placeholder="from BizHawk"></label>
+            <label class="field"><span>Crouch-face camera z</span><input type="number" id="chCamZ" step="any" placeholder="from BizHawk"></label>
+            <label class="field"><span>Camera yaw at the start ° (empty = settled on Banjo)</span><input type="number" id="chCam0" step="any" placeholder="settled"></label>
+            <label class="field"><span>CPU threads</span><select id="chThreads"><option value="" selected>All cores but one</option><option value="1">1 (no worker threads)</option><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option><option value="32">32</option></select></label>
+          </div>
+        </div>
+        <div class="sec" id="exactSec" hidden>
+          <h4>Exact search (810 method)</h4>
+          <p class="note">The search that found the 810 routes (s34), running in this page. Every move is an exact flat-floor model checked against the engine: <b>punch</b>, <b>punch cancel after 1 update</b>, <b>punch + Z</b>, <b>barges</b>. Turns are <b>crouch-faces</b> (crouch, stick in one of 8 directions), whose facing comes from the camera, plus first-person twirls. It builds an exact table of every spot a few moves back from the crack, then tries every move sequence from the start until one lands in the table. It runs on your CPU cores (this computer: <span id="exCores"></span>) and, if you turn it on, your graphics card (<span id="exGpuNote"></span>). Every route the graphics card finds is checked again on the CPU. The last move is always a 1-update punch cancel onto the crack. Every route found is replayed in the full engine before it is shown. PAL only.</p>
+          <div class="toggles" id="exactToggles"></div>
+          <div class="grid2">
+            <label class="field"><span>Camera position x (static camera)</span><input type="number" id="exCamX" step="any" placeholder="from BizHawk"></label>
+            <label class="field"><span>Camera position z</span><input type="number" id="exCamZ" step="any" placeholder="from BizHawk"></label>
+            <label class="field"><span>Camera yaw at the start ° (empty = settled on Banjo)</span><input type="number" id="exCam0" step="any" placeholder="settled"></label>
+            <label class="field"><span>Moves back from the crack (table)</span><select id="exR"><option value="1">1</option><option value="2">2</option><option value="3" selected>3 (seconds)</option><option value="4">4 (a few minutes)</option></select></label>
+            <label class="field"><span>Moves forward from the start (up to)</span><select id="exD"><option>0</option><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></label>
+            <label class="field"><span>First-person twirls (most per route)</span><select id="exTw"><option value="0" selected>0</option><option value="1">1</option><option value="2">2 (slow)</option></select></label>
+            <label class="field"><span>Twirl steps of 3.6° (up to)</span><input type="number" id="exTwM" value="50" min="1" max="50"></label>
+            <label class="field"><span>Keep Banjo this far from walls and objects</span><input type="number" id="exClear" value="30" min="0" max="200" step="1"></label>
+            <label class="field"><span>CPU threads</span><select id="exThreads"><option value="" selected>All cores but one</option><option value="1">1 (no worker threads)</option><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option><option value="32">32</option></select></label>
+            <label class="field"><span>Graphics card</span><select id="exGpu"><option value="0" selected>Don't use it (CPU only)</option><option value="1">Use it for the forward search (WebGPU)</option></select></label>
+          </div>
+          <p class="note" id="exNote"></p>
+        </div>
+        <div class="sec">
+          <h4>Settings</h4>
+          <div class="grid2">
+            <label class="field"><span>Mode</span><select id="sMode"><option value="deep">Deep: jumps, millions of paths</option><option value="quick">All moves, short search</option><option value="chain">Chain: whole moves, standing still between</option><option value="exact">Exact: the old 810 GPU search</option></select></label>
+            <label class="field"><span>Search for</span><select id="sTime"><option value="60">1 minute</option><option value="300" selected>5 minutes</option><option value="900">15 minutes</option><option value="3600">1 hour</option></select></label>
+            <label class="field"><span>Timing</span><select id="sStrict"><option value="frame">Frame perfect</option><option value="simple">Simple presses (±1 update)</option></select></label>
+            <label class="field"><span>Straight runs within ±°</span><input type="number" id="sSpread" value="45" min="1" max="180"></label>
+            <label class="field"><span>Where on the seam</span><select id="sAlong"><option value="spots" selected>Only at this seam's bit-clip spots (census cracks)</option><option value="holds">Only at this seam's 5-hit hold spots</option><option value="">Anywhere on this seam</option><option value="25">Within 25 units of the crack</option><option value="5">Within 5 units of the crack</option><option value="1">Within 1 unit of the crack</option><option value="0.01">Exact spot (the picked crack)</option></select></label>
+            <label class="field"><span>Lag after first hold</span><select id="sLag"><option value="1">Try a 3-frame update</option><option value="0">None</option></select></label>
+          </div>
+          <details class="help"><summary>How the search works</summary><p class="note">A crack is a gap in the floor only about 0.00002 units wide, and it is only open at some points along the seam. A route has to land Banjo's foot on one of those exact positions, at the update he comes down through the floor. So the search is brute force, like a TAS bot.</p><p class="note">Deep mode first runs straight at every stick angle toward the target, then keeps trying run-ups of two or three legs (random first legs, last leg at the target). After every update it jumps with every A-hold length and checks each landing exactly. Landings that hit a gap are replayed from the start in the full engine. The status line shows the closest landing so far next to the gap width. Most cracks need tens of millions of paths, so let it run for minutes. All-moves mode tries every finishing move, but checks far fewer paths.</p></details>
+        </div>
+        <div class="act">
+          <div class="row"><button class="btn primary" id="sRun">Search</button><button class="btn" id="sStop" disabled>Stop</button><button class="btn ghost mini" id="sClear">Clear lines</button></div>
+          <div class="prog"><i id="sBar"></i></div>
+          <p class="note" id="sStat">Set a start and a target (a crack or a hold), then search.</p>
+        </div>
+        <div class="reslist" id="sRes"></div>
+      </section>
+      <!-- Drop test -->
+      <section class="pane" data-pane="drop" role="tabpanel" hidden>
+        <div class="sec" id="recSec">
+          <h4>Moving objects <span class="r"><span class="badge" id="recBadge" hidden>recording on</span></span></h4>
+          <p class="note">Platforms, the warp cauldron, switches and other moving or animated objects are not in the room data, because their collision changes every frame. Record them in BizHawk with <code>scripts\bk_record_moving_collision.lua</code> (PAL), then load the file here: the Drop test and the Moves tab then use the recorded objects, frame by frame, exactly as the game's collision reads them.</p>
+          <div class="row"><input type="file" id="recFile" accept=".json,application/json" aria-label="Recording file"><button class="btn mini" id="recOff" hidden>Turn off</button></div>
+          <div id="recBody" hidden>
+            <div class="grid2">
+              <label class="field"><span>Start on recorded frame</span><input type="number" id="recFrame" step="1"></label>
+              <label class="field"><span>Frame offset</span><select id="recOffset" title="Which recorded frame the first update sees, relative to the start frame. 0 = the objects as they were at the start of that frame."><option value="-2">−2</option><option value="-1">−1</option><option value="0" selected>0</option><option value="1">+1</option><option value="2">+2</option></select></label>
+            </div>
+            <input type="range" id="recSlider" min="0" max="0" step="1" aria-label="Recorded frame">
+            <p class="note" id="recInfo"></p>
+            <div class="row"><button class="btn mini" id="recUseBanjo">Start from Banjo on this frame</button></div>
+          </div>
+          <p class="note" id="recStat"></p>
+        </div>
+        <div class="sec">
+          <h4>Move <span class="r"><span class="badge ok" title="Resolver, gravity and lag are a bit-exact port of bk_collision_predict.py; move start values matched against BizHawk recordings">exact</span></span></h4>
+          <select id="preset">
+            <option value="fall">Custom fall</option>
+            <option value="drop810">810-style drop: vy 332, gravity −2700</option>
+            <option value="jump">Jump (A held N frames)</option>
+            <option value="trotjump">Talon trot jump (A held N frames)</option>
+            <option value="bflip">Backflip from lift-off</option>
+            <option value="buster">Beak buster dive</option>
+          </select>
+          <p class="note" id="presetNote"></p>
+        </div>
+        <div class="sec">
+          <h4>Start</h4>
+          <div class="grid3">
+            <label class="field"><span>x</span><input type="number" id="px" step="any"></label>
+            <label class="field"><span>y (feet)</span><input type="number" id="py" step="any"></label>
+            <label class="field"><span>z</span><input type="number" id="pz" step="any"></label>
+            <label class="field"><span>vx</span><input type="number" id="vx" step="any" value="0"></label>
+            <label class="field"><span>vy</span><input type="number" id="vy" step="any" value="0"></label>
+            <label class="field"><span>vz</span><input type="number" id="vz" step="any" value="0"></label>
+            <label class="field"><span>Gravity</span><input type="number" id="grav" step="any" value="-2700"></label>
+            <label class="field"><span>Max fall speed</span><input type="number" id="term" step="any" value="-4000"></label>
+            <label class="field"><span>Updates</span><input type="number" id="nupd" min="1" max="200" value="30"></label>
+            <label class="field" id="aHoldF"><span>A held (frames)</span><input type="number" id="ahold" min="1" max="200" value="12"></label>
+            <label class="field" id="aPhaseF"><span>A pressed on</span><select id="aphase" title="Which frame of the game's 2-frame update the A press lands on. It decides whether an odd A count gets one more update of the slow (−1350) rise."><option value="0" selected>first frame of an update (checked in BizHawk)</option><option value="1">second frame of an update</option></select></label>
+            <label class="field"><span>Height above spot</span><input type="number" id="dy" step="any" value="134"></label>
+            <label class="field"><span>Start grounded</span><select id="gnd"><option value="0">No</option><option value="1">Yes</option></select></label>
+          </div>
+          <div class="row"><button class="btn" id="setHeight">Put start above spot</button><button class="btn primary" id="runBtn">Run drop</button></div>
+          <div id="verdict" class="verdict" hidden></div>
+          <div class="tablewrap" id="rowsWrap" hidden><table><thead><tr id="rowsHead"><th>#</th><th>VI</th><th>dt</th><th>tag</th><th>hits</th><th>x</th><th>y</th><th>z</th><th>vy</th></tr></thead><tbody id="rows"></tbody></table></div>
+        </div>
+        <div class="sec">
+          <h4>Height scan</h4>
+          <p class="note">Runs the drop from many heights above the selected spot: once with no lag, then (unless Lag is set to none) with one lag update on each of the 4 updates after the first hold (as in the note-door census).</p>
+          <div class="grid3">
+            <label class="field"><span>From</span><input type="number" id="s0" step="any" value="128"></label>
+            <label class="field"><span>To</span><input type="number" id="s1" step="any" value="140"></label>
+            <label class="field"><span>Step</span><input type="number" id="ss" step="any" value="0.5"></label>
+            <label class="field" style="grid-column:1/-1"><span>Lag</span><select id="sLagScan"><option value="1" selected>Also try one 3-frame update on each of the 4 updates after the first hold</option><option value="0">No lag: normal 2-frame updates only</option></select></label>
+          </div>
+          <div class="row"><button class="btn" id="scanBtn">Scan heights</button><span id="scanStat" class="note"></span></div>
+          <div class="tablewrap" id="scanWrap" hidden><table><thead><tr><th>height</th><th>lag on</th><th>holds</th><th style="text-align:left">verdict</th></tr></thead><tbody id="scanRows"></tbody></table></div>
+        </div>
+      </section>
+      <!-- Data -->
+      <section class="pane" data-pane="data" role="tabpanel" hidden>
+        <div class="sec">
+          <h4>This room</h4>
+          <p class="note" id="aboutNote">Collision from the PAL ROM: the room model plus static objects (note doors, props, breakables in their fresh-save pose). Moving and animated objects are left out.</p>
+        </div>
+        <div class="sec">
+          <h4>What is exact</h4>
+          <p class="note">Collision is a bit-exact port of the game's resolver, including static objects moved into model space with the game's own matrices. Movement is ported from the decomp and matched update for update against BizHawk (PAL): walking, punch, punch cancel at 11 A timings, crouch turns, 11 jump heights, 6 backflips and 3 beak busters. Water, flight, transformations and moving enemies are not modelled. The camera yaw is held fixed.</p>
+        </div>
+        <div class="sec">
+          <h4>Timing</h4>
+          <p class="note">An update lasts frames × 1/50 s on PAL (cap 0.06 s) and frames × 1/60 s on NTSC (cap 0.05 s). Two frames per update is normal; three or more is lag.</p>
+        </div>
+      </section>
+    </div>
+  </aside>
+</main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="bkcol.js"></script>
+<script src="bkexact.js"></script>
+<script src="bkgpu.js"></script>
+<script src="bkmove.js"></script>
+<script src="bksearch.js"></script>
+<script src="bkclipsetup.js"></script>
+<script src="bkchain.js"></script>
+<script>
+(function(){
+'use strict';
+const F=Math.fround, $=id=>document.getElementById(id);
+// Digits setting: every number the page prints goes through toFixed, so the setting widens it there. Values the page
+// computes with (start heights, stick directions) use TOFIXED, the original, so they do not change with the setting.
+const TOFIXED=Number.prototype.toFixed; let DIG='0'; try{DIG=localStorage.getItem('bcl-dig')||'0';}catch(e){}
+Number.prototype.toFixed=function(n){ n=n|0; const v=+this; if(n<=0||!isFinite(v)) return TOFIXED.call(v,n);
+  if(DIG==='exact'){ if(v===0) return '0'; const a=Math.abs(v); const d=Math.max(n,Math.min(20,9-1-Math.floor(Math.log10(a)))); return TOFIXED.call(v,d).replace(/(\.\d*?[1-9])0+$|\.0+$/,'$1'); }
+  return TOFIXED.call(v,Math.min(20,n+(+DIG||0))); };
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+// ---- version timing (decomp core2/time.c): dt = frames * (1/FRAMERATE) stored as f32, capped (PAL 0.06, NTSC 0.05)
+const VERS={PAL:{rate:50,cap:0.06},NTSC:{rate:60,cap:0.05}};
+let version='PAL';
+const dtFor=(vi)=>F(Math.min(vi*(1.0/VERS[version].rate),VERS[version].cap));
+function setVersion(v){version=v;$('vPAL').setAttribute('aria-pressed',v==='PAL');$('vNTSC').setAttribute('aria-pressed',v==='NTSC');
+  $('dtInfo').textContent=`update ${dtFor(2).toPrecision(6)}s · lag ${dtFor(3).toPrecision(6)}s`;
+  renderChips(); if(lastRun) runSim(); applyVersionData(); if(typeof fillSpawns==='function') fillSpawns(); }
+// the dots follow the version: NTSC holds / beak-buster clips (ntsc-run.js) load on demand; PAL ones come with the room
+async function fetchNtsc(m,ent){ const names=ent.ntscparts?Array.from({length:ent.ntscparts},(_,i)=>`data/map${m}.ntsc.${i}.wasm`):[`data/map${m}.ntsc.wasm`];
+  const bufs=await Promise.all(names.map(u=>fetch(u).then(q=>q.ok?q.arrayBuffer():Promise.reject(new Error(u))))); return unpackRoom(await gunzipJSON(new Blob(bufs))); }
+let verBusy=0;
+async function applyVersionData(){ if(!room) return; const r=room; const ent=(index||[]).find(e=>e.map===r.map);
+  if(!r._pal) r._pal={holds:r.holds,slopeclips:r.slopeclips,slopeclips_total:r.slopeclips_total};
+  let src=r._pal, shown='PAL';
+  if(version==='NTSC'){ if(ent&&ent.ntsc){ if(!r._ntsc){ const t=++verBusy; $('layerSum').textContent='Loading the NTSC dots…'; try{ r._ntsc=await fetchNtsc(r.map,ent); }catch(e){ r._ntsc=null; } if(t!==verBusy||room!==r) return; }
+      if(r._ntsc){ src=r._ntsc; shown='NTSC'; } else shown='PAL (NTSC dots failed to load)'; }
+    else shown='PAL (NTSC not computed for this room yet)'; }
+  const changed=r.holds!==src.holds; r.holds=src.holds; r.slopeclips=src.slopeclips; r.slopeclips_total=src.slopeclips_total; r._shown=shown;
+  if($('holdsVer')) $('holdsVer').textContent=shown.startsWith('NTSC')?'NTSC':'PAL';
+  if(changed){ spot=null; renderSpot(); buildPoints(); renderBest('c'); renderBest('s'); }
+  if(shown!=='PAL'&&shown!=='NTSC') $('layerSum').textContent+=` · ${shown}`; else if(shown==='NTSC') $('layerSum').textContent+=' · NTSC dots'; }
+$('vPAL').onclick=()=>setVersion('PAL'); $('vNTSC').onclick=()=>setVersion('NTSC');
+
+// ---- three.js scene
+const view=$('view'); const renderer=new THREE.WebGLRenderer({antialias:true,logarithmicDepthBuffer:true}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+renderer.localClippingEnabled=true;
+// horizontal slicer: everything above cutY is cut away (plane keeps y <= cutY)
+const clipPlane=new THREE.Plane(new THREE.Vector3(0,-1,0),1e9); let cutY=1e9;
+function setCut(y,fromSlider){ cutY=y; clipPlane.constant=y; const s=$('cutY'); const off=y>=+s.max;
+  if(!fromSlider) s.value=Math.min(+s.max,Math.max(+s.min,Math.round(y)));
+  $('cutVal').textContent=off?'off':Math.round(y); if(off){cutY=1e9; clipPlane.constant=1e9;} }
+view.appendChild(renderer.domElement);
+const scene=new THREE.Scene(); const camera=new THREE.PerspectiveCamera(50,1,1,200000);
+const controls=new THREE.OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.zoomSpeed=1.6; controls.minDistance=0.5; controls.screenSpacePanning=true;
+// smooth fly-to: moves the orbit centre (and optionally the camera) to a point
+let fly=null;
+function flyTo(p,dist){ const tgt=new THREE.Vector3(p.x,p.y,p.z); const dir=camera.position.clone().sub(controls.target); if(dir.lengthSq()<1e-6) dir.set(1,1,1);
+  const d=dist??dir.length(); const camEnd=tgt.clone().add(dir.normalize().multiplyScalar(d));
+  fly={t0:performance.now(),dur:(matchMedia('(prefers-reduced-motion: reduce)').matches||!($('camGlide')&&$('camGlide').checked))?1:450,fromT:controls.target.clone(),toT:tgt,fromC:camera.position.clone(),toC:camEnd}; }
+function stepFly(){ if(!fly) return; const k=Math.min(1,(performance.now()-fly.t0)/fly.dur); const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+  controls.target.lerpVectors(fly.fromT,fly.toT,e); camera.position.lerpVectors(fly.fromC,fly.toC,e); if(k>=1) fly=null; }
+// mouse-wheel zooms toward whatever is under the cursor (scales camera and orbit centre around that point)
+const zray=new THREE.Raycaster(), zmouse=new THREE.Vector2();
+view.addEventListener('wheel',e=>{ if(e.target!==renderer.domElement) return; e.preventDefault(); e.stopPropagation(); fly=null;
+  const rc=renderer.domElement.getBoundingClientRect(); zmouse.set(((e.clientX-rc.left)/rc.width)*2-1,-((e.clientY-rc.top)/rc.height)*2+1); zray.setFromCamera(zmouse,camera);
+  const tdist=camera.position.distanceTo(controls.target); zray.params.Points.threshold=Math.max(0.02,tdist/400);
+  const objs=[...roomGroup.children.filter(o=>o.isMesh&&o.visible),...pointsGroup.children.filter(o=>o.isPoints&&o.visible)];
+  const hit=zray.intersectObjects(objs,false).filter(h=>h.point.y<=cutY+0.01).sort((a,b)=>a.distance-b.distance)[0];
+  const P=hit?hit.point.clone():zray.ray.at(tdist,new THREE.Vector3());
+  let dy=e.deltaY; if(e.deltaMode===1) dy*=33; else if(e.deltaMode===2) dy*=400; dy=Math.max(-600,Math.min(600,dy));
+  let s=Math.pow(1.0018,dy); const d=camera.position.distanceTo(P); if(d*s<0.3) s=0.3/d; if(d*s>(controls.maxDistance||1e6)) s=(controls.maxDistance||1e6)/d;
+  camera.position.sub(P).multiplyScalar(s).add(P); controls.target.sub(P).multiplyScalar(s).add(P); nearHint=d*s; controls.update(); },{passive:false,capture:true});
+// near/far follow the zoom so close-ups are not clipped
+let lastNear=0, nearHint=Infinity;
+function updateNearFar(){ const d=Math.min(camera.position.distanceTo(controls.target),nearHint); nearHint=Infinity; const n=Math.max(0.01,d/1500); if(Math.abs(n-lastNear)/Math.max(n,1e-6)>0.05){ camera.near=n; camera.updateProjectionMatrix(); lastNear=n; } }
+scene.add(new THREE.HemisphereLight(0xffffff,0x445044,0.9)); const dl=new THREE.DirectionalLight(0xffffff,0.55); dl.position.set(0.4,1,0.3); scene.add(dl);
+let roomGroup=new THREE.Group(), pointsGroup=new THREE.Group(), simGroup=new THREE.Group(); scene.add(roomGroup,pointsGroup,simGroup);
+function resize(){const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(view);
+// ---- side panel width: drag its left edge (double-click resets); remembered per viewer
+{ const mainEl=document.querySelector('main'), rz=$('resizer'); const KEY='bcl-side';
+  const clampW=w=>Math.round(Math.max(340,Math.min(w,Math.min(900,window.innerWidth-380))));
+  const setW=(w,save)=>{ mainEl.style.setProperty('--side',clampW(w)+'px'); if(save) try{ localStorage.setItem(KEY,String(clampW(w))); }catch(e){} };
+  try{ const v=+localStorage.getItem(KEY); if(v) setW(v,false); }catch(e){}
+  let drag=null;
+  rz.addEventListener('pointerdown',e=>{ drag={x:e.clientX,w:document.querySelector('aside').getBoundingClientRect().width}; rz.setPointerCapture(e.pointerId); rz.classList.add('drag'); document.body.classList.add('resizing'); e.preventDefault(); });
+  rz.addEventListener('pointermove',e=>{ if(drag) setW(drag.w+(drag.x-e.clientX),false); });
+  const end=e=>{ if(!drag) return; setW(drag.w+(drag.x-e.clientX),true); drag=null; rz.classList.remove('drag'); document.body.classList.remove('resizing'); };
+  rz.addEventListener('pointerup',end); rz.addEventListener('pointercancel',end);
+  // the wheel over the strip scrolls the panel
+  rz.addEventListener('wheel',e=>{ const pn=document.querySelector('.panes'); if(!pn) return; pn.scrollTop+=e.deltaY*(e.deltaMode===1?32:e.deltaMode===2?pn.clientHeight:1); e.preventDefault(); },{passive:false});
+  rz.addEventListener('dblclick',()=>{ mainEl.style.removeProperty('--side'); try{ localStorage.removeItem(KEY); }catch(e){} });
+  rz.addEventListener('keydown',e=>{ if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight') return; const w=document.querySelector('aside').getBoundingClientRect().width; setW(w+(e.key==='ArrowLeft'?24:-24),true); e.preventDefault(); });
+  window.addEventListener('resize',()=>{ const v=parseFloat(mainEl.style.getPropertyValue('--side')); if(v) setW(v,false); }); }
+// ---- the mouse/keys help folds away (remembered per viewer)
+{ const h=$('hint'); try{ if(localStorage.getItem('bcl-hint')==='0') h.open=false; }catch(e){} h.addEventListener('toggle',()=>{ try{ localStorage.setItem('bcl-hint',h.open?'1':'0'); }catch(e){} }); }
+function applyTheme(){scene.background=new THREE.Color(css('--view')); if(room) buildRoomMeshes(); if(room) buildPoints(); drawSim();}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+// keyboard flying: W/S or up/down arrows move along the camera's view (look down to go down), A/D or left/right strafe;
+// once flying, dragging turns the view in place (like a first-person camera). Double-click a point or zoom to a spot to orbit again.
+// Q/E straight down/up, Shift = 4x faster. Speed follows the orbit distance, so it is slow close in and fast far out.
+const keys=new Set(); let lastKeyT=performance.now();
+const KEYMAP={KeyW:'f',ArrowUp:'f',KeyS:'b',ArrowDown:'b',KeyA:'l',ArrowLeft:'l',KeyD:'r',ArrowRight:'r',KeyE:'u',KeyQ:'d'};
+const typing=e=>{const t=e.target; return t&&(t.isContentEditable||/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName));};
+addEventListener('keydown',e=>{ if(typing(e)||e.ctrlKey||e.metaKey||e.altKey) return; const k=KEYMAP[e.code]; if(!k) return; e.preventDefault(); keys.add(k); fly=null; });
+addEventListener('keyup',e=>{ const k=KEYMAP[e.code]; if(k) keys.delete(k); });
+addEventListener('blur',()=>keys.clear());
+const _fw=new THREE.Vector3(), _rt=new THREE.Vector3(), _mv=new THREE.Vector3();
+function stepKeys(shift){ const now=performance.now(), dt=Math.min(0.1,(now-lastKeyT)/1000); lastKeyT=now; if(!keys.size) return;
+  camera.getWorldDirection(_fw); _rt.crossVectors(_fw,camera.up).normalize(); _mv.set(0,0,0);
+  if(keys.has('f')) _mv.add(_fw); if(keys.has('b')) _mv.sub(_fw); if(keys.has('r')) _mv.add(_rt); if(keys.has('l')) _mv.sub(_rt); if(keys.has('u')) _mv.y+=1; if(keys.has('d')) _mv.y-=1;
+  if(_mv.lengthSq()===0) return; const dist=camera.position.distanceTo(controls.target);
+  // first key press: switch to looking around in place, so dragging turns the view instead of orbiting a far point.
+  // The orbit point is put 1 unit in front of the camera; the flying speed keeps the old orbit distance.
+  if(dist>2){ flyRef=dist; controls.target.copy(camera.position).addScaledVector(_fw,1); }
+  _mv.normalize().multiplyScalar(Math.max(40,flyRef*1.2)*(shift?4:1)*camSpeedMul*dt); camera.position.add(_mv); controls.target.add(_mv); }
+let flyRef=500;
+// camera settings: fly speed multiplier (slider is log2 scale, 1/8x to 8x) and glide (orbit damping) on/off; remembered per browser
+let camSpeedMul=1;
+function applyCam(){ const v=+$('camSpeed').value; camSpeedMul=Math.pow(2,v); $('camSpeedVal').textContent=(camSpeedMul<1?camSpeedMul.toFixed(2):camSpeedMul.toFixed(1)).replace(/\.0$/,'')+'×';
+  controls.enableDamping=$('camGlide').checked; try{localStorage.setItem('bcl-cam',JSON.stringify({s:v,g:$('camGlide').checked}));}catch(e){} }
+try{ const c=JSON.parse(localStorage.getItem('bcl-cam')||'null'); if(c){ $('camSpeed').value=c.s; $('camGlide').checked=!!c.g; } }catch(e){}
+$('camSpeed').oninput=applyCam; $('camGlide').onchange=applyCam; applyCam();
+let shiftDown=false; addEventListener('keydown',e=>{ if(e.key==='Shift') shiftDown=true; }); addEventListener('keyup',e=>{ if(e.key==='Shift') shiftDown=false; });
+(function loop(){requestAnimationFrame(loop); stepFly(); stepKeys(shiftDown); controls.update(); updateNearFar(); renderer.render(scene,camera);})();
+
+// ---- data
+let index=[], room=null, world=null, crackPts=null, slopePts=null, hit5Pts=null, scrackPts=null, holdPts=null, roofPts=null, selMarker=null;
+let spot=null; // {x,y,z,kind,info}
+function disposeGroup(g){g.traverse(o=>{if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose();}); g.clear();}
+function buildRoomMeshes(){
+  disposeGroup(roomGroup);
+  const add=(d,xlu)=>{ if(!d||!d.collision) return; const V=d.vertices, T=d.collision.triangles;
+    const cf=new THREE.Color(css('--mesh-floor')), cw=new THREE.Color(css('--mesh-wall')), cc=new THREE.Color(css('--mesh-ceil'));
+    const parts={main:{pos:[],col:[]},ceil:{pos:[],col:[]}};
+    // floors: every triangle gets its own shade (hashed from its index) so each one stands out
+    const fh={}; cf.getHSL(fh); const dark=fh.l<0.5; const tint=new THREE.Color();
+    const hash=(i,s)=>{let x=(i*2654435761+s*40503)>>>0; x^=x>>>15; x=Math.imul(x,2246822519)>>>0; x^=x>>>13; return (x>>>0)/4294967296;};
+    T.forEach((t,ti)=>{ const a=V[t[0]],b=V[t[1]],c=V[t[2]];
+      const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],wx=c[0]-a[0],wy=c[1]-a[1],wz=c[2]-a[2];
+      const nx=uy*wz-uz*wy, ny=uz*wx-ux*wz, nz=ux*wy-uy*wx; const l=Math.hypot(nx,ny,nz)||1; const yy=ny/l;
+      const isCeil=yy<-0.3, isFloor=yy>0.6; let C=isFloor?cf:(isCeil?cc:cw); let k=0.82+0.18*Math.abs(nx/l);
+      if(isFloor&&$('floorTint').checked){ const h1=hash(ti,1),h2=hash(ti,2),h3=hash(ti,3);
+        tint.setHSL((fh.h+(h1-0.5)*0.22+1)%1, Math.min(1,fh.s+0.12+h2*0.25), Math.max(0.08,Math.min(0.92,fh.l+(h3-0.5)*(dark?0.22:0.3)))); C=tint; k=1; }
+      const P=isCeil?parts.ceil:parts.main;
+      for(const p of [a,b,c]){P.pos.push(p[0],p[1],p[2]); P.col.push(C.r*k,C.g*k,C.b*k);} });
+    for(const [name,P] of Object.entries(parts)){ if(!P.pos.length) continue;
+      const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(P.pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(P.col,3)); g.computeVertexNormals();
+      const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:xlu,opacity:xlu?0.35:1,depthWrite:!xlu,clippingPlanes:[clipPlane]}));
+      m.userData={xlu,ceil:name==='ceil'}; roomGroup.add(m);
+      if(!xlu){ const e=new THREE.LineSegments(new THREE.WireframeGeometry(g),new THREE.LineBasicMaterial({color:new THREE.Color(css('--line')),transparent:true,opacity:.35,clippingPlanes:[clipPlane]})); e.userData={ceil:name==='ceil'}; roomGroup.add(e);} } };
+  add(room.opa,false); add(room.xlu,true);
+  // static objects: model-space collision moved into the world with the game's own matrix
+  if(world&&world.props&&world.props.length){ const pos=[]; const cp=new THREE.Color(css('--prop'));
+    for(const pr of world.props){ for(const t of pr.cl.tris){ for(const v of t.v){ const w=pr.M.apply(v); pos.push(w[0],w[1],w[2]); } } }
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.computeVertexNormals();
+    const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:cp,side:THREE.DoubleSide,transparent:true,opacity:.8,clippingPlanes:[clipPlane]})); m.userData={prop:true}; roomGroup.add(m);
+    const e=new THREE.LineSegments(new THREE.WireframeGeometry(g),new THREE.LineBasicMaterial({color:cp,transparent:true,opacity:.6,clippingPlanes:[clipPlane]})); e.userData={prop:true}; roomGroup.add(e); }
+  $('nProps').textContent=`${world&&world.props?world.props.length:0}`; if($('nPose')) $('nPose').textContent=room&&room._pose&&room._pose.length?room._pose.length:'';
+  applyRoomVis();
+}
+function pointsObj(arr,color,size){ const pos=new Float32Array(arr.length*3); arr.forEach((p,i)=>{pos[i*3]=p[0];pos[i*3+1]=p[1]+0.5;pos[i*3+2]=p[2];});
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  return new THREE.Points(g,new THREE.PointsMaterial({color:new THREE.Color(color),size,sizeAttenuation:false,depthTest:true,clippingPlanes:[clipPlane]})); }
+// clip odds: holds carry odds = [runs, clips, nolag, voids] (every held test drop re-run with and without a lag update);
+// beak-buster clips: n of the 70 dive cases clip, cases with a 2-frame crossing update need no lag, all fall out of the map
+function busterNolag(mask){ const m=BigInt('0x'+mask); let n=0; for(let i=0;i<70;i++) if(((m>>BigInt(i))&1n)&&Math.floor(i/5)%2===0) n++; return n; }
+function holdOdds(h){ if(h.odds) return {runs:h.odds[0],clips:h.odds[1],nolag:h.odds[2],voids:h.odds[3]}; return null; }
+function relOK(o,nolagKnown){ return relOKw(sfRel,o,nolagKnown); }
+function relOKw(R,o,nolagKnown){ if(R==='any') return true; if(R==='nolag'&&nolagKnown!=null&&!o) return nolagKnown; if(!o) return false;
+  return R==='multi'?o.clips>=2:R==='often'?o.clips>=0.1*o.runs:R==='nolag'?o.nolag>0:R==='void'?o.voids>0:true; }
+function holdRel(h){ if(!(h.clip||h.clip_dY!=null)) return false; return relOK(holdOdds(h),h.clip?h.clip.lag==null:h.clip_lag==null); }
+function busterRel(c){ return relOK({runs:70,clips:c[4],nolag:busterNolag(c[5]),voids:c[4]}); }
+// "only spots with a clip found": positions where a clip is known (a hold that clips, a beak-buster clip), at the chosen reliability
+function clipKeys(){ const k=new Set(); const key=(x,z)=>Math.round(x*1000)+','+Math.round(z*1000);
+  for(const h of room.holds) if(holdRel(h)) k.add(key(h.x,h.z)); for(const c of room.slopeclips||[]) if(busterRel(c)) k.add(key(c[0],c[2])); return {k,key}; }
+// build a point layer from arr (filtered when clip-only), remembering each drawn point's index in arr for picking
+function layer(arr,xyz,color,size,keep){ const idx=[]; const pts=[]; arr.forEach((d,i)=>{ if(keep&&!keep(d)) return; idx.push(i); pts.push(xyz(d)); });
+  if(!pts.length) return null; const o=pointsObj(pts,color,size); o.userData.idx=idx; return o; }
+function buildPoints(){
+  disposeGroup(pointsGroup);
+  const SF=spotFilter; const co=SF==='clip'||SF==='holdclip'; const {k:CK,key}=co?clipKeys():{k:null,key:null}; const atClip=d=>CK.has(key(d[0],d[2]));
+  const none=()=>false;  // hides a layer under a filter
+  const holdclip=holdRel;
+  crackPts=layer(room.cracks,d=>d,css('--crack'),4,SF==='all'?null:SF==='clip'?atClip:none);
+  holdPts=layer(room.holds,h=>[h.x,h.y,h.z],css('--hold'),10,co?holdclip:null);
+  roofPts=SF!=='all'?null:(room.roofcracks.length?pointsObj(room.roofcracks,css('--roof'),4):null);
+  const scr=room.slopecracks||[]; scrackPts=layer(scr,d=>d,css('--crack'),4,SF==='all'?null:SF==='clip'?atClip:none);
+  if(scrackPts){scrackPts.userData.kind='scrack'; scrackPts.material.transparent=true; scrackPts.material.opacity=.7; scrackPts.visible=$('showSCracks').checked; pointsGroup.add(scrackPts);}
+  const h5=room.hit5||[]; hit5Pts=layer(h5,d=>d,css('--hit5'),7,SF==='all'||SF==='hold'?null:SF==='clip'?atClip:none);
+  if(hit5Pts){hit5Pts.userData.kind='hit5'; hit5Pts.visible=$('showHit5').checked; pointsGroup.add(hit5Pts);}
+  const sc=room.slopeclips||[]; slopePts=layer(sc,d=>d,css('--slope'),6,SF==='hold'||SF==='holdclip'?none:co&&sfRel!=='any'?busterRel:null);
+  if(slopePts){slopePts.userData.kind='slope'; slopePts.visible=$('showSlope').checked; pointsGroup.add(slopePts);}
+  if(crackPts){crackPts.userData.kind='crack'; crackPts.visible=$('showCracks').checked; pointsGroup.add(crackPts);}
+  if(holdPts){holdPts.userData.kind='hold'; holdPts.visible=$('showHolds').checked; pointsGroup.add(holdPts);
+    // clip-capable holds get a ring
+    const clipH=room.holds.filter(h=>co?holdRel(h):(h.clip_dY!=null||h.clip)); if(clipH.length){const r=pointsObj(clipH.map(h=>[h.x,h.y+1,h.z]),css('--clip'),16); r.material.transparent=true; r.material.opacity=.55; r.userData.ring=true; r.visible=$('showHolds').checked; pointsGroup.add(r);} }
+  if(roofPts){roofPts.userData.kind='roof'; roofPts.visible=$('showRoof').checked; pointsGroup.add(roofPts);}
+  $('nCracks').textContent=room.cracks.length.toLocaleString(); $('nHolds').textContent=room.holds.length.toLocaleString(); $('nRoof').textContent=room.roofcracks.length.toLocaleString(); $('nSCracks').textContent=(room.slopecracks_total||(room.slopecracks||[]).length).toLocaleString()+((room.slopecracks_total||0)>(room.slopecracks||[]).length?` (${room.slopecracks.length.toLocaleString()} shown)`:''); $('nHit5').textContent=(room.hit5_total||(room.hit5||[]).length).toLocaleString()+((room.hit5_total||0)>(room.hit5||[]).length?` (${room.hit5.length.toLocaleString()} shown)`:''); $('nSlope').textContent=(room.slopeclips_total||(room.slopeclips||[]).length).toLocaleString()+((room.slopeclips_total||0)>(room.slopeclips||[]).length?` (${room.slopeclips.length.toLocaleString()} shown)`:'');
+  $('layerSum').textContent=`${room.cracks.length.toLocaleString()} cracks · ${room.holds.length} holds`+((room.slopeclips||[]).length?` · ${room.slopeclips.length.toLocaleString()} slope clips`:'');
+  if(SF!=='all'){ const n=o=>o?o.userData.idx.length.toLocaleString():'0'; const w=SF==='hold'?'':' with clip'; $('nCracks').textContent=n(crackPts)+w; $('nHolds').textContent=n(holdPts)+w; $('nSCracks').textContent=n(scrackPts)+w; $('nHit5').textContent=n(hit5Pts)+w; $('nSlope').textContent=n(slopePts); $('nRoof').textContent='–';
+    $('layerSum').textContent=SF==='hold'?`holds only · ${n(holdPts)} holds · ${n(hit5Pts)} 5-collision`:SF==='holdclip'?`hold + clip only · ${n(holdPts)} holds that clip`:`clip spots only · ${n(holdPts)} holds that clip · ${n(slopePts)} buster clips`;
+    if(co&&sfRel!=='any'){ $('layerSum').textContent+=` · ${$('sfRel').selectedOptions[0].textContent.toLowerCase()}`; if(room.holds.some(h=>h.clip)&&!room.holds.some(h=>h.odds)) $('layerSum').textContent+=' (hold odds not counted for this room yet)'; } }
+  if(spot) markSpot();
+}
+['showCracks','showHolds','showRoof','showSlope','showHit5','showSCracks'].forEach(id=>$(id).onchange=()=>{pointsGroup.children.forEach(o=>{const k=o.userData.kind||(o.userData.ring?'hold':''); if(k==='crack')o.visible=$('showCracks').checked; if(k==='scrack')o.visible=$('showSCracks').checked; if(k==='slope')o.visible=$('showSlope').checked; if(k==='hit5')o.visible=$('showHit5').checked; if(k==='hold')o.visible=$('showHolds').checked; if(k==='roof')o.visible=$('showRoof').checked;});});
+function applyRoomVis(){ roomGroup.children.forEach(o=>{ let v=true; if(o.userData.xlu&&!$('showXlu').checked) v=false; if(o.userData.prop&&!$('showProps').checked) v=false; if(o.userData.ceil&&$('hideCeil').checked) v=false; o.visible=v; }); }
+let spotFilter='all', sfRel='any'; try{ spotFilter=localStorage.getItem('bcl-sf')||'all'; sfRel=localStorage.getItem('bcl-sfr')||'any'; }catch(e){}
+$('sfRel').value=sfRel; $('sfRel').hidden=!(spotFilter==='clip'||spotFilter==='holdclip');
+$('sfRel').onchange=()=>{ sfRel=$('sfRel').value; try{localStorage.setItem('bcl-sfr',sfRel);}catch(e){} if(room) buildPoints(); };
+document.querySelectorAll('[data-sf]').forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.sf===spotFilter); b.onclick=()=>{ spotFilter=b.dataset.sf; try{localStorage.setItem('bcl-sf',spotFilter);}catch(e){}
+  document.querySelectorAll('[data-sf]').forEach(q=>q.setAttribute('aria-pressed',q===b)); $('sfRel').hidden=!(spotFilter==='clip'||spotFilter==='holdclip'); if(room) buildPoints(); }; });
+$('usePose').onchange=()=>{ if(!room) return; world=new BK.World(world.opa,world.xlu,BK.load_props(activeProps()),parseInt(room.map,16)); buildRoomMeshes(); if(lastRun&&lastRun.mode!=='move') runSim(); };
+$('showXlu').onchange=applyRoomVis; $('showProps').onchange=applyRoomVis; $('hideCeil').onchange=applyRoomVis; $('showSphere').onchange=()=>drawSim(); $('showBanjo').onchange=()=>{ try{localStorage.setItem('bcl-banjo',$('showBanjo').checked?'1':'0');}catch(e){} drawSim(); }; try{ if(localStorage.getItem('bcl-banjo')==='0') $('showBanjo').checked=false; }catch(e){} $('floorTint').onchange=()=>{ if(room) buildRoomMeshes(); };
+$('cutY').oninput=e=>setCut(+e.target.value,true);
+$('cutOff').onclick=()=>setCut(+$('cutY').max,false);
+$('cutSpot').onclick=()=>{ let y=null; if(lastRun&&lastRun.rows[cur]) y=lastRun.rows[cur].result[1]+160; else if(spot) y=spot.y+160; if(y!==null) setCut(y,false); };
+function setupSlicer(box){ const s=$('cutY'); s.min=Math.floor(box.min.y)-1; s.max=Math.ceil(box.max.y)+1; s.value=s.max; setCut(+s.max,false); }
+
+const SITE_PART='';  // set per published part by mksites.py
+async function loadIndex(){
+  const r=await fetch('data/index.json'); index=await r.json();
+  const sel=$('mapSel'); let grp=null, og=null;
+  for(const m of index){ if(m.group!==grp){grp=m.group; og=document.createElement('optgroup'); og.label=grp; sel.appendChild(og);} const o=document.createElement('option'); o.value=m.map; o.textContent=`${m.map} ${m.name}${m.pending?' (cracks pending)':''}${m.ext?` ↗ ${m.extLabel||'other part'}`:''}`; og.appendChild(o); }
+  $('partTag').textContent=SITE_PART; $('partTag').hidden=!SITE_PART;
+  const local=m=>{ const e=index.find(x=>x.map===m); return e&&!e.ext; };
+  let start='0x93'; try{start=localStorage.getItem('bcl-map')||start;}catch(e){}
+  const hm=(location.hash||'').slice(1); if(/^0x[0-9a-f]{2}$/i.test(hm)){ const e=index.find(x=>x.map.toLowerCase()===hm.toLowerCase()); if(e) start=e.map; }
+  if(!local(start)){ const e=index.find(x=>x.map===start); if(e&&e.ext) showExt(e); start=(index.find(x=>!x.ext)||index[0]).map; }
+  sel.value=start; await loadMap(start);
+}
+// rooms on the other part of the site (the host caps one site at 256 MB): the picker links there instead of loading
+function showExt(e){ const n=$('extNote'); n.innerHTML=`<b>${e.map} ${e.name}</b> is on ${e.extLabel||'the other part'} of Bit-Clip Lab (the site is split in two to fit the host's size limit). <a href="${e.ext}#${e.map}" target="_blank" rel="noopener">Open ${e.name} ↗</a> <button class="btn mini" id="extClose" aria-label="Close">✕</button>`; n.hidden=false; $('extClose').onclick=()=>{n.hidden=true;}; }
+$('mapSel').onchange=e=>{ const ent=index.find(x=>x.map===e.target.value); if(ent&&ent.ext){ showExt(ent); e.target.value=room?room.map:''; return; } $('extNote').hidden=true; loadMap(e.target.value); };
+$('digSel').value=DIG; $('digSel').onchange=e=>{ DIG=e.target.value; try{localStorage.setItem('bcl-dig',DIG);}catch(er){}
+  renderSpot(); if(lastRun){ if(lastRun.mode==='drop') runSim(); else if(lastRun.mode==='move') runMove(true); else setCur(cur); } };
+// room data is stored gzipped and base64-encoded (data/map0xNN.gz.txt, about 3x smaller than the JSON); falls back to plain .json
+// packed rooms: raw gzip in .wasm files (parts when large); full-census holds come as compact rows (see pack.py)
+const HKIND={1:'810',2:'fall',3:'rest'};
+function unpackRoom(d){ if(d&&d.holdsA){ d.holds=(d.holds||[]).concat(d.holdsA.map(a=>{ const h={door:null,x:a[0],y:a[1],z:a[2],seam:a[3],held:a[4],of:a[5],max_holds:a[6],clip:a[8]?{kind:HKIND[a[8][0]],h:a[8][1],vy:a[8][2],lag:a[8][3]<0?null:a[8][3],endY:a[8][4]}:null,room_census:1,full:1};
+  if(a[7]) h.slope=1; if(a[9]) h.odds=a[9]; return h; })); delete d.holdsA; } return d; }
+async function gunzipJSON(buf){ const ds=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip')); return JSON.parse(await new Response(ds).text()); }
+async function fetchRoom(m){
+  const ent=(index||[]).find(e=>e.map===m);
+  if(ent&&ent.bin&&typeof DecompressionStream!=='undefined'){ try{
+    const names=ent.gzparts?Array.from({length:ent.gzparts},(_,i)=>`data/map${m}.gz.${i}.wasm`):[`data/map${m}.gz.wasm`];
+    const bufs=await Promise.all(names.map(u=>fetch(u).then(q=>q.ok?q.arrayBuffer():Promise.reject(new Error(u)))));
+    return unpackRoom(await gunzipJSON(new Blob(bufs))); }catch(e){ console.warn('packed room failed',e); } }
+  try{ let r, t;
+    if(ent&&ent.gzparts){ const parts=await Promise.all(Array.from({length:ent.gzparts},(_,i)=>fetch(`data/map${m}.gz.${i}.txt`).then(q=>q.ok?q.text():Promise.reject(new Error('part '+i))))); t=parts.map(x=>x.trim()).join(''); r={ok:true}; }
+    else { r=await fetch(`data/map${m}.gz.txt`); t=r.ok?(await r.text()).trim():''; }
+    if(r.ok){ const bin=atob(t); const buf=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
+      if(buf[0]===0x1f&&buf[1]===0x8b&&typeof DecompressionStream!=='undefined') return unpackRoom(await gunzipJSON(buf));
+      if(buf[0]===0x7b) return JSON.parse(new TextDecoder().decode(buf)); } }catch(e){}
+  const r=await fetch(`data/map${m}.json`); return unpackRoom(await r.json()); }
+// the props collision uses: the room's static objects, plus the animated / moving ones when that layer is on
+function activeProps(){ return (room.props||[]).concat($('usePose')&&$('usePose').checked?(room._pose||[]):[]); }
+async function loadMap(m){
+  $('loading').hidden=false; $('loading').textContent='Loading room…';
+  try{localStorage.setItem('bcl-map',m);}catch(e){}
+  room=await fetchRoom(m);
+  // animated / moving objects (warp cauldrons, beehives, platforms...) in their rest pose at their spawn point: optional, but on
+  // by default so routes can't walk through them (data/pose-0xNN.json from extract-actor-collision-pose.py)
+  { const ent=(index||[]).find(e=>e.map===m); room._pose=[]; if(ent&&ent.pose){ try{ const q=await fetch(`data/pose-${m}.json`); if(q.ok) room._pose=await q.json(); }catch(e){} } }
+  world=new BK.World(BK.load_model(room.opa,'opa'),room.xlu?BK.load_model(room.xlu,'xlu'):null,BK.load_props(activeProps()),parseInt(m,16));
+  buildRoomMeshes(); buildPoints(); $('spawnSel').value=''; Promise.all([spawnP,exitsP]).then(()=>{ fillSpawns(); drawSpawns(); }); setTimeout(()=>{ renderBest('c'); renderBest('s'); if(version!=='PAL') applyVersionData(); },0); spot=null; lastRun=null; renderSpot(); clearSim(); target=null; fillTgt(); ['bx','by','bz'].forEach(k=>$(k).value=''); if(typeof drawMarks==='function'){ disposeGroup(searchGroup); segObjs={}; drawMarks(); }
+  // frame camera
+  const box=new THREE.Box3().setFromObject(roomGroup); const c=box.getCenter(new THREE.Vector3()), s=box.getSize(new THREE.Vector3());
+  setupSlicer(box);
+  const R=Math.max(s.x,s.z,s.y)||1000; fly=null; controls.target.copy(c); camera.position.set(c.x+R*0.55,c.y+R*0.7,c.z+R*0.75); camera.far=R*20; controls.maxDistance=R*6; lastNear=0; camera.updateProjectionMatrix();
+  $('aboutNote').textContent=room.about||$('aboutNote').textContent;
+  $('loading').hidden=true;
+}
+
+// ---- picking
+const ray=new THREE.Raycaster(); const mouse=new THREE.Vector2(); let downAt=null;
+renderer.domElement.addEventListener('pointerdown',e=>{downAt=[e.clientX,e.clientY];});
+renderer.domElement.addEventListener('pointerup',e=>{ if(!downAt||Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])>5) return; downAt=null;
+  const rc=renderer.domElement.getBoundingClientRect(); mouse.set(((e.clientX-rc.left)/rc.width)*2-1,-((e.clientY-rc.top)/rc.height)*2+1); ray.setFromCamera(mouse,camera);
+  const dist=camera.position.distanceTo(controls.target); ray.params.Points.threshold=Math.max(0.5,dist/250);
+  const below=h=>h.point.y<=cutY+0.01;
+  if(e.altKey){ const hit=ray.intersectObjects(roomGroup.children.filter(o=>o.isMesh&&o.visible),false).filter(below)[0]; if(hit){ selectSpot({x:hit.point.x,y:hit.point.y,z:hit.point.z,kind:'point'}); } return; }
+  // load-in markers and exits first (big targets), then the spot layers, then "inside an exit's box on screen"
+  const px=e.clientX-rc.left, py=e.clientY-rc.top; const big=bigPick(px,py,rc,e.pointerType==='touch'?40:28);
+  const h=big||pickPoint(px,py,rc,e.pointerType==='touch'?22:12)||exitBoxPick(px,py,rc); if(!h) return; const k=h.kind; const i=h.index;
+  if(k==='spawn'){ const s=spawnList()[i]; if(!s) return; const sp=spawnStand(s); $('spawnSel').value=String(i); $('spawnSel').dispatchEvent(new Event('change')); selectSpot({x:sp[0],y:sp[1],z:sp[2],kind:'spawn',info:{label:spawnLabel(s),yaw:spawnYaw(s)}}); return; }
+  if(k==='exit'){const e=exitList()[i]; selectSpot({x:e[0],y:e[1],z:e[2],kind:'exit',info:{r:e[3],toMap:e[4],toExit:e[5],name:e[6]}});}
+  else if(k==='hold'){const d=room.holds[i]; selectSpot({x:d.x,y:d.y,z:d.z,kind:'hold',info:d});}
+  else if(k==='scrack'){const d=room.slopecracks[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'crack',info:{seam:d[3],slope:1}});}
+  else if(k==='hit5'){const d=room.hit5[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'hit5',info:{seam:d[3],first:d[4],slope:d[5]}});}
+  else if(k==='slope'){const d=room.slopeclips[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'slope',info:{seam:d[3],n:d[4],mask:d[5]}});}
+  else if(k==='roof'){const d=room.roofcracks[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'roof',info:{seam:d[3]}});}
+  else {const d=room.cracks[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'crack',info:{seam:d[3]}});}
+});
+// screen position of a world point (null if behind the camera)
+function toScreen(x,y,z,rc){ camera.updateMatrixWorld(); const v=new THREE.Vector3(x,y,z).project(camera); if(v.z>1) return null; return [(v.x*0.5+0.5)*rc.width,(1-(v.y*0.5+0.5))*rc.height]; }
+// the floating load-in diamonds (34 above the stand point) and the exit centres, within tol pixels
+function bigPick(px,py,rc,tol){ let best=null; const add=(kind,index,x,y,z)=>{ const s=toScreen(x,y,z,rc); if(!s) return; const d=Math.hypot(s[0]-px,s[1]-py); if(d<=tol&&(!best||d<best.d)) best={d,kind,index}; };
+  if($('showSpawns').checked) spawnList().forEach((s,i)=>{ const p=spawnStand(s); add('spawn',i,p[0],p[1]+34,p[2]); add('spawn',i,p[0],p[1],p[2]); });
+  if($('showExits').checked) exitList().forEach((e,i)=>add('exit',i,e[0],e[1],e[2]));
+  return best; }
+// a click inside an exit's box as drawn on screen (smallest box wins)
+function exitBoxPick(px,py,rc){ if(!$('showExits').checked) return null; let best=null;
+  exitList().forEach((e,i)=>{ const [x,y,z,r]=e; let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9,n=0; for(const sx of [-1,1]) for(const sy of [-1,1]) for(const sz of [-1,1]){ const s=toScreen(x+sx*r,y+sy*r,z+sz*r,rc); if(!s) continue; n++; x0=Math.min(x0,s[0]); x1=Math.max(x1,s[0]); y0=Math.min(y0,s[1]); y1=Math.max(y1,s[1]); }
+    if(n===8&&px>=x0&&px<=x1&&py>=y0&&py<=y1){ const a=(x1-x0)*(y1-y0); if(!best||a<best.a) best={a,kind:'exit',index:i}; } });
+  return best; }
+// pick the drawn spot nearest the click on screen (within tol pixels), checking every visible point layer; ties go to
+// the spot nearer the camera, then to the rarer layers (holds, 5 collisions, slope clips) over plain cracks
+const _pv=new THREE.Vector3();
+function pickPoint(px,py,rc,tol){ const layers=[exitPts,holdPts,hit5Pts,slopePts,roofPts,crackPts,scrackPts]; let best=null;
+  camera.updateMatrixWorld(); const vp=new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse); const m=vp.elements; const W=rc.width, H=rc.height;
+  layers.forEach((o,li)=>{ if(!o||!o.visible) return; const a=o.geometry.attributes.position.array; const n=a.length/3;
+    for(let j=0;j<n;j++){ const x=a[j*3],y=a[j*3+1],z=a[j*3+2]; if(y>cutY+0.6) continue;
+      const w=m[3]*x+m[7]*y+m[11]*z+m[15]; if(w<=0) continue; const sx=((m[0]*x+m[4]*y+m[8]*z+m[12])/w*0.5+0.5)*W; const sy=(1-((m[1]*x+m[5]*y+m[9]*z+m[13])/w*0.5+0.5))*H;
+      const d=Math.hypot(sx-px,sy-py); if(d>tol) continue; const score=d+li*0.75+w*1e-4; if(!best||score<best.score) best={score,kind:o.userData.kind,index:o.userData.idx?o.userData.idx[j]:j}; } });
+  return best; }
+function markSpot(){ if(selMarker){simGroup.remove(selMarker); selMarker.geometry.dispose();}
+  selMarker=new THREE.Mesh(new THREE.RingGeometry(6,9,32),new THREE.MeshBasicMaterial({color:new THREE.Color(css('--accent')),side:THREE.DoubleSide,depthTest:false}));
+  selMarker.rotation.x=-Math.PI/2; selMarker.position.set(spot.x,spot.y+0.6,spot.z); selMarker.renderOrder=5; simGroup.add(selMarker); }
+function selectSpot(s){ spot=s; renderSpot(); markSpot(); putAbove(); lookAt(s); }
+// look at a spot: the orbit centre moves to it, the camera stays where it is (backs off to 40 if closer); Zoom moves in
+function lookAt(p){ const d=camera.position.distanceTo(new THREE.Vector3(p.x,p.y,p.z)); flyTo(p,Math.max(40,d)); }
+// double-click: make the point under the cursor the zoom/orbit centre
+renderer.domElement.addEventListener('dblclick',e=>{ const rc=renderer.domElement.getBoundingClientRect(); mouse.set(((e.clientX-rc.left)/rc.width)*2-1,-((e.clientY-rc.top)/rc.height)*2+1); ray.setFromCamera(mouse,camera);
+  const dist=camera.position.distanceTo(controls.target); ray.params.Points.threshold=Math.max(0.05,dist/250);
+  const objs=[...pointsGroup.children.filter(o=>o.visible&&o.isPoints),...roomGroup.children.filter(o=>o.isMesh&&o.visible)];
+  const hit=ray.intersectObjects(objs,false).filter(h=>h.point.y<=cutY+0.01).sort((a,b)=>a.distance-b.distance)[0];
+  if(hit){ const p=hit.object.isPoints?new THREE.Vector3().fromBufferAttribute(hit.object.geometry.attributes.position,hit.index):hit.point; flyTo(p,Math.min(dist,Math.max(40,dist*0.45))); } });
+$('zoomSpot').onclick=()=>{ if(spot) flyTo(spot,120); };
+$('spotClose').onclick=()=>{ $('spotCard').hidden=true; };
+function fmt(v,n=6){return (v==null||v==='')?'—':(+v).toFixed(n);}
+function oddsText(o,what){ const p=o.runs?100*o.clips/o.runs:0; const tag=p>=25?'reliable':p>=5?'sometimes':o.clips>=2?'rare':'one exact setup';
+  return `<b>${tag}</b> · ${o.clips} of ${o.runs} ${what} clip (${p<1&&p>0?p.toFixed(1):Math.round(p)}%) · ${o.nolag?`${o.nolag} without lag`:'only with a lag frame'} · ${o.voids===o.clips?'all fall out of the map':o.voids?`${o.voids} fall out of the map, ${o.clips-o.voids} land on ground below`:'all land on ground below'}`; }
+function renderSpot(){ const el=$('spotInfo'); if(!spot){ $('spotCard').hidden=true; el.innerHTML=''; return;}
+  $('spotCard').hidden=false; const VL=(room&&room._shown==='NTSC')?'NTSC':'PAL'; const kinds={crack:'Floor crack',hold:`5-hit hold (${VL} census)`,roof:'Roof crack (bee push)',slope:`Slope clip: beak buster (${VL})`,hit5:'5 collisions on one update',point:'Picked point',exit:'Exit (loading zone)',spawn:'Load-in point'};
+  $('spotTitle').textContent=kinds[spot.kind]+(spot.kind==='crack'&&spot.info&&spot.info.slope?' (sloped seam)':''); $('spotDot').style.background=css('--'+({crack:'crack',hold:'hold',roof:'roof',slope:'slope',hit5:'hit5',point:'accent',exit:'accent',spawn:'pop'}[spot.kind]));
+  let rows=`<dt>Position</dt><dd>${fmt(spot.x,4)}, ${fmt(spot.y,3)}, ${fmt(spot.z,4)}</dd>`;
+  if(spot.info&&spot.info.seam) rows+=`<dt>Seam (tris)</dt><dd>${spot.info.seam}</dd>`;
+  if(spot.kind==='spawn'){ rows+=`<dt>Load-in</dt><dd>${spot.info.label}</dd><dt>Facing</dt><dd>${(+spot.info.yaw).toFixed(3)}°</dd><dt>Start</dt><dd>set as the start (same as picking it in Load-in)</dd>`; }
+  if(spot.kind==='exit'){ const e=spot.info, r=e.r; rows+=`<dt>Goes to</dt><dd>${e.toMap?`${roomName(e.toMap)}, exit ${e.toExit}${e.name?` (${e.name})`:''}`:`${e.name} (not a plain room warp)`}</dd><dt>Trigger box</dt><dd>x ${spot.x-r} … ${spot.x+r}, y ${spot.y-r} … ${spot.y+r}, z ${spot.z-r} … ${spot.z+r} (half-size ${r})</dd><dt>Fires when</dt><dd>Banjo's position, cut to whole numbers, is strictly inside the box on all three axes</dd>`; }
+  if(spot.kind==='hold'&&spot.info.room_census){const d=spot.info; const c=d.clip;
+    rows+=`<dt>Held in</dt><dd>${d.held} of ${d.of} drops (max ${d.max_holds} hold${d.max_holds>1?"s":""} in a row)</dd><dt>Clip</dt><dd>${c?`${c.kind==='810'?`810-style drop from +${c.h}`:c.kind==='rest'?`fall from rest from +${c.h}`:`fall at vy ${c.vy} from +${c.h}`}${c.lag!=null?`, lag on update ${c.lag}`:', no lag'} → y ${c.endY}`:'no clip found'}</dd>`;
+    if(c){ const o=holdOdds(d); rows+=`<dt>Clip odds</dt><dd>${o?oddsText(o,'drop runs'):'not counted for this room yet'}</dd>`; }
+    if(c&&c.kind==='810') $('dy').value=c.h; }
+  else if(spot.kind==='hold'){const d=spot.info; rows+=`<dt>Door</dt><dd>${d.door} (${d.side}${d.near_door?', touches door':''})</dd><dt>Heights held</dt><dd>${d.held} of 25 (max ${d.max_holds} holds)</dd><dt>Clip</dt><dd>${d.clip_dY!=null?`height +${d.clip_dY} with lag on update ${d.clip_lag} → y ${d.clip_y}`:'no clip found'}</dd>`;}
+  let extra='';
+  if(spot.kind==='hit5'){ const st=H5_STARTS[spot.info.first>>2], sp=H5_STEPS[spot.info.first&3];
+    rows+=`<dt>Holds on</dt><dd>one falling update from feet ${st>=0?'+':''}${st} to ${st-sp>=0?'+':''}${st-sp} (step ${sp}, vy about ${Math.round(-sp/0.04)} on 2 frames)</dd><dt>Floor</dt><dd>${spot.info.slope?'sloped seam':'flat seam'}</dd>`;
+    extra=`<p class="note" style="margin:6px 0 4px">The resolver pushes 5 times on that update: a 5-hit hold is possible here.${st<0?' The feet start below the floor, so Banjo has to fall through the crack on the update before.':''} The first case found is shown; other heights and speeds may hold too. Clip setup can look for a way to get here.</p><div class="row"><button class="btn mini" id="h5load">Load this update in Drop test</button></div>`;
+    setTimeout(()=>{ const b=$('h5load'); if(b) b.onclick=()=>{ $('preset').value='fall'; applyPreset(); $('vx').value=0; $('vz').value=0; $('vy').value=-sp/0.04; $('grav').value=0; $('term').value=-5000; $('gnd').value='0'; $('dy').value=st; $('nupd').value=4; vis=[2,2,2,2]; renderChips(); putAbove(); showTab('drop'); runSim(); }; },0); }
+  if(spot.kind==='slope'){ const cs=slopeCases(spot.info.mask); rows+=`<dt>Goes through</dt><dd>${spot.info.n} of ${SLOPE_COMBOS.length} crossing cases, no hold needed</dd><dt>Clip odds</dt><dd>${oddsText({runs:70,clips:spot.info.n,nolag:busterNolag(spot.info.mask),voids:spot.info.n},'dive cases')}</dd>`;
+    extra=`<p class="note" style="margin:6px 0 4px">A beak buster dive whose crossing update passes this crack ends under the map. Each case: dive speed on the crossing update, its frame count (3 = one lag frame), feet height above the crack before it. Click one to load it in Drop test.</p><div class="slcases">${cs.map((c,j)=>`<button class="btn mini" data-sc="${j}" title="Start the dive about ${c.diveH.toFixed(0)} above the crack (dive update ${c.k+1})">vy ${c.vy} · ${c.dt===0.06?3:2}f · +${c.h.toFixed(1)}</button>`).join('')}</div>`;
+    setTimeout(()=>el.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>loadSlopeCase(cs[+b.dataset.sc])),0); }
+  el.innerHTML=`<dl class="kv">${rows}</dl>${extra}`;
+  if(spot.kind==='hold'&&spot.info.clip_dY!=null){ $('dy').value=spot.info.clip_dY; }
+  $('spotTitle').textContent=spot.kind==='hold'?(spot.info.room_census?'5-hit hold (room census, PAL)':'5-hit hold (note-door census, PAL)'):$('spotTitle').textContent;
+}
+// slope clips: the 70 fast-fall cases of fastscan.js (same order)
+const H5_STARTS=[20,10,5,0,-5,-10,-15,-20,-25,-30,-35,-40,-45], H5_STEPS=[20,30,40,55];
+const SLOPE_COMBOS=[]; for(const vy of [-900,-1700,-2500,-3300,-4100,-4900,-5000]) for(const dt of [0.04,0.06]) for(const fr of [0.1,0.3,0.5,0.7,0.9]) SLOPE_COMBOS.push({vy,dt,fr});
+function busterProfile(){ // feet drop from the start of the dive (vy 2300, gravity -20000, max -5000, 2-frame updates) to the start of each update
+  const out=[]; let y=0, vy=F(2300); for(let k=0;k<40;k++){ out.push({k,vy,y}); const [t,nv]=BK.physics_step([0,y,0],[0,vy,0],F(0.04),-20000,-5000); y=t[1]; vy=nv[1]; } return out; }
+let _bp=null;
+function slopeCases(mask){ const m=BigInt('0x'+mask); _bp=_bp||busterProfile(); const out=[];
+  SLOPE_COMBOS.forEach((c,i)=>{ if(!((m>>BigInt(i))&1n)) return; const step=-BK.physics_step([0,0,0],[0,c.vy,0],F(c.dt),-20000,-5000)[0][1]; const h=step*c.fr;
+    // first dive update whose speed is at least this fast (the census speeds are the dive's own speeds on its updates)
+    const p=_bp.find(q=>q.vy<=c.vy+0.5)||_bp[_bp.length-1]; out.push({...c,h,k:p.k,diveH:h-p.y}); });
+  return out.sort((a,b)=>b.vy-a.vy||a.dt-b.dt||a.h-b.h); }
+function loadSlopeCase(c){ $('preset').value='fall'; applyPreset(); $('vx').value=0; $('vz').value=0; $('vy').value=c.vy; $('grav').value=-20000; $('term').value=-5000; $('gnd').value='0';
+  $('dy').value=+TOFIXED.call(c.h,6); $('nupd').value=7; vis=[c.dt===0.06?3:2,2,2,2,2,2,2]; renderChips(); putAbove(); showTab('drop'); runSim(); }
+// the drop spot: the spot selected in the room, or else the target (typed or set)
+function dropSpot(){ return spot||(typeof target!=='undefined'&&target?{x:target.x,y:target.y,z:target.z}:null); }
+function putAbove(){ const sp=dropSpot(); if(!sp) return; $('px').value=sp.x; $('pz').value=sp.z; $('py').value=+TOFIXED.call(sp.y+(+$('dy').value||0),6); }
+$('setHeight').onclick=putAbove;
+
+// ---- presets
+const PRESETS={
+  fall:{note:'Exact: any start position, velocity, gravity and max fall speed, with the frame count of every update below.',set:{}},
+  drop810:{note:'The note-door census drop: start above the spot, vy 332, gravity −2700. Exact.',set:{vy:332,grav:-2700,term:-4000,vx:0,vz:0,dy:134}},
+  jump:{note:'Start on the ground. vy 710 with gravity −1350 from the first update (vy 656 after it). Gravity switches to −2700 on the first update after A is released if Banjo is still rising; released after the top, it stays −1350. Matched frame for frame in BizHawk (PAL, A held 1–40 frames). Checked again on 2026-10-25 with your 810 savestate: A held 12 frames from the first frame of an update gives 6 updates of the −1350 rise (vy 656 … 386, then 278, 170, 62), and the whole drop matched the game bit for bit, including the 5-hit hold at vy −1342 and the pop-out after it. An odd count rounds up: 11 frames gives the same as 12. Use “second frame” only if your A press starts one frame into an update.',set:{vy:710,grav:-1350,term:-4000,dy:0}},
+  trotjump:{note:'Talon trot jump (bsbtrot_jump_init): vy 693.5 with gravity −1200 from the first update (vy 645.5 after it). If A is let go while still rising, gravity goes back to −2700; let go after the top, it stays −1200. Collision: the trot uses the same body sphere as normal Banjo (radius 35, centre 80 above the feet); the game only changes it for the transformations, flying and climbing. The trot jump itself (vy, gravity, landing) was matched in BizHawk on 2026-10-25 (map 0x8E).',set:{vy:693.5,grav:-1200,term:-4000,dy:0}},
+  bflip:{note:'Starts at lift-off, which comes 23 frames after A is pressed while crouching. vy 920, gravity −1200 (vy 872 after the first update), max fall speed −533.3; 200 backward with the stick held (set vx/vz). Lift-off and gravity matched in BizHawk (PAL).',set:{vy:920,grav:-1200,term:-533.3,dy:0}},
+  buster:{note:'Starts when the dive begins: after Z, Banjo hangs in place for 10 updates, then vy 2300 with gravity −20000 (vy 1500 after the first update), max fall speed −5000. On landing he bounces with vy 730 and gravity −2110. Hang and dive matched in BizHawk (PAL).',set:{vy:2300,grav:-20000,term:-5000,vx:0,vz:0,dy:150}},
+};
+function applyPreset(){ const p=PRESETS[$('preset').value]; $('presetNote').textContent=p.note; for(const [k,v] of Object.entries(p.set)) $(k).value=v; $('aHoldF').hidden=$('aPhaseF').hidden=!['jump','trotjump'].includes($('preset').value); if(spot) putAbove(); }
+$('preset').onchange=applyPreset; $('aphase').onchange=$('ahold').onchange=()=>{ if(lastRun) runSim(); };
+
+// ---- frame counts per update
+let vis=[]; // frames per update
+function ensureVis(n){ while(vis.length<n) vis.push(2); vis.length=n; }
+function renderChips(){ const n=Math.max(1,Math.min(200,+$('nupd').value||30)); ensureVis(n); const c=$('chips'); c.innerHTML='';
+  vis.forEach((v,i)=>{ const b=document.createElement('button'); b.className='chip'+(v!==2?' lag':'')+(lastRun&&cur===i?' cur':''); b.title=`Update ${i+1}: ${v} frames (dt ${dtFor(v)}) — click to change`;
+    const tag=lastRun&&lastRun.rows[i]?lastRun.rows[i].tag:null; b.innerHTML=`${i+1}<b>${v}</b><span class="t" style="background:${tag?css('--'+TAGC[tag]):'transparent'}"></span>`;
+    b.onclick=()=>{ vis[i]=v===2?3:v===3?4:v===4?1:2; if(lastRun&&lastRun.mode==='move'){ moveFrames[i]=vis[i]; runMove(true); } else if(lastRun) runSim(); else renderChips(); }; c.appendChild(b); }); }
+$('nupd').onchange=()=>{renderChips(); if(lastRun) runSim();};
+
+// ---- simulation
+let lastRun=null, cur=0, playing=null;
+const TAGC={HOLD:'hold',POP:'pop',FREE:'free',LAND:'land',PUSH:'pop',GROUND:'land',AIR:'free'};
+function steps(){ const n=vis.length; const g=+$('grav').value, t=+$('term').value; const pre=$('preset').value; const ah=Math.max(1,+$('ahold').value||1); const aph=+$('aphase').value||0; const out=[];
+  // jump (measured): update j at cumulative frame c uses −1350 while c <= frames held + 1; on the first later update gravity
+  // becomes −2700 if Banjo is still rising (vy > 0 before that update), otherwise it stays −1350 (bsjump_update)
+  let c=0, vy=F(+$('vy').value||0), released=false, low=true;
+  for(let i=0;i<n;i++){ const dt=dtFor(vis[i]); c+=vis[i]; let grav=g;
+    if(pre==='jump'||pre==='trotjump'){ const slow=pre==='trotjump'?-1200:-1350; if(!released && c>ah+1+aph){ released=true; low=!(vy>0); } grav=(!released||low)?slow:-2700; vy=F(vy+F(dt*grav)); }
+    out.push({dt,gravity:grav,terminal:t,aHeld:(pre==='jump'||pre==='trotjump')?!released:null}); }
+  return out; }
+function simulateOnce(pos,vel,st,grounded){ const w=simWorld(); const [rows,sm]=BK.simulate(w,pos,vel,st,{grounded,stop_after_exit:99}); return {rows,sm}; }
+// ---- recorded moving objects (bk_record_moving_collision.lua): a timeline of actor props, frame by frame
+let REC=null;
+function simWorld(){ const w=new BK.World(world.opa,world.xlu,world.props,parseInt(room.map,16));
+  if(REC&&REC.on&&REC.map===room.map){ w.timeline={staticProps:REC.staticProps,at:REC.at,cursor:REC.start,offset:+$('recOffset').value||0,frameTime:1/VERS[version].rate}; w.props=REC.staticProps.concat(REC.at(REC.start)); }
+  return w; }
+const cubeOf=v=>v>=0?Math.trunc(v/1000):Math.trunc(v/1000)-1;
+function f32bits(u){ const dv=new DataView(new ArrayBuffer(4)); dv.setUint32(0,u>>>0); return dv.getFloat32(0); }
+function loadRecording(rec){
+  if(rec.format!=='bitclip-moving-1') throw new Error('not a Bit-Clip Lab moving-object recording');
+  const colls=new Map(), lastV=new Map(), frames=[], cache=new Map(); let nAct=new Set();
+  for(const fr of rec.frames){ const acts=[];
+    for(const a of fr.actors){ const key=a.slot+':'+a.mptr; if(a.coll) colls.set(a.mptr,a.coll); if(a.vtx) lastV.set(key,a.vtx); const v=lastV.get(key), c=colls.get(a.mptr); if(!v||!c) continue; nAct.add(key); acts.push({a,v,c,key}); }
+    frames.push({frame:fr.frame,banjo:fr.banjo,vel:fr.vel,acts}); }
+  const propFor=(x)=>{ const a=x.a; const ck=x.key+'|'+a.pos.join(',')+'|'+a.rot.join(',')+'|'+a.scale+'|'+a.cube.join(',')+'|'+a.order;
+    let e=cache.get(ck); if(e&&e.v===x.v) return e.p;
+    const glob=a.cube[0]!==cubeOf(a.pos[0])||a.cube[1]!==cubeOf(a.pos[1])||a.cube[2]!==cubeOf(a.pos[2]);
+    const verts=[]; for(let i=0;i<x.v.v.length;i+=3) verts.push([x.v.v[i],x.v.v[i+1],x.v.v[i+2]]);
+    const p=BK.load_props([{name:`actor 0x${a.id.toString(16)} (model 0x${a.model.toString(16)})`,kind:'actor',position:a.pos,rotation:a.rot,scale:f32bits(a.scale),cube:glob?'global':a.cube,order_index:a.order<0?999:a.order,
+      collision:{vertex_header:x.v.header,vertices:verts,collision:x.c}}])[0]||null; cache.set(ck,{v:x.v,p}); return p; };
+  const byFrame=new Map(); frames.forEach((f,i)=>byFrame.set(f.frame,i)); const f0=frames.length?frames[0].frame:0, f1=frames.length?frames[frames.length-1].frame:0;
+  const memo=new Map();
+  const at=(f)=>{ f=Math.max(f0,Math.min(f1,Math.round(f))); let i=byFrame.get(f); while(i===undefined&&f>f0){ f--; i=byFrame.get(f); } if(i===undefined) return [];
+    let out=memo.get(i); if(!out){ out=frames[i].acts.map(propFor).filter(Boolean); memo.set(i,out); if(memo.size>400) memo.delete(memo.keys().next().value); } return out; };
+  return {map:rec.map,version:rec.version,frames,f0,f1,at,actors:nAct.size,staticProps:BK.load_props((room.props||[]).filter(p=>p.kind==='model_prop')),start:f0,on:true}; }
+function recShow(){ const on=!!(REC&&REC.on); $('recBody').hidden=!on; $('recOff').hidden=!on; $('recBadge').hidden=!on; if(!on) return;
+  const i=Math.max(0,REC.frames.findIndex(f=>f.frame>=REC.start)); const fr=REC.frames[i]; $('recFrame').value=REC.start; $('recSlider').min=REC.f0; $('recSlider').max=REC.f1; $('recSlider').value=REC.start;
+  const n=fr?REC.at(fr.frame).length:0; $('recInfo').textContent=fr?`Frame ${fr.frame} (${i+1} of ${REC.frames.length}): ${n} object${n===1?'':'s'} with collision · Banjo ${fr.banjo.map(v=>v.toFixed(3)).join(', ')} · velocity ${fr.vel.map(v=>v.toFixed(2)).join(', ')}`:''; drawRec(); }
+let recGroup=new THREE.Group(); scene.add(recGroup);
+function drawRec(){ disposeGroup(recGroup); if(!REC||!REC.on||!room||REC.map!==room.map) return; const geo=[];
+  for(const p of REC.at(REC.start)) for(const t of p.cl.tris) for(const v of t.v) geo.push(...p.M.apply(v));
+  if(!geo.length) return; const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(geo),3));
+  const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:new THREE.Color(css('--clip')),wireframe:true,transparent:true,opacity:.85,depthTest:false,clippingPlanes:[clipPlane]})); m.renderOrder=6; recGroup.add(m); }
+$('recFile').onchange=async e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; $('recStat').textContent='Reading '+f.name+'…';
+  try{ const rec=JSON.parse(await f.text()); if(rec.map!==room.map){ $('recStat').textContent=`This recording is from map ${rec.map}; open that room first (now ${room.map}).`; return; }
+    REC=loadRecording(rec); $('recStat').textContent=`${f.name}: ${REC.frames.length} frames (${REC.f0}–${REC.f1}), ${REC.actors} object${REC.actors===1?'':'s'} with collision${rec.version!==version?` · recorded on ${rec.version}, the page is set to ${version}`:''}. Static model props from the room data stay; recorded objects replace the room's actor props.`; recShow(); if(lastRun) runSim(); }
+  catch(err){ REC=null; recShow(); $('recStat').textContent='Could not load the recording: '+err.message; } };
+$('recOff').onclick=()=>{ REC=null; $('recFile').value=''; $('recStat').textContent='Recording turned off: the room data is used again.'; recShow(); disposeGroup(recGroup); if(lastRun) runSim(); };
+const recSet=v=>{ if(!REC) return; REC.start=Math.max(REC.f0,Math.min(REC.f1,Math.round(+v))); recShow(); if(lastRun) runSim(); };
+$('recFrame').onchange=e=>recSet(e.target.value); $('recSlider').oninput=e=>recSet(e.target.value); $('recOffset').onchange=()=>{ if(lastRun) runSim(); };
+$('recUseBanjo').onclick=()=>{ if(!REC) return; const fr=REC.frames.find(f=>f.frame>=REC.start); if(!fr) return; ['px','py','pz'].forEach((k,i)=>$(k).value=fr.banjo[i]); ['vx','vy','vz'].forEach((k,i)=>$(k).value=fr.vel[i]);
+  $('bx').value=fr.banjo[0]; $('by').value=fr.banjo[1]; $('bz').value=fr.banjo[2]; drawMarks(); runSim(); };
+function runSim(){ if(!world) return; renderChips();
+  const pos=[+$('px').value,+$('py').value,+$('pz').value]; if(pos.some(v=>!isFinite(v))){ $('verdict').hidden=false; $('verdict').className='verdict'; $('verdict').textContent='Pick a spot or type a start position first.'; return; }
+  const vel=[+$('vx').value||0,+$('vy').value||0,+$('vz').value||0];
+  const r=simulateOnce(pos,vel,steps(),$('gnd').value==='1'); lastRun={mode:'drop',pos,vel,...r};
+  const stp=steps(); const isJ=['jump','trotjump'].includes($('preset').value);
+  $('rowsHead').innerHTML='<th>#</th><th>VI</th><th>dt</th>'+(isJ?'<th title="A still counts as held on this update (gravity −1350)">A</th>':'')+'<th>tag</th><th>hits</th><th>x</th><th>y</th><th title="change in y on this update">dy</th><th>z</th><th>vy</th>'; cur=Math.min(cur,r.rows.length-1); if(cur<0)cur=0;
+  const v=$('verdict'); v.hidden=false; v.className='verdict '+r.sm.kind; v.textContent=r.sm.verdict+`  ·  ${version}`;
+  const tb=$('rows'); tb.innerHTML='';
+  { const tr=document.createElement('tr'); tr.innerHTML=`<td>0</td><td></td><td></td>${isJ?'<td></td>':''}<td class="tag">START</td><td></td><td>${pos[0].toFixed(4)}</td><td>${pos[1].toFixed(4)}</td><td></td><td>${pos[2].toFixed(4)}</td><td>${(+vel[1]).toFixed(2)}</td>`; tr.title='Where the drop starts, before update 1'; tb.appendChild(tr); }
+  r.rows.forEach((row,i)=>{ const tr=document.createElement('tr'); tr.className='click'+(i===cur?' sel':''); const py=i?r.rows[i-1].result[1]:pos[1];
+    tr.innerHTML=`<td>${row.update}</td><td>${vis[i]}</td><td>${row.dt.toFixed(5)}</td>${isJ?`<td>${stp[i]&&stp[i].aHeld?'A':''}</td>`:''}<td class="tag t-${row.tag}">${row.tag}</td><td>${row.hits}</td><td>${row.result[0].toFixed(4)}</td><td>${row.result[1].toFixed(4)}</td><td>${(row.result[1]-py).toFixed(4)}</td><td>${row.result[2].toFixed(4)}</td><td>${row.vy_after.toFixed(2)}</td>`;
+    tr.dataset.i=i; tr.onclick=()=>setCur(i); tb.appendChild(tr); });
+  $('mRowsWrap').hidden=true; $('mRowsT').innerHTML=''; $('rowsWrap').hidden=false; $('scrub').max=Math.max(0,r.rows.length-1); setCur(cur); }
+$('runBtn').onclick=runSim;
+function setCur(i){ if(!lastRun) return; $('timeline').classList.remove('empty'); cur=Math.max(0,Math.min(i,lastRun.rows.length-1)); $('scrub').value=cur;
+  const row=lastRun.rows[cur]; $('uLabel').textContent=`update ${row.update}/${lastRun.rows.length}${row.stateName?' · '+row.stateName:''} · ${row.tag} · ${row.hits} hits · feet (${row.result.map(v=>v.toFixed(3)).join(', ')})${row.yaw!==undefined?' · yaw '+row.yaw.toFixed(2):''}`;
+  [...$('rows').children,...$('mRowsT').children].forEach(tr=>tr.classList.toggle('sel',+tr.dataset.i===cur)); renderChips(); drawSim(); }
+$('scrub').oninput=e=>setCur(+e.target.value); $('prevU').onclick=()=>setCur(cur-1); $('nextU').onclick=()=>setCur(cur+1);
+$('playU').onclick=()=>{ if(playing){clearInterval(playing);playing=null;$('playU').textContent='Play';return;} if(!lastRun)return; if(cur>=lastRun.rows.length-1)setCur(0); $('playU').textContent='Pause';
+  playing=setInterval(()=>{ if(cur>=lastRun.rows.length-1){clearInterval(playing);playing=null;$('playU').textContent='Play';return;} setCur(cur+1); },matchMedia('(prefers-reduced-motion: reduce)').matches?600:180); };
+function clearSim(){ [...simGroup.children].forEach(o=>{ if(o!==selMarker){simGroup.remove(o); if(o!==banjoObj&&o.geometry) o.geometry.dispose();}}); $('rowsWrap').hidden=true; $('verdict').hidden=true; $('uLabel').textContent='No run yet. Run moves or a drop test to see each update here.'; $('timeline').classList.add('empty'); $('scrub').max=0; renderChips(); }
+function drawSim(){ [...simGroup.children].forEach(o=>{ if(o!==selMarker){simGroup.remove(o); if(o!==banjoObj&&o.geometry) o.geometry.dispose();}}); if(!lastRun) return;
+  const pts=[lastRun.pos,...lastRun.rows.map(r=>r.result)].map(p=>new THREE.Vector3(p[0],p[1],p[2]));
+  const cols=[]; const tc=t=>new THREE.Color(css('--'+TAGC[t]));
+  const pos=[]; for(let i=0;i<pts.length-1;i++){ pos.push(pts[i].x,pts[i].y,pts[i].z,pts[i+1].x,pts[i+1].y,pts[i+1].z); const c=tc(lastRun.rows[i].tag); cols.push(c.r,c.g,c.b,c.r,c.g,c.b); }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+  simGroup.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({vertexColors:true,depthTest:false})));
+  const dots=new THREE.BufferGeometry(); dots.setAttribute('position',new THREE.Float32BufferAttribute(pts.flatMap(p=>[p.x,p.y,p.z]),3));
+  simGroup.add(new THREE.Points(dots,new THREE.PointsMaterial({color:new THREE.Color(css('--ink')),size:3,depthTest:false})));
+  const p=pts[cur+1]; const row=lastRun.rows[cur];
+  // facing: direction of horizontal velocity, else the move from the previous point, else keep the last yaw
+  const vv=row.vel; let yaw=banjoYaw; if(row.yaw!==undefined) yaw=row.yaw*Math.PI/180; else if(Math.hypot(vv[0],vv[2])>1e-3) yaw=Math.atan2(vv[0],vv[2]); else { const q=pts[cur]; if(Math.hypot(p.x-q.x,p.z-q.z)>1e-3) yaw=Math.atan2(p.x-q.x,p.z-q.z); } banjoYaw=yaw;
+  // feet ring in the update's tag colour (always visible)
+  const ring=new THREE.Mesh(new THREE.RingGeometry(14,18,28),new THREE.MeshBasicMaterial({color:tc(row.tag),side:THREE.DoubleSide,depthTest:false,transparent:true,opacity:.9}));
+  ring.rotation.x=-Math.PI/2; ring.position.set(p.x,p.y+0.4,p.z); simGroup.add(ring);
+  const feet=new THREE.Mesh(new THREE.SphereGeometry(2.5,12,8),new THREE.MeshBasicMaterial({color:tc(row.tag),depthTest:false})); feet.position.copy(p); simGroup.add(feet);
+  simGroup.children.forEach(o=>o.renderOrder=4);
+  // the collision sphere the resolver uses (radius 35, centre 80 above the feet)
+  if($('showSphere').checked){ const sph=new THREE.Mesh(new THREE.SphereGeometry(35,20,14),new THREE.MeshBasicMaterial({color:tc(row.tag),wireframe:true,transparent:true,opacity:.55,depthTest:false}));
+    sph.position.set(p.x,p.y+80,p.z); sph.renderOrder=6; simGroup.add(sph); }
+  if($('showBanjo').checked){ const b=getBanjo(); b.position.copy(p); b.rotation.y=yaw; simGroup.add(b); }
+  if(follow){ const t=new THREE.Vector3(p.x,p.y+50,p.z); if(!followInit){ followInit=true; flyTo(t,Math.min(camera.position.distanceTo(controls.target),350)); } else { const d=t.clone().sub(controls.target); controls.target.add(d); camera.position.add(d); } } }
+let follow=false, followInit=false;
+$('followB').onclick=()=>{ follow=!follow; followInit=false; $('followB').setAttribute('aria-pressed',follow); $('followB').classList.toggle('primary',follow); if(follow) drawSim(); };
+// ---- Banjo & Kazooie figure built from primitives (about 115 units tall, feet at the origin, facing +z)
+let banjoObj=null, banjoYaw=0;
+function getBanjo(){ if(banjoObj) return banjoObj; const g=new THREE.Group();
+  const M=c=>new THREE.MeshLambertMaterial({color:c,clippingPlanes:[clipPlane]});
+  const fur=M(0x8a5a2b), tan=M(0xd9b07a), shorts=M(0xf2c21b), pack=M(0x2d5fb8), red=M(0xd23a2a), beak=M(0xf4a21e), white=M(0xffffff), black=M(0x161616), shoe=M(0x6b4a2a);
+  const add=(geo,mat,x,y,z,sx=1,sy=1,sz=1,rx=0,ry=0,rz=0)=>{const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.scale.set(sx,sy,sz); m.rotation.set(rx,ry,rz); g.add(m); return m;};
+  const S=(r)=>new THREE.SphereGeometry(r,18,14), C=(r1,r2,h)=>new THREE.CylinderGeometry(r1,r2,h,14);
+  // legs and feet
+  add(C(7,8,22),fur,-10,11,0); add(C(7,8,22),fur,10,11,0);
+  add(S(9),shoe,-10,4,4,1,0.6,1.5); add(S(9),shoe,10,4,4,1,0.6,1.5);
+  // shorts
+  add(C(20,21,16),shorts,0,28,0);
+  // body and belly
+  add(S(21),fur,0,48,0,1,1.15,0.95); add(S(15),tan,0,47,10,1,1.2,0.6);
+  // arms
+  add(C(5.5,6.5,30),fur,-23,48,3,1,1,1,0.25,0,0.45); add(C(5.5,6.5,30),fur,23,48,3,1,1,1,0.25,0,-0.45);
+  add(S(7),fur,-30,36,8); add(S(7),fur,30,36,8);
+  // head
+  add(S(17),fur,0,84,2); add(S(10),tan,0,79,15,1.1,0.8,1); add(S(4),black,0,82,24);
+  add(S(6.5),fur,-14,98,0); add(S(6.5),fur,14,98,0); add(S(3.5),tan,-14,98,3); add(S(3.5),tan,14,98,3);
+  add(S(4),white,-6,90,15); add(S(4),white,6,90,15); add(S(1.8),black,-6,90,18.5); add(S(1.8),black,6,90,18.5);
+  // backpack with Kazooie
+  add(new THREE.BoxGeometry(30,34,16),pack,0,54,-21); add(S(8),red,0,76,-23); add(S(9),red,0,82,-24,0.9,1.2,0.9);
+  add(new THREE.ConeGeometry(4,16,10),beak,0,82,-11,1,1,1,Math.PI/2,0,0); add(S(2.6),white,-4,88,-18); add(S(2.6),white,4,88,-18); add(S(1.2),black,-4,88,-15.8); add(S(1.2),black,4,88,-15.8);
+  add(new THREE.ConeGeometry(2.5,9,8),red,0,94,-27,1,1,1,-0.4,0,0);
+  g.children.forEach(m=>{m.renderOrder=3;}); banjoObj=g; return g; }
+
+// ---- height scan (no lag + one lag update on each of the 4 updates after the first hold)
+$('scanBtn').onclick=async()=>{ const spot=dropSpot(); if(!spot){$('scanStat').textContent='Select a spot in the room or set a target first.';return;}
+  const a=+$('s0').value,b=+$('s1').value,s=Math.abs(+$('ss').value)||0.5; const vel=[+$('vx').value||0,+$('vy').value||0,+$('vz').value||0];
+  const base=steps().map(x=>({...x,dt:dtFor(2)})); const tb=$('scanRows'); tb.innerHTML=''; $('scanWrap').hidden=false; let n=0,holds=0,clips=0; $('scanBtn').disabled=true;
+  for(let h=a; h<=b+1e-9; h+=s){ const pos=[spot.x,+TOFIXED.call(spot.y+h,6),spot.z]; const runs=[];
+    const r0=simulateOnce(pos,vel,base,false); runs.push([null,r0]);
+    if(r0.sm.first_hold&&$('sLagScan').value!=='0'){ for(let k=0;k<4;k++){ const u=r0.sm.first_hold+k; if(u>base.length) break; const st=base.map((x,i)=>i===u-1?{...x,dt:dtFor(3)}:x); runs.push([u,simulateOnce(pos,vel,st,false)]); } }
+    for(const [lag,r] of runs){ n++; if(r.sm.holds) holds++; if(r.sm.kind==='clip') clips++;
+      if(lag===null||r.sm.kind==='clip'){ const tr=document.createElement('tr'); tr.className='click';
+        tr.innerHTML=`<td>+${h.toFixed(2)}</td><td>${lag??'—'}</td><td>${r.sm.holds}</td><td style="text-align:left" class="${r.sm.kind==='clip'?'t-HOLD':''}">${r.sm.verdict}</td>`;
+        tr.onclick=()=>{ $('py').value=pos[1]; $('px').value=pos[0]; $('pz').value=pos[2]; ensureVis(base.length); vis=vis.map((v,i)=>i===(lag??0)-1?3:2); $('nupd').value=base.length; runSim(); }; tb.appendChild(tr);} }
+    $('scanStat').textContent=`${n} runs · ${holds} with holds · ${clips} clips`; await new Promise(r=>setTimeout(r,0)); }
+  $('scanBtn').disabled=false; };
+
+
+// ================= Banjo: start, target, Move lab (full movement engine), route search =================
+const TF=Math.fround;
+let start=null, target=null; // start {pos,yaw,cam}; target {x,y,z,seam,kind}
+function readStart(){ const p=[+$('bx').value,+$('by').value,+$('bz').value]; if(p.some(v=>!isFinite(v))||$('bx').value==='') return null; return {pos:p,yaw:+$('byaw').value||0,cam:+$('bcam').value||0}; }
+$('setStart').onclick=()=>{ if(!spot) return; $('bx').value=spot.x; $('by').value=spot.y; $('bz').value=spot.z; drawMarks(); };
+$('setTarget').onclick=()=>{ if(!spot) return; target={x:spot.x,y:spot.y,z:spot.z,seam:spot.info&&spot.info.seam||null,kind:spot.kind};
+  fillTgt(); drawMarks(); };
+function fillTgt(){ $('btx').value=target?target.x:''; $('bty').value=target?target.y:''; $('btz').value=target?target.z:''; }
+// a typed target: takes the seam of the nearest census crack within 0.5 (the typed floats are kept), otherwise a plain point
+function readTgt(){ const v=['btx','bty','btz'].map(k=>$(k).value.trim()); if(v.some(t=>t==='')||v.map(Number).some(n=>!isFinite(n))){ if(v.every(t=>t==='')){ target=null; drawMarks(); } return; }
+  const [x,y,z]=v.map(Number); let best=null, bd=0.5; const pts=room?(room.cracks||[]).concat(room.slopecracks||[]):[];
+  for(const c of pts){ const d=Math.hypot(c[0]-x,c[2]-z); if(d<=bd&&Math.abs(c[1]-y)<2){ bd=d; best=c; } }
+  target=best?{x,y,z,seam:best[3]??null,kind:'crack'}:{x,y,z,seam:null,kind:'point'}; drawMarks(); try{ cRefresh(); }catch(e){} }
+['btx','bty','btz'].forEach(id=>$(id).addEventListener('change',readTgt));
+['bx','by','bz','byaw'].forEach(id=>$(id).addEventListener('change',drawMarks));
+let markGroup=new THREE.Group(); scene.add(markGroup);
+// ---- load-in points: where Banjo stands after every door / loading zone / warp into this room (data/spawns.json), and where a
+// warp cauldron throws him. The game puts him at the exit's setup node (whole numbers) facing its yaw; he then settles on the floor.
+let SPAWNS=null; const spawnP=fetch('data/spawns.json').then(r=>r.ok?r.json():{maps:{}}).then(j=>{ SPAWNS=j.maps||{}; }).catch(()=>{ SPAWNS={}; });
+let spawnGroup=new THREE.Group(); scene.add(spawnGroup);
+const spawnList=()=>(SPAWNS&&room&&SPAWNS[room.map])||[];
+const spawnStand=s=>version==='NTSC'&&s.standN?s.standN:s.stand;
+const spawnYaw=s=>s.k==='cauldron'&&version==='NTSC'&&s.yawN!=null?s.yawN:s.yaw;
+function spawnLabel(s){ if(s.k==='cauldron') return `Warp cauldron landing (cauldron at ${s.node.join(', ')})`;
+  const from=s.from&&s.from.length?s.from.join(' / '):(s.e>=0x5B?'cutscene / special':'other entry (no door names it)'); return `Exit ${s.e} · ${from}`; }
+function spawnNoteHtml(s){ const p=spawnStand(s), f=v=>(+v).toFixed(3); const bits=p.map(v=>{ const d=new DataView(new ArrayBuffer(4)); d.setFloat32(0,v); return d.getUint32(0).toString(16).toUpperCase().padStart(8,'0'); }).join(' / ');
+  let t=`Stands at <b>${f(p[0])}, ${f(p[1])}, ${f(p[2])}</b> facing <b>${(+spawnYaw(s)).toFixed(3)}°</b> (bits ${bits}).`;
+  if(s.k==='cauldron') t+=` Thrown from the cauldron toward ${s.target.join(', ')} (vy 1620, gravity −4100) and lands short of it. Simulated from the decomp, not yet checked in BizHawk.`;
+  else { t+=` Placed at the exit node ${s.node.join(', ')} facing ${s.yaw}°`+(s.walk?`, after walking in from ${s.walk.join(', ')}`:'')+'.';
+    if(s.flags.includes('pushed')) t+=' A wall pushes him off the node when he lands, so the exact spot depends on how he got there: check it in BizHawk.';
+    if(s.flags.includes('drop')) t+=` He drops ${(s.node[1]-p[1]).toFixed(0)} units onto the floor here (if this is water he swims instead, which isn't modelled).`;
+    if(s.flags.includes('relheight')) t+=' This door keeps the height you went in at, so the height can differ.';
+    if(s.flags.includes('dup')) t+=' This room has two nodes for this exit; the game uses the first one, shown here.'; }
+  return t; }
+function fillSpawns(){ const sel=$('spawnSel'), L=spawnList(); const keep=sel.value;
+  sel.innerHTML='<option value="">'+(L.length?`Start where Banjo loads in… (${L.length})`:'No load-in points in this room')+'</option>';
+  L.forEach((s,i)=>{ const o=document.createElement('option'); o.value=String(i); o.textContent=spawnLabel(s); sel.appendChild(o); });
+  sel.disabled=!L.length; if(keep&&+keep<L.length) sel.value=keep; else { sel.value=''; $('spawnNote').hidden=true; }
+  if(sel.value){ const s=L[+sel.value], p=spawnStand(s); $('bx').value=p[0]; $('by').value=p[1]; $('bz').value=p[2]; $('byaw').value=spawnYaw(s); $('spawnNote').innerHTML=spawnNoteHtml(s); drawMarks(); }
+  $('nSpawns').textContent=L.length||''; drawSpawns(); }
+function drawCauldrons(){ const L=spawnList().filter(s=>s.k==='cauldron'); $('nCauldrons').textContent=L.length||''; if(!$('showCauldrons').checked) return;
+  const col=new THREE.Color(css('--clip'));
+  for(const s of L){ const n=s.node, p=spawnStand(s);
+    // the cauldron: a pot with a rim at its setup node
+    const pot=new THREE.Mesh(new THREE.CylinderGeometry(46,34,52,24,1,true),new THREE.MeshBasicMaterial({color:col,side:THREE.DoubleSide,transparent:true,opacity:.55,depthTest:false})); pot.position.set(n[0],n[1]+26,n[2]);
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(46,5,8,32),new THREE.MeshBasicMaterial({color:col,depthTest:false})); rim.rotation.x=Math.PI/2; rim.position.set(n[0],n[1]+52,n[2]);
+    // the throw: vy 1620, gravity -4100, straight line in x/z to where he lands
+    const a=-2050, b=1620, c=n[1]-p[1]; const T=(-b-Math.sqrt(Math.max(0,b*b-4*a*c)))/(2*a); const pts=[];
+    for(let i=0;i<=40;i++){ const t=T*i/40, f=i/40; pts.push(n[0]+(p[0]-n[0])*f, n[1]+b*t+a*t*t, n[2]+(p[2]-n[2])*f); }
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
+    const arc=new THREE.Line(g,new THREE.LineDashedMaterial({color:col,dashSize:14,gapSize:9,depthTest:false})); arc.computeLineDistances();
+    [pot,rim,arc].forEach(o=>{ o.renderOrder=6; spawnGroup.add(o); }); } }
+$('showCauldrons').onchange=drawSpawns;
+// ---- exits (loading zones): category-3 node props; the game sends Banjo on when his position (whole numbers) is strictly inside
+// the cube node ± r on every axis (gccube.c func_80307CA0 -> code_AD110.c func_80334448 -> sWarpFunctions[actorId])
+let EXITS=null; const exitsP=fetch('data/exits.json').then(r=>r.ok?r.json():{}).then(j=>{ EXITS=j||{}; }).catch(()=>{ EXITS={}; });
+const exitList=()=>(EXITS&&room&&EXITS[room.map])||[];
+let exitPts=null;
+const roomName=m=>{ const e=index.find(x=>x.map===m); return e?`${m} ${e.name}`:m; };
+function drawExits(){ if(exitPts){ exitPts.geometry.dispose(); exitPts=null; } const L=exitList(); $('nExits').textContent=L.length||''; if(!$('showExits').checked||!L.length) return;
+  const col=new THREE.Color(css('--accent')); const pos=[], edges=[];
+  for(const e of L){ const [x,y,z,r]=e; pos.push(x,y,z);
+    const c=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]].map(v=>[x+v[0]*r,y+v[1]*r,z+v[2]*r]);
+    for(const [a,b] of [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]]) edges.push(...c[a],...c[b]); }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(edges,3));
+  const box=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:col,transparent:true,opacity:.8,depthTest:false,clippingPlanes:[clipPlane]})); box.renderOrder=6; spawnGroup.add(box);
+  const pg=new THREE.BufferGeometry(); pg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  exitPts=new THREE.Points(pg,new THREE.PointsMaterial({color:col,size:14,sizeAttenuation:false,depthTest:false})); exitPts.renderOrder=7; exitPts.userData.kind='exit'; spawnGroup.add(exitPts); }
+$('showExits').onchange=drawSpawns;
+function drawSpawns(){ disposeGroup(spawnGroup); drawCauldrons(); drawExits(); if(!$('showSpawns').checked) return; const col=new THREE.Color(css('--pop'));
+  for(const s of spawnList()){ const p=spawnStand(s); const g=new THREE.Group();
+    const d=new THREE.Mesh(new THREE.OctahedronGeometry(16),new THREE.MeshBasicMaterial({color:col,depthTest:false,transparent:true,opacity:.9})); d.position.y=34; g.add(d);
+    const r=new THREE.Mesh(new THREE.RingGeometry(14,19,24),new THREE.MeshBasicMaterial({color:col,side:THREE.DoubleSide,depthTest:false})); r.rotation.x=-Math.PI/2; r.position.y=0.5; g.add(r);
+    const a=new THREE.Mesh(new THREE.ConeGeometry(4,12,10),new THREE.MeshBasicMaterial({color:col,depthTest:false})); a.rotation.x=Math.PI/2; a.position.set(0,1,18); const ag=new THREE.Group(); ag.add(a); ag.rotation.y=spawnYaw(s)*Math.PI/180; g.add(ag);
+    g.position.set(p[0],p[1],p[2]); g.traverse(o=>o.renderOrder=6); spawnGroup.add(g); } }
+$('showSpawns').onchange=drawSpawns;
+$('spawnSel').onchange=()=>{ const v=$('spawnSel').value; if(v===''){ $('spawnNote').hidden=true; return; } const s=spawnList()[+v]; if(!s) return; const p=spawnStand(s);
+  $('bx').value=p[0]; $('by').value=p[1]; $('bz').value=p[2]; $('byaw').value=spawnYaw(s); $('spawnNote').innerHTML=spawnNoteHtml(s); $('spawnNote').hidden=false; drawMarks(); };
+function drawMarks(){ disposeGroup(markGroup); const st=readStart();
+  const f=v=>(+v).toFixed(1); $('startSum').textContent=st?`${f(st.pos[0])}, ${f(st.pos[1])}, ${f(st.pos[2])} · facing ${f(st.yaw)}°`:'not set. Select a spot in the room, then Set as start.'; $('startSum').classList.toggle('set',!!st);
+  $('tgtSum').textContent=target?`${target.kind} ${f(target.x)}, ${f(target.y)}, ${f(target.z)}`:'not set'; $('tgtSum').classList.toggle('set',!!target);
+  if(st){ const m=new THREE.Mesh(new THREE.ConeGeometry(10,28,16),new THREE.MeshBasicMaterial({color:new THREE.Color(css('--land')),depthTest:false})); m.rotation.x=Math.PI/2; m.rotation.z=0;
+    const g=new THREE.Group(); g.add(m); m.position.set(0,6,8); g.position.set(st.pos[0],st.pos[1],st.pos[2]); g.rotation.y=st.yaw*Math.PI/180; g.children.forEach(o=>o.renderOrder=7); markGroup.add(g);
+    const ring=new THREE.Mesh(new THREE.RingGeometry(16,21,32),new THREE.MeshBasicMaterial({color:new THREE.Color(css('--land')),side:THREE.DoubleSide,depthTest:false})); ring.rotation.x=-Math.PI/2; ring.position.set(st.pos[0],st.pos[1]+0.6,st.pos[2]); ring.renderOrder=7; markGroup.add(ring); }
+  if(target){ const t=new THREE.Mesh(new THREE.RingGeometry(10,13,6),new THREE.MeshBasicMaterial({color:new THREE.Color(css('--clip')),side:THREE.DoubleSide,depthTest:false})); t.rotation.x=-Math.PI/2; t.position.set(target.x,target.y+0.7,target.z); t.renderOrder=7; markGroup.add(t);
+    if(target.seam&&room){ const pts=room.cracks.filter(c=>c[3]===target.seam); const sm=BKSEARCH.seamOf(pts); if(sm){ const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute([sm.ax,sm.y+0.8,sm.az,sm.ax+sm.ux*sm.len,sm.y+0.8,sm.az+sm.uz*sm.len],3));
+      const l=new THREE.Line(g,new THREE.LineBasicMaterial({color:new THREE.Color(css('--clip')),depthTest:false})); l.renderOrder=7; markGroup.add(l);} } } }
+
+// ---- Move lab rows: {n, dir ('' = no stick), mag (0..1), A, B, Z}
+let mrows=[], moveFrames=[];
+function mrowHtml(r,i){ return `<td><input type="number" min="1" max="200" value="${r.n}" data-k="n"></td><td><input type="text" value="${r.dir}" data-k="dir" placeholder="none" title="Stick direction in degrees, or fp+3 / fp-2 for a first-person twirl of 3 steps left / 2 steps right (3.6° each), or face 46.142975 for a crouch-face to that exact facing"></td><td><input type="number" min="0" max="1" step="0.05" value="${r.mag}" data-k="mag" title="Stick distance, 1 = full"></td>`+
+  ['A','B','Z','Cl'].map(k=>`<td><input type="checkbox" data-k="${k}" ${r[k]?'checked':''} aria-label="${k==='Cl'?'C-Left':k}"></td>`).join('')+`<td class="btns"><button class="btn mini" data-act="up" aria-label="Move up">↑</button><button class="btn mini" data-act="del" aria-label="Delete">✕</button></td>`; }
+function renderMrows(){ const tb=$('mrows'); tb.innerHTML=''; mrows.forEach((r,i)=>{ const tr=document.createElement('tr'); tr.innerHTML=mrowHtml(r,i);
+  tr.querySelectorAll('input').forEach(inp=>inp.onchange=()=>{ const k=inp.dataset.k; r[k]=inp.type==='checkbox'?inp.checked:(k==='dir'?inp.value.trim():+inp.value); });
+  tr.querySelector('[data-act=del]').onclick=()=>{ mrows.splice(i,1); renderMrows(); };
+  tr.querySelector('[data-act=up]').onclick=()=>{ if(i>0){ [mrows[i-1],mrows[i]]=[mrows[i],mrows[i-1]]; renderMrows(); } };
+  tb.appendChild(tr); }); }
+const R=(n,dir='',o={})=>({n,dir:String(dir),mag:o.mag??1,A:!!o.A,B:!!o.B,Z:!!o.Z,Cl:!!o.Cl});
+const curDir=()=>{ const st=readStart(); if(target&&st) return (Math.atan2(target.x-st.pos[0],target.z-st.pos[2])*180/Math.PI+360)%360; return st?st.yaw:0; };
+const MACROS=[
+  ['Run',()=>[R(10,TOFIXED.call(curDir(),2))]],
+  ['Jump',()=>[R(8,TOFIXED.call(curDir(),2),{A:true}),R(20,TOFIXED.call(curDir(),2))]],
+  ['Backflip',()=>[R(1,'',{Z:true}),R(1,'',{Z:true,A:true}),R(20,'',{A:true})]],
+  ['Punch',()=>[R(1,'',{B:true}),R(20,'')]],
+  ['Punch cancel',()=>[R(1,'',{B:true}),R(4,''),R(8,TOFIXED.call(curDir(),2),{A:true}),R(15,TOFIXED.call(curDir(),2))]],
+  ['Barge',()=>[R(1,'',{Z:true}),R(1,'',{Z:true,B:true}),R(25,'',{Z:true})]],
+  ['Beak buster',()=>[R(6,'',{A:true}),R(1,'',{Z:true}),R(30,'')]],
+  ['Roll',()=>[R(12,TOFIXED.call(curDir(),2)),R(1,TOFIXED.call(curDir(),2),{B:true}),R(20,TOFIXED.call(curDir(),2))]],
+  ['Crouch slide',()=>[R(12,TOFIXED.call(curDir(),2)),R(12,'',{Z:true})]],
+  ['Skid',()=>[R(12,TOFIXED.call(curDir(),2)),R(10,TOFIXED.call((curDir()+180)%360,2))]],
+  ['Wait',()=>[R(10,'')]],
+  ['First-person twirl',()=>[R(1,'fp+1')]],
+  ['Talon trot',()=>[R(1,'',{Z:true}),R(1,'',{Z:true,Cl:true}),R(16,'',{Z:true}),R(10,TOFIXED.call(curDir(),2),{Z:true}),R(12,'',{Z:true}),R(1,'')]],
+  ['Trot jump',()=>[R(1,'',{Z:true}),R(1,'',{Z:true,Cl:true}),R(16,'',{Z:true}),R(8,TOFIXED.call(curDir(),2),{Z:true,A:true}),R(30,TOFIXED.call(curDir(),2),{Z:true})]],
+];
+{ const box=$('macros'); for(const [name,fn] of MACROS){ const b=document.createElement('button'); b.className='btn mini'; b.textContent='+ '+name; b.onclick=()=>{ mrows.push(...fn()); renderMrows(); }; box.appendChild(b);} }
+$('mAdd').onclick=()=>{ mrows.push(R(1,'')); renderMrows(); }; $('mClear').onclick=()=>{ mrows=[]; renderMrows(); };
+// expand rows to per-update inputs (stick from world direction through the camera yaw)
+function expandRows(cam){ const ups=[]; for(const r of mrows){ let sx=0,sy=0; const fpm=/^fp\s*([+-]?\d+)$/i.exec(String(r.dir).trim()); if(fpm){ const m=+fpm[1]; if(m) ups.push({fp:m}); continue; }
+  const fcm=/^face\s*([+-]?[\d.]+)$/i.exec(String(r.dir).trim()); if(fcm){ ups.push({face:+fcm[1]}); continue; } if(r.dir!==''&&isFinite(+r.dir)&&r.mag>0){ const st=BKSEARCH.stickForM(((+r.dir)%360+360)%360,TF(cam),Math.min(1,r.mag)); sx=st.sx; sy=st.sy; }
+  for(let i=0;i<Math.max(1,Math.min(400,r.n|0));i++) ups.push({sx,sy,A:r.A,B:r.B,Z:r.Z,Cl:!!r.Cl}); } return ups; }
+let lastUps=null;
+function runMove(keepFrames, upsIn){ if(!world) return; const st=readStart(); const v=$('mVerdict');
+  if(!st){ v.hidden=false; v.className='verdict'; v.textContent='Set a start first (select a spot, then "Start = selected spot").'; return; }
+  const ups=upsIn||expandRows(st.cam); if(!ups.length){ v.hidden=false; v.className='verdict'; v.textContent='Add some rows first.'; return; }
+  if(!keepFrames||moveFrames.length!==ups.length) moveFrames=ups.map(u=>u.frames||2);
+  const P=new BKMOVE.Player(simWorld(),{map:parseInt(room.map,16),pos:st.pos,yaw:st.yaw,cam:st.cam,version,grounded:true});
+  const rows=[]; const p0=P.pos.slice();
+  ups.forEach((u,i)=>{ const r=P.step(u,moveFrames[i]); rows.push({update:r.update,dt:r.dt,tag:r.tag,hits:r.hits,result:r.pos,vel:r.vel,vy_after:r.vel[1],yaw:r.yaw,stateName:r.stateName,held:r.held,input:u}); });
+  lastUps=ups.map((u,i)=>({...u,frames:moveFrames[i]}));
+  vis=moveFrames.slice(); $('nupd').value=vis.length;
+  const holds=rows.filter(r=>r.held).length; let fh=rows.findIndex(r=>r.held); const minY=Math.min(...rows.map(r=>r.result[1]));
+  const clip=fh>=0&&rows.slice(fh).some(r=>r.result[1]<rows[fh].result[1]-40);
+  lastRun={mode:'move',pos:p0,rows,sm:{kind:clip?'clip':holds?'stable':'none'}}; cur=Math.min(cur,rows.length-1); if(cur<0) cur=0;
+  v.hidden=false; v.className='verdict '+(clip?'clip':holds?'stable':''); const last=rows[rows.length-1];
+  v.textContent=(clip?`CLIP: held ${holds} update${holds>1?'s':''}, then went through the floor`:holds?`HELD ${holds} update${holds>1?'s':''} (first on update ${fh+1})`:'no holds')+` · ends ${last.stateName} at (${last.result.map(x=>x.toFixed(3)).join(', ')}) · ${version}`;
+  const tb=$('mRowsT'); tb.innerHTML=''; rows.forEach((row,i)=>{ const tr=document.createElement('tr'); tr.className='click'; tr.dataset.i=i;
+    tr.innerHTML=`<td>${row.update}</td><td>${moveFrames[i]}</td><td style="text-align:left">${row.stateName}</td><td class="tag t-${row.tag}">${row.tag}</td><td>${row.result[0].toFixed(3)}</td><td>${row.result[1].toFixed(3)}</td><td>${row.result[2].toFixed(3)}</td><td>${row.vel[1].toFixed(1)}</td><td>${Math.hypot(row.vel[0],row.vel[2]).toFixed(1)}</td><td>${row.yaw.toFixed(2)}</td>`;
+    tr.onclick=()=>setCur(i); tb.appendChild(tr); });
+  $('mRowsWrap').hidden=false; $('rowsWrap').hidden=true; $('verdict').hidden=true; $('scrub').max=Math.max(0,rows.length-1); setCur(cur); }
+$('mRun').onclick=()=>runMove(false);
+// ---- exports
+// files go through the viewer's save prompt (downloads capability); outside claude.ai fall back to a plain link
+let dlNs; const dlP=(window.claude&&window.claude.use)?window.claude.use('downloads').then(d=>dlNs=d).catch(()=>{dlNs=null;}):Promise.resolve(dlNs=null);
+async function download(name,text,type){ await dlP;
+  if(dlNs){ try{ await dlNs.save({filename:name,data:text}); }catch(e){ if(e&&e.code==='unavailable'||e&&e.code==='not_granted'){ $('mVerdict').hidden=false; $('mVerdict').textContent='Saving files is not available in this view.'; } } return; }
+  if(window.claude) { $('mVerdict').hidden=false; $('mVerdict').textContent='Saving files is not available in this view.'; return; }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500); }
+function frameList(){ const out=[]; if(!lastUps) return out; lastUps.forEach((u,i)=>{
+    if(u.fp){ const sx=u.fp>0?-127:127; const P=o=>out.push({u:i+1,sx:0,sy:0,A:false,B:false,Z:false,Cu:false,Cl:false,...o});
+      P({Cu:true}); for(let f=0;f<50;f++) P({}); for(let f=0;f<2*Math.abs(u.fp);f++) P({sx}); for(let f=0;f<4;f++) P({}); P({Cu:true}); for(let f=0;f<30;f++) P({}); return; }
+    if(u.face!=null){ const st=BKSEARCH.stickForM(((+u.face)%360+360)%360,TF(readStart().cam),1); const Q=o=>out.push({u:i+1,sx:0,sy:0,A:false,B:false,Z:false,Cu:false,Cl:false,...o});
+      Q({Z:true}); Q({Z:true}); Q({Z:true,sx:st.sx,sy:st.sy}); Q({Z:true,sx:st.sx,sy:st.sy}); return; } // crouch-face: the facing is exact only with the same camera yaw
+    for(let f=0;f<(u.frames||2);f++) out.push({u:i+1,Cu:false,...u,Cl:!!u.Cl}); }); return out; }
+$('mExportCsv').onclick=()=>{ if(!lastUps) return; const st=readStart(); const fl=frameList(); const rows=lastRun&&lastRun.mode==='move'?lastRun.rows:[];
+  let t=`# Bit-Clip Lab inputs, ${version}, map ${room.map}, start ${st.pos.join(' ')}, facing ${st.yaw}, camera yaw ${st.cam}\n# one line per frame (VI); stick values are BizHawk analog values; each update reads the input of its frames\nframe,update,stick_x,stick_y,A,B,Z,C_up,C_left,expected_x,expected_y,expected_z\n`;
+  fl.forEach((f,i)=>{ const r=rows[f.u-1]; const last=i===fl.length-1||fl[i+1].u!==f.u; t+=`${i+1},${f.u},${f.sx},${f.sy},${f.A?1:0},${f.B?1:0},${f.Z?1:0},${f.Cu?1:0},${f.Cl?1:0},${last&&r?r.result.map(v=>v.toFixed(6)).join(','):',,'}\n`; });
+  download(`bitclip-inputs-${room.map}.csv`,t,'text/csv'); };
+$('mExportLua').onclick=()=>{ if(!lastUps) return; const st=readStart(); const fl=frameList(); const end=lastRun.rows[lastRun.rows.length-1].result;
+  const lines=fl.map(f=>`{${f.sx||0},${f.sy||0},${f.A?1:0},${f.B?1:0},${f.Z?1:0},${f.Cu?1:0},${f.Cl?1:0}}`);
+  const lua=`-- Bit-Clip Lab route, ${version}. Load a savestate with Banjo standing still at (${st.pos.map(v=>v.toFixed(3)).join(', ')}), facing ${st.yaw}, camera yaw ${st.cam},\n-- then run this script (BizHawk, PAL addresses). It plays one input per frame and prints Banjo's position at the end.\nlocal F={\n${lines.join(',\\n')}\n}\nlocal POS=0x37CF70\nlocal function rf(a) return memory.readfloat(a,true,'RDRAM') end\nfor i,f in ipairs(F) do\n  joypad.set({A=f[3]==1,B=f[4]==1,Z=f[5]==1,['C Up']=f[6]==1,['C Left']=f[7]==1},1); joypad.setanalog({['X Axis']=f[1],['Y Axis']=f[2]},1); emu.frameadvance()\nend\nfor i=1,3 do emu.frameadvance() end\nprint(string.format('end %.6f %.6f %.6f (planned %.6f %.6f %.6f)',rf(POS),rf(POS+4),rf(POS+8),${end[0].toFixed(6)},${end[1].toFixed(6)},${end[2].toFixed(6)}))\n`;
+  download(`bitclip-route-${room.map}.lua.txt`,lua,'text/plain'); };
+
+// ---- route search
+{ const box=$('chainToggles'); box.classList.add('withmax'); for(const [k,l,on] of BKCHAIN.CHAIN_UI){ const row=document.createElement('div'); row.className='tg';
+    row.innerHTML=`<label><input type="checkbox" data-chain="${k}" ${on?'checked':''}> ${l}</label><input type="number" min="0" max="30" step="1" placeholder="any" data-chainmax="${k}" aria-label="Most times ${l} may be used" title="Most times this move may be used in one route (empty = any number)">`; box.appendChild(row);} }
+document.querySelectorAll('[data-all],[data-none]').forEach(b=>b.onclick=()=>{ const k=b.dataset.all||b.dataset.none, on=!!b.dataset.all; document.querySelectorAll(`[data-${k}]`).forEach(c=>{ if(c.type==='checkbox'&&!c.disabled) c.checked=on; }); });
+const goalVis=()=>{ const r=$('chGoal').value==='reach'; document.querySelectorAll('[data-reach]').forEach(e=>e.hidden=!r); };
+$('chGoal').addEventListener('change',goalVis);
+// ---- exact search (the 810 GPU method): move toggles and the static-camera preset per room
+const EX_MOVES=[['P','Punch',1],['C1','Punch cancel, 1 update',1],['PZ','Punch + Z',1],['BT','Barge, Z kept',1],['BR','Barge, Z released',1],['BH','Barge, B held',1]];
+{ const box=$('exactToggles'); for(const [k,l,on] of EX_MOVES){ const lab=document.createElement('label'); lab.innerHTML=`<input type="checkbox" data-exmv="${k}" ${on?'checked':''}> ${l} (${k})`; box.appendChild(lab); } }
+const EX_CAMS={'0x93':[355.620117,-357.104492]}; $('exCores').textContent=`${navigator.hardwareConcurrency||'?'} threads`; $('exGpuNote').textContent=navigator.gpu?'WebGPU is available in this browser':'this browser has no WebGPU, so it is CPU only'; if(!navigator.gpu) $('exGpu').disabled=true;
+function exPreset(){ if(!room) return; const c=EX_CAMS[room.map]; if(c&&$('exCamX').dataset.map!==room.map){ $('exCamX').value=c[0]; $('exCamZ').value=c[1]; $('exCamX').dataset.map=room.map; }
+  $('exNote').textContent=c?`${room.name||room.map}: the 810 room's static camera is filled in. For PopB use camera yaw 136.151978 (as recorded).`:'Enter the static camera position for this room (BizHawk: camera x and z while Banjo stands still). Rooms with a following camera are not modelled.'+(version!=='PAL'?' The move models are PAL only.':''); }
+const chainVis=()=>{ $('chainSec').hidden=$('sMode').value!=='chain'; if($('sMode').value==='chain'&&room&&EX_CAMS[room.map]&&$('chCamX').dataset.map!==room.map){ $('chCamX').value=EX_CAMS[room.map][0]; $('chCamZ').value=EX_CAMS[room.map][1]; $('chCamX').dataset.map=room.map; } $('exactSec').hidden=$('sMode').value!=='exact'; if($('sMode').value==='exact') exPreset(); document.querySelectorAll('[data-stype]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.stype===$('sMode').value)); };
+document.querySelectorAll('[data-stype]').forEach(b=>b.onclick=()=>{ $('sMode').value=b.dataset.stype; chainVis(); }); $('sMode').addEventListener('change',chainVis); chainVis();
+let searchGroup=new THREE.Group(); scene.add(searchGroup); let searching=false, stopFlag=false, segBuf={run:[],try:[],hold:[],clip:[]}, segObjs={};
+const SEGC={run:['--muted',0.18],try:['--accent',0.35],hold:['--hold',0.95],clip:['--clip',1]};
+function flushSegs(){ for(const k of Object.keys(segBuf)){ const b=segBuf[k]; if(!b.length) continue; if(segObjs[k]){ searchGroup.remove(segObjs[k]); segObjs[k].geometry.dispose(); }
+  const all=(segObjs[k]&&segObjs[k].userData.all||[]).concat(b); segBuf[k]=[]; const cap=k==='run'||k==='try'?240000:1e9; const arr=all.length>cap?all.slice(all.length-cap):all;
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(arr,3)); const [c,op]=SEGC[k];
+  const o=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:new THREE.Color(css(c)),transparent:true,opacity:op,depthTest:k==='run'||k==='try',clippingPlanes:[clipPlane]})); o.userData.all=arr; o.renderOrder=k==='clip'||k==='hold'?8:2; segObjs[k]=o; searchGroup.add(o); } }
+function addPath(path,kind){ const b=segBuf[kind]; const step=kind==='run'?Math.max(1,Math.floor(path.length/24)):1; let prev=path[0];
+  for(let i=step;i<path.length;i+=step){ const p=path[i]; b.push(prev[0],prev[1]+1.5,prev[2],p[0],p[1]+1.5,p[2]); prev=p; } }
+$('sClear').onclick=()=>{ disposeGroup(searchGroup); segObjs={}; segBuf={run:[],try:[],hold:[],clip:[]}; };
+let searchWorker=null; $('sStop').onclick=()=>{ stopFlag=true; if(searchWorker) searchWorker.postMessage({type:'stop'}); };
+function resultEl(r,i){ const b=document.createElement('button'); b.className='res '+r.kind;
+  b.innerHTML=`<b>${r.kind==='clip'?'Clip':r.kind==='reach'?'Reached':'Hold'} · ${r.move}</b>${r.moves!=null?` · <b>${r.moves} move${r.moves>1?'s':''}, ${r.frames} frames (${(r.frames/(version==='NTSC'?60:50)).toFixed(1)} s)</b>`:''} · ${r.desc}${r.lag!=null?` · lag on update ${r.lag+1} after the hold`:''}${r.robust!=null?` · ${r.robust}/2 shifts still hold`:''}<br><span class="m">${r.chain?r.chain.map((c,i)=>`${i+1}. ${c}`).join(' → '):r.legs?r.legs.map(l=>`run ${l.yaw.toFixed(3)}° × ${l.n}`).join(', then '):`run ${r.runYaw.toFixed(3)}° (stick ${r.runStick.join(', ')}) × ${r.runN}`} ${r.kind==='reach'?` · ends standing at (${r.holdAt.map(v=>(+v).toFixed(4)).join(', ')})`:` · held ${r.holds}${r.holdAt?` at (${r.holdAt[0].toFixed(2)}, ${r.holdAt[2].toFixed(2)}), ${r.fromCrack.toFixed(1)} from the picked crack`:''}`}</span>`;
+  b.onclick=()=>loadResult(r); return b; }
+function loadResult(r){ // put the route into the Move lab as per-update rows and run it
+  const ups=r.allInputs?r.allInputs.map(u=>({...u})):BKSEARCH.routeInputs(r);
+  mrows=[]; let lastK=null; for(const u of ups){ if(u.fp){ mrows.push({n:1,dir:'fp'+(u.fp>0?'+':'')+u.fp,mag:1,A:false,B:false,Z:false,Cl:false,raw:[0,0],_ups:[u]}); lastK=null; continue; }
+    if(u.face!=null){ mrows.push({n:1,dir:'face '+u.face,mag:1,A:false,B:false,Z:false,Cl:false,raw:[0,0],_ups:[u]}); lastK=null; continue; } const k=`${u.sx},${u.sy},${!!u.A},${!!u.B},${!!u.Z},${!!u.Cl}`; if(k===lastK&&mrows.length&&!u.frames3){ mrows[mrows.length-1].n++; mrows[mrows.length-1]._ups.push(u); continue; } lastK=k;
+    mrows.push({n:1,dir:'',mag:1,A:!!u.A,B:!!u.B,Z:!!u.Z,Cl:!!u.Cl,raw:[u.sx,u.sy],_ups:[u]}); }
+  mrows.forEach(m=>{ if(m.raw[0]||m.raw[1]){ const st=BKSEARCH.sticks().find(q=>q.rx===m.raw[0]&&q.ry===m.raw[1]); const cam=readStart().cam; if(st) m.dir=BKMOVE.mlNormalizeAngle(TF(TF(TF(cam)+st.a)+90)).toFixed(4); } });
+  renderMrows(); moveFrames=ups.map(u=>u.frames||2); showTab('moves'); runMove(true,ups); }
+$('sRun').onclick=()=>sSearch(false);
+async function sSearch(keep,secs){ if(searching) return; const st=readStart(); if(!st||!target){ $('sStat').textContent='Set a start and a target first.'; return; }
+  if(FINAL!=='auto'&&!BKSEARCH.MOVES[FINAL]&&!($('sMode').value==='chain'&&(FINAL==='punch'||$('chGoal').value==='reach'))){ $('sStat').textContent=`Route search has no run-up ending in a plain ${FINAL_LABEL[FINAL].toLowerCase()}; use Clip setup for it, or pick another final move.`; return; }
+  let seamPts=target.seam?room.cracks.concat(room.slopecracks||[]).filter(c=>c[3]===target.seam):null; if(seamPts&&!seamPts.length) seamPts=[[target.x,target.y,target.z,target.seam]]; const mode=$('sMode').value==='chain'?'chain':$('sMode').value==='exact'?'exact':(FINAL!=='auto'&&FINAL!=='jump')?'quick':$('sMode').value;
+  if(mode==='exact'){ exPreset(); const bad=t=>{ $('sStat').textContent=t; return true; };
+    if(version!=='PAL'&&bad('The exact search has PAL move models only. Switch the version to PAL.')) return;
+    if((!isFinite(parseFloat($('exCamX').value))||!isFinite(parseFloat($('exCamZ').value)))&&bad('Enter the static camera position (x and z) for the exact search.')) return;
+    if(!document.querySelector('[data-exmv="C1"]').checked&&bad('The exact search ends with a 1-update punch cancel onto the crack: keep Punch cancel (C1) on.')) return; }
+  if(mode==='deep'&&!seamPts){ $('sStat').textContent='Deep search needs a crack or hold (a seam) as the target. Pick one, or use "All moves".'; return; }
+  searching=true; stopFlag=false; $('sRun').disabled=true; $('sBestRun').disabled=true; $('sStop').disabled=false; if(!keep) $('sRes').innerHTML=''; const found=[]; const tgtLabel=bestBatch?`#${bestBatch.i+1}`:null;
+  const moves=FINAL==='auto'?null:{[FINAL]:true};  // Final move: one move, or every move
+  let lastFlush=0; const onPath=(p,k)=>{ addPath(p,k); if(k==='hold'||k==='clip'||performance.now()-lastFlush>400){ flushSegs(); lastFlush=performance.now(); } };
+  const onResult=r=>{ found.push(r); const el=resultEl(r,found.length-1); if(tgtLabel) el.insertAdjacentHTML('afterbegin',`<span class="tg">target ${tgtLabel}</span>`);
+    // chain routes: clips first, then the fewest moves or the fewest frames (Best route)
+    if(r.moves!=null){ const obj=$('chObjective').value; const rank=(r.kind==='clip'||r.kind==='reach'?0:1e9)+(obj==='time'?r.frames*100+r.moves:r.moves*1e5+r.frames); el.dataset.rank=rank;
+      const after=[...$('sRes').children].find(c=>c.dataset.rank!=null&&+c.dataset.rank>rank); if(after){ $('sRes').insertBefore(el,after); return; } }
+    $('sRes').appendChild(el); };
+  const onProgress=(f,t)=>{ $('sBar').style.width=(f*100).toFixed(1)+'%'; $('sStat').textContent=t; };
+  const common={map:parseInt(room.map,16),version,start:st,target,seamPts,lag:$('sLag').value==='1',strict:$('sStrict').value,spread:+$('sSpread').value||45,moves,seconds:secs||+$('sTime').value||300,alongMax:['','spots','holds'].includes($('sAlong').value)?Infinity:+$('sAlong').value};
+  if($('sAlong').value==='spots'&&seamPts){ common.spotPts=seamPts.map(c=>[c[0],c[2]]); common.spotTol=0.2; }
+  if($('sAlong').value==='holds'&&target.seam){ const hp=(room.holds||[]).filter(h=>h.seam===target.seam).map(h=>[h.x,h.z]).concat((room.hit5||[]).filter(h=>h[3]===target.seam).map(h=>[h[0],h[2]])); if(hp.length){ common.spotPts=hp; common.spotTol=0.5; } }
+  if(mode==='exact'){ const mv=EX_MOVES.map(([k])=>document.querySelector(`[data-exmv="${k}"]`).checked); const c0=$('exCam0').value.trim();
+    Object.assign(common,{camX:+$('exCamX').value,camZ:+$('exCamZ').value,startCam:c0===''?null:+c0,R:+$('exR').value,D:+$('exD').value,twirlCap:+$('exTw').value,twirlMax:Math.max(1,Math.min(50,+$('exTwM').value||50)),clearance:Math.max(0,+$('exClear').value||0),exMoves:mv,threads:$('exThreads').value===''?undefined:+$('exThreads').value,useGpu:$('exGpu').value==='1'}); }
+  if(mode==='chain'){ const L=(id,lo,hi)=>parseList($(id).value,lo,hi); const chain={}; document.querySelectorAll('[data-chain]').forEach(c=>chain[c.dataset.chain]=c.checked);
+    const maxUse={}; document.querySelectorAll('[data-chainmax]').forEach(c=>{ if(c.value!=='') maxUse[c.dataset.chainmax]=Math.max(0,Math.floor(+c.value)); });
+    const faces=String($('chFaces').value).split(/[ ,;]+/).map(Number).filter(v=>v!==0||true).filter(isFinite).filter((v,i,a)=>$('chFaces').value.trim()!==''); 
+    Object.assign(common,{camX:$('chCamX').value===''?NaN:+$('chCamX').value,camZ:$('chCamZ').value===''?NaN:+$('chCamZ').value,cam0:$('chCam0').value.trim()===''?null:+$('chCam0').value,threads:$('chThreads').value===''?undefined:+$('chThreads').value,faces,bargeRel:L('chBargeRel',0,300),bargeKeep:L('chBargeKeep',0,300),twirlMax:Math.max(1,Math.min(100,+$('chTwirl').value||50)),chain,maxUse,objective:$('chObjective').value,goal:$('chGoal').value,reachTol:+$('chReachTol').value,reachFacing:$('chFace').value===''?null:+$('chFace').value,reachFacingTol:+$('chFaceTol').value,final:FINAL,depth:+$('chDepth').value,beam:+$('chBeam').value,keep:$('chKeep').value,widen:$('chWiden').value==='1',dirs:+$('chDirs').value,walkN:L('chWalk',1,60),pauseN:L('chPause',1,200),cancelH:L('chCancelH',1,40),jumpH:L('chJumpH',1,40),finalWait:L('chWait',0,60)});
+    if(!common.bargeRel.length) common.bargeRel=[5]; if(!common.bargeKeep.length) common.bargeKeep=[50]; if(!common.walkN.length) common.walkN=[1]; if(!common.pauseN.length) common.pauseN=[1]; if(!common.cancelH.length) common.cancelH=[3]; if(!common.jumpH.length) common.jumpH=[6]; if(!common.finalWait.length) common.finalWait=[0];
+    if(chain.cface&&(!isFinite(common.camX)||!isFinite(common.camZ))){ $('sStat').textContent='Crouch-face (camera) needs the static camera position: fill in the crouch-face camera x and z.'; searching=false; $('sRun').disabled=false; $('sBestRun').disabled=false; $('sStop').disabled=true; return; }
+    if(!Object.values(chain).some(Boolean)){ $('sStat').textContent='Tick at least one chain move.'; searching=false; $('sRun').disabled=false; $('sBestRun').disabled=false; $('sStop').disabled=true; return; } }
+  const finish=(out)=>{ flushSegs(); if(out&&!found.length&&mode==='exact'){ $('sStat').textContent+=' · No exact route within these limits. Try more forward moves, a deeper table, or twirls (or run it on the GPU).'; return; } if(out&&!found.length){ const c=out.closest; $('sStat').textContent=c<1e8?`No route found yet. The closest landing was ${c.toExponential(1)} units from the seam${out.gapW?`; the gap there is ${out.gapW.toExponential(1)} wide and only open at some points along the seam`:''}. Search longer, or try another start.`:'No route found: no path came down near the seam. Try a wider angle or a closer start.'; } };
+  // run in a worker so the room view stays smooth; fall back to this page if workers are unavailable
+  let wk=null; try{ wk=new Worker('searchworker.js'); }catch(e){ wk=null; }
+  if(wk){ await new Promise(resolve=>{ searchWorker=wk;
+      wk.onmessage=e=>{ const m=e.data; if(m.type==='paths'){ for(const [k,p] of m.paths) onPath(p,k); } else if(m.type==='result') onResult(m.res); else if(m.type==='progress') onProgress(m.f,m.t);
+        else if(m.type==='done'){ finish(m.out); resolve(); } else if(m.type==='error'){ $('sStat').textContent='Search failed: '+m.message; resolve(); } };
+      wk.onerror=ev=>{ ev.preventDefault&&ev.preventDefault(); $('sStat').textContent='The search worker could not start, so the search runs on this page instead.'; wk.terminate(); searchWorker=null; runHere().then(resolve); };
+      wk.postMessage({type:'start',mode,room:{opa:room.opa,xlu:room.xlu,props:activeProps(),map:parseInt(room.map,16)},opts:common}); });
+    if(searchWorker){ searchWorker.terminate(); searchWorker=null; } }
+  else await runHere();
+  async function runHere(){ const w=new BK.World(world.opa,world.xlu,world.props,parseInt(room.map,16));
+    try{ const out=mode==='exact'?await BKEXACT.runExact({...common,world:w,onPath,onResult,onProgress,shouldStop:()=>stopFlag}):mode==='chain'?await BKCHAIN.chainSearch({...common,world:w,onPath,onResult,onProgress,shouldStop:()=>stopFlag}):mode==='deep'?await BKSEARCH.deepJump({...common,world:w,onPath,onResult,onProgress,shouldStop:()=>stopFlag}):await BKSEARCH.search({...common,world:w,onPath,onResult,onProgress,shouldStop:()=>stopFlag}); finish(out); }
+    catch(e){ $('sStat').textContent='Search failed: '+e.message; console.error(e); } }
+  searching=false; $('sRun').disabled=false; $('sBestRun').disabled=false; $('sStop').disabled=true; }
+
+// ---- tabs (remembered per viewer)
+function showTab(t){ document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t)); document.querySelectorAll('.pane').forEach(p=>p.hidden=p.dataset.pane!==t); try{localStorage.setItem('bcl-tab',t);}catch(e){} }
+document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+{ let t='moves'; try{ t=localStorage.getItem('bcl-tab')||t; }catch(e){} const h=(location.hash||'').slice(1); if(['moves','setup','search','drop','data'].includes(h)) t=h; showTab(t); }
+
+// ---- clip setup: exact standing start + lag pattern for a move onto the target crack
+const parseList=(t,lo,hi)=>{ const out=[]; for(const part of String(t).split(',')){ const m=part.trim().match(/^(\d+)(?:\s*-\s*(\d+))?$/); if(!m) continue; const a=+m[1], b=m[2]?+m[2]:a; for(let v=Math.min(a,b); v<=Math.max(a,b); v++) if(v>=lo&&v<=hi&&!out.includes(v)) out.push(v); } return out; };
+function cRefresh(){ let fv='auto'; try{ fv=FINAL; }catch(e){ return; } const mv=fv==='auto'?null:FINAL_TO_SETUP[fv]; $('cCancelF').hidden=!!mv&&mv!=='punchCancel'; $('cHoldF').hidden=mv==='punch'; $('cBustF').hidden=!!mv&&mv!=='buster';
+  $('cMoveNote').textContent=mv===null?'Set in Final move above (Any move tries each one in turn). These timings are used by the moves that need them.':mv?`For ${FINAL_LABEL[SETUP_TO_FINAL[mv]]} (picked in Final move above).`:'';
+  $('cTarget').textContent=target?`${target.kind} at ${target.x.toFixed(4)}, ${target.y.toFixed(3)}, ${target.z.toFixed(4)}`:'Select a crack or hold in the room, then Set as target.'; }
+$('setTarget').addEventListener('click',()=>setTimeout(cRefresh,0));
+let cWorker=null, cStop=false;
+$('cStop').onclick=()=>{ cStop=true; if(cWorker) cWorker.postMessage({type:'stop'}); };
+let cResults=[]; const cWanted=r=>{ const v=$('cShow').value; return v==='all'||(v==='holdclip'?(r.kind==='clip'&&r.holds>0):r.kind==='clip'); }; const cShown=()=>$('cRes').children.length;
+function cCount(){ const nc=cResults.filter(r=>r.kind==='clip').length, nhc=cResults.filter(r=>r.kind==='clip'&&r.holds>0).length; $('cCounts').textContent=cResults.length?`${nc} clip (${nhc} hold then clip) · ${cResults.length-nc} hold only`:''; }
+$('cShow').onchange=()=>{ $('cRes').innerHTML=''; for(const r of [...cResults].sort((a,b)=>b.score-a.score)) if(cWanted(r)&&cShown()<200) $('cRes').appendChild(cResultEl(r)); };
+function cResultEl(r){ const b=document.createElement('button'); b.className='res '+r.kind;
+  const lag=r.lag.length?`lag on update ${r.lag.join(' and ')} (3+ frames)`:'no lag';
+  b.innerHTML=`${r.tgt?`<span class="tg">target ${r.tgt}</span>`:''}<b>${r.kind==='clip'?'Clip':'Hold'} · ${r.move}</b> · ${r.desc} · ${lag}<br><span class="m">stand at ${r.start[0].toFixed(6)}, ${r.start[2].toFixed(6)} (bits ${r.startBits.join(' / ')}) facing ${r.facing.toFixed(4)}° · lands on the crack on update ${r.arrive} · ${r.holds?`held ${r.holds}`:'no hold: goes straight through'}</span>`;
+  b.onclick=()=>{ $('bx').value=r.start[0]; $('by').value=r.start[1]; $('bz').value=r.start[2]; $('byaw').value=r.facing; drawMarks();
+    const ups=r.inputs.map(u=>({sx:u.sx||0,sy:u.sy||0,A:!!u.A,B:!!u.B,Z:!!u.Z,Cl:!!u.Cl,frames:u.frames||2}));
+    mrows=[]; let lastK=null; for(const u of ups){ const k=`${u.sx},${u.sy},${u.A},${u.B},${u.Z},${u.Cl}`; if(k===lastK){ mrows[mrows.length-1].n++; continue; } lastK=k; mrows.push({n:1,dir:'',mag:1,A:u.A,B:u.B,Z:u.Z,Cl:u.Cl,raw:[u.sx,u.sy]}); }
+    renderMrows(); moveFrames=ups.map(u=>u.frames); showTab('moves'); runMove(true,ups); };
+  return b; }
+$('cRun').onclick=()=>cSearch(false);
+async function cSearch(keep){ if(!target){ $('cStat').textContent='Set a target crack first.'; return; }
+  if(FINAL!=='auto'&&!FINAL_TO_SETUP[FINAL]){ $('cStat').textContent=`Clip setup has no standing-start solver for ${FINAL_LABEL[FINAL]}. Use Route search, or pick another final move.`; return; }
+  const mvs=FINAL==='auto'?SETUP_ALL:[FINAL_TO_SETUP[FINAL]]; const ranges={cancel:parseList($('cCancel').value,1,30).map(v=>v), aHold:parseList($('cHold').value,1,40), buster:parseList($('cBust').value,1,40)};
+  if(mvs.includes('punchCancel')&&(!ranges.cancel.length||!ranges.aHold.length)){ $('cStat').textContent='Enter at least one A update and one A-held length.'; return; }
+  const fac=$('cFacing').value.trim(); const facings=fac?fac.split(',').map(Number).filter(isFinite):[]; const dirs=+$('cDirs').value;
+  if(!facings.length&&!dirs){ $('cStat').textContent='Enter a facing, or pick a number of directions.'; return; }
+  if(!keep){ $('cRes').innerHTML=''; cResults=[]; } $('cRun').disabled=true; $('cBestRun').disabled=true; $('cStop').disabled=false; cStop=false; const tgtLabel=bestBatch?`#${bestBatch.i+1}`:null;
+  const onResult=r=>{ if(tgtLabel) r.tgt=tgtLabel; cResults.push(r); if(cShown()<200&&cWanted(r)) $('cRes').appendChild(cResultEl(r)); cCount(); };
+  for(let mi=0;mi<mvs.length&&!cStop;mi++){ const mv=mvs[mi]; const pre=mvs.length>1?`${FINAL_LABEL[SETUP_TO_FINAL[mv]]} (${mi+1} of ${mvs.length}): `:'';
+  const opts={map:parseInt(room.map,16),version,target:{x:target.x,y:target.y,z:target.z},move:mv,ranges,facings,dirs,lags:+$('cLags').value,cam:+$('bcam').value||0};
+  const onProgress=(f,t)=>{ $('cBar').style.width=(((mi+f)/mvs.length)*100).toFixed(1)+'%'; $('cStat').textContent=pre+t; };
+  let wk=null; try{ wk=new Worker('searchworker.js'); }catch(e){ wk=null; }
+  if(wk){ cWorker=wk; await new Promise(res=>{ wk.onmessage=e=>{ const m=e.data; if(m.type==='result') onResult(m.res); else if(m.type==='progress') onProgress(m.f,m.t); else if(m.type==='done'||m.type==='error'){ if(m.type==='error') $('cStat').textContent='Setup search failed: '+m.message; res(); } };
+      wk.onerror=ev=>{ ev.preventDefault&&ev.preventDefault(); $('cStat').textContent='The worker could not start.'; res(); };
+      wk.postMessage({type:'start',mode:'clip',room:{opa:room.opa,xlu:room.xlu,props:activeProps(),map:parseInt(room.map,16)},opts}); }); wk.terminate(); cWorker=null; }
+  else { try{ await BKCLIP.solve({...opts,world:new BK.World(world.opa,world.xlu,world.props,parseInt(room.map,16)),onResult,onProgress,shouldStop:()=>cStop}); }catch(e){ $('cStat').textContent='Setup search failed: '+e.message; } }
+  }
+  if(mvs.length>1) $('cStat').textContent=`${mvs.length} moves tried · ${cResults.length} setups hold (${cResults.filter(r=>r.kind==='clip').length} clip)`;
+  const nc=cResults.filter(r=>r.kind==='clip').length;
+  if(!cResults.length) $('cStat').textContent+=' · No setup held. Try other A timings, more directions, or lag.';
+  else if($('cShow').value==='holdclip'&&!cResults.some(r=>r.kind==='clip'&&r.holds>0)) $('cStat').textContent+=` · No setup both holds and clips${nc?` (${nc} clip without a hold)`:''}. Try other A timings, more directions, or lag.`;
+  else if(!nc&&$('cShow').value==='clip') $('cStat').textContent+=` · No setup clips; ${cResults.length} hold without clipping (set Show to "Holds and clips" to see them). Try other A timings, more directions, or lag.`;
+  $('cRun').disabled=false; $('cBestRun').disabled=false; $('cStop').disabled=true; }
+cRefresh();
+// ---- final move: one choice shared by Clip setup, Route search and the reliable-clip batch
+const FINAL_LABEL={jump:'Jump',jumpBuster:'Jump → beak buster',bflip:'Backflip',bflipBuster:'Backflip → beak buster',punch:'Punch',punchCancel:'Punch cancel',punchCancelBuster:'Punch cancel → beak buster',barge:'Beak barge',roll:'Roll (twirl)',slide:'Crouch slide',skid:'Skid turn',trotJump:'Talon trot jump',trotWalk:'Talon trot walk'};
+const FINAL_TO_SETUP={jump:'jump',jumpBuster:'buster',bflip:'bflip',punch:'punch',punchCancel:'punchCancel',trotJump:'trotJump'};
+const SETUP_TO_FINAL=Object.fromEntries(Object.entries(FINAL_TO_SETUP).map(([a,b])=>[b,a])); const SETUP_ALL=['punchCancel','punch','jump','bflip','buster','trotJump'];
+let FINAL='auto'; try{ FINAL=localStorage.getItem('bcl-final')||'auto'; }catch(e){}
+function setFinal(v){ FINAL=v; try{localStorage.setItem('bcl-final',v);}catch(e){} $('cFinal').value=v; $('sFinal').value=v;
+  cRefresh();
+  $('cFinalNote').textContent=v==='auto'?`Clip setup tries each move it has a standing-start solver for: ${SETUP_ALL.map(k=>FINAL_LABEL[SETUP_TO_FINAL[k]]).join(', ')}.`:FINAL_TO_SETUP[v]?`Clip setup finds standing starts for: ${FINAL_LABEL[v]}.`:`Clip setup has no standing-start solver for ${FINAL_LABEL[v]}; use Route search (it plans a run-up ending in this move).`;
+  $('sFinalNote').textContent=v==='auto'?'Route search may end a route with any move.':v==='punch'?'Route search has no plain punch finish; Clip setup does.':`Route search ends every route with ${FINAL_LABEL[v]} only${v==='jump'?' (Deep mode can be used)':' (it runs as "Run-up + any move")'}.`; }
+$('cFinal').onchange=e=>setFinal(e.target.value); $('sFinal').onchange=e=>setFinal(e.target.value); setTimeout(()=>setFinal(FINAL),0);
+// ---- pick a reliable clip: rank the room's clip spots by their odds, set one as the target, or search the top few in turn
+function clipCandidates(rel,kind){ const out=[];
+  if(kind!=='slope') for(const h of room.holds){ if(!(h.clip||h.clip_dY!=null)) continue; const o=holdOdds(h); const nl=h.clip?h.clip.lag==null:h.clip_lag==null;
+    if(!relOKw(rel,o,nl)) continue; out.push({kind:'hold',h,x:h.x,y:h.y,z:h.z,seam:h.seam,o,p:o&&o.runs?o.clips/o.runs:null,nl}); }
+  if(kind!=='hold') for(const c of room.slopeclips||[]){ const o={runs:70,clips:c[4],nolag:busterNolag(c[5]),voids:c[4]}; if(!relOKw(rel,o)) continue;
+    out.push({kind:'slope',c,x:c[0],y:c[1],z:c[2],seam:c[3],o,p:c[4]/70,nl:o.nolag>0}); }
+  return out; }
+function bestClips(p){ const rel=$(p+'BestRel').value, sort=$(p+'BestSort').value, kind=$(p+'BestKind').value; const st=readStart();
+  let c=clipCandidates(rel,kind); const d=q=>st?Math.hypot(q.x-st.pos[0],q.z-st.pos[2]):0;
+  const key=q=>(q.p==null?-1:q.p)*1e6+(q.o?q.o.nolag:0);
+  c.sort(sort==='near'&&st?((a,b)=>d(a)-d(b)||key(b)-key(a)):((a,b)=>key(b)-key(a)||d(a)-d(b)));
+  // one per 4-unit cell, so the list is not 30 neighbours on the same seam
+  const seen=new Set(), out=[]; for(const q of c){ const k=Math.round(q.x/4)+','+Math.round(q.z/4)+','+Math.round(q.y/8); if(seen.has(k)) continue; seen.add(k); out.push(q); if(out.length>=40) break; }
+  return {list:out,total:c.length}; }
+function bestTarget(q){ if(q.kind==='hold') selectSpot({x:q.x,y:q.y,z:q.z,kind:'hold',info:q.h}); else selectSpot({x:q.x,y:q.y,z:q.z,kind:'slope',info:{seam:q.seam,n:q.c[4],mask:q.c[5]}});
+  target={x:q.x,y:q.y,z:q.z,seam:q.seam||null,kind:q.kind}; fillTgt(); drawMarks(); cRefresh(); }
+function renderBest(p){ if($(p+'BestBody').hidden||!room) return; const {list,total}=bestClips(p); const el=$(p+'BestList'); el.innerHTML=''; const st=readStart();
+  $(p+'BestStat').textContent=total?`${total.toLocaleString()} clip spot${total>1?'s':''} at this reliability${room.holds.some(h=>h.clip&&!h.odds)?' (hold odds not counted for this room yet)':''}. Click one to make it the target.`:'No clip spot at this reliability in this room. Try a looser setting.';
+  list.forEach((q,i)=>{ const b=document.createElement('button'); b.className='res clip'+(target&&target.x===q.x&&target.z===q.z?' cur':''); const pct=q.p==null?'odds not counted':`${q.o.clips} of ${q.o.runs} ${q.kind==='hold'?'drops':'dives'} clip (${(100*q.p).toFixed(q.p<0.01?1:0)}%)`;
+    b.innerHTML=`<span class="tg">${q.kind==='hold'?'hold clip':'buster'}</span><b>#${i+1}</b> · ${pct} · ${q.o&&q.o.nolag?q.o.nolag+' without lag':(q.nl?'no lag needed':'needs lag')}${q.o&&q.kind==='hold'&&q.o.voids<q.o.clips?(q.o.voids?` · ${q.o.voids} fall out of the map`:' · lands on lower ground'):''}<br><span class="m">${q.x.toFixed(4)}, ${q.y.toFixed(3)}, ${q.z.toFixed(4)}${st?` · ${Math.hypot(q.x-st.pos[0],q.z-st.pos[2]).toFixed(0)} from start`:''}</span>`;
+    b.onclick=()=>{ bestTarget(q); renderBest(p); }; el.appendChild(b); }); }
+for(const p of ['c','s']){ $(p+'BestToggle').onclick=()=>{ const b=$(p+'BestBody'); b.hidden=!b.hidden; $(p+'BestToggle').textContent=b.hidden?'Show list':'Hide list'; $(p+'BestToggle').setAttribute('aria-expanded',!b.hidden); renderBest(p); };
+  ['BestRel','BestSort','BestKind'].forEach(k=>$(p+k).onchange=()=>renderBest(p)); }
+['bx','by','bz'].forEach(id=>$(id).addEventListener('change',()=>{ renderBest('c'); renderBest('s'); }));
+// batch: run the pane's search on each of the top N in turn (results stay listed, labelled with their target)
+let bestBatch=null;
+async function runBest(p){ const {list}=bestClips(p); const n=Math.min(+$(p+'BestN').value,list.length); if(!n){ $(p+'BestStat').textContent='Nothing to search at this reliability.'; return; }
+  if(p==='s'&&!readStart()){ $('sStat').textContent='Set a start first.'; return; }
+  bestBatch={p,n,i:0,stopped:false}; const keep=[];
+  for(let i=0;i<n;i++){ bestBatch.i=i; bestTarget(list[i]); renderBest(p);
+    if(p==='c'){ await cSearch(i>0); if(cStop) break; } else { await sSearch(i>0,Math.max(30,Math.round((+$('sTime').value||300)/n))); if(stopFlag) break; } }
+  const msg=`Searched ${Math.min(bestBatch.i+1,n)} of the top ${n} clip spots.`; bestBatch=null; $(p==='c'?'cStat':'sStat').textContent+=' · '+msg; }
+$('cBestRun').onclick=()=>runBest('c'); $('sBestRun').onclick=()=>runBest('s');
+// hook for scripted checks
+window.BCL={screenOf:(x,y,z)=>{ const rc=renderer.domElement.getBoundingClientRect(); const v=toScreen(x,y,z,rc); return v&&[v[0]+rc.left,v[1]+rc.top]; },spawns:()=>spawnList().map(spawnStand),exits:()=>exitList(),spawnGroup,selectSpot:s=>selectSpot(s),room:()=>room,simulate:(p,v,st,g)=>simulateOnce(p,v,st,g),setRec:(rec,start)=>{ REC=rec?loadRecording(rec):null; if(REC&&start!=null) REC.start=start; recShow(); return REC&&{n:REC.frames.length,actors:REC.actors}; }};
+// boot
+setVersion('PAL'); applyPreset(); applyTheme(); renderChips();
+loadIndex().catch(e=>{ $('loading').textContent='Could not load the room data: '+e.message; });
+})();
+</script>
+
+</body></html>
