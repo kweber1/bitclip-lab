@@ -29,6 +29,7 @@ from sc64_crack_brute import b2f, f2b, f32, parse_list
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MAP, ENTRY, DOOR_FLAG = 0x71, 1, 0x3C          # Statue Room, entry 1 = higher exit (260-door side), FILEPROG_3C 260 open
+LEARNED = 0x8037CD70                           # PAL learned-abilities word
 F_FORCE = 16                                   # v6: job[53] = VI after B, job[54] = frames (3 = the 0.06 s cap)
 A, B, Z, CU, CD, CL, CR, R = 0x8000, 0x4000, 0x2000, 8, 4, 2, 1, 0x10
 P.BTN['R'] = R
@@ -123,6 +124,9 @@ def setup(port=None):
         r = ag.run([P.JOB_MAGIC, P.K_ROOM, 0, ENTRY, MAP, DOOR_FLAG], timeout=90)
         print('warp to 0x%02X entry %d (door flag 0x%02X cleared): %s' % (MAP, ENTRY, DOOR_FLAG, r and r['status']), flush=True)
         if not r or r['status'] != 1: sys.exit('could not reach the Statue Room')
+    w = V.peek(ag, link, LEARNED, 1)                # FIXTURE: learned moves as the Practice ROM sets them (claw swipe = bit 4;
+    if w and (w[0] & 0x1FFFFF) != 0x1FFFFF:          # without it B does nothing and the "punch cancel" is a plain jump)
+        V.poke(ag, [(LEARNED, w[0] | 0x1FFFFF)]); print('learned moves %08X -> %08X (FIXTURE)' % (w[0], w[0] | 0x1FFFFF), flush=True)
     return link, ag
 
 
@@ -170,7 +174,7 @@ def main():
                     for rep in range(a.repeat):
                         w = V.test_words(sp, facing, o[0], o[1], J, a.runmax, seg, act, [])
                         if a.plan == 'force':                  # the first frame starting >= k VI after B gets 3 frames
-                            w[2] |= F_FORCE; w[52] = 0; w[53] = st[2]; w[54] = 3
+                            w += [0] * (64 - len(w)); w[2] |= F_FORCE; w[52] = 0; w[53] = st[2]; w[54] = 3
                         r = ag.run(w, timeout=120)
                         if not r: print('  timeout', flush=True); continue
                         if r['status'] == 3: sys.exit('cancelled (Start)')
