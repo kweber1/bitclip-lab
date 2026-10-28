@@ -1,0 +1,57 @@
+2c2
+<  * vX (2026-10-24): TEST watch words. job[18] = address A, job[62] = address B (0 = the raw pad word at hook entry).
+---
+>  * v5 (2026-10-24): TEST watch words. job[18] = address A, job[62] = address B (0 = the raw pad word at hook entry).
+34c34
+< #define PAL_VERSION 5u
+---
+> #define PAL_VERSION 6u
+55c55
+< enum { F_REFILL=1, F_MEASURE=2, F_EGGS=4, F_REPLACE=8 };
+---
+> enum { F_REFILL=1, F_MEASURE=2, F_EGGS=4, F_REPLACE=8, F_FORCE=16 };
+80a81
+>     u32 dt_patched, forced;     /* vX */
+111c112,113
+< static int in_room(void) { return V32(GS_MODE)==3 && V32(CUR_MAP)==0x79; }
+---
+> static u32 room_map=0x79;          /* vX: target room, set by K_ROOM job[4] (0 = 0x79) */
+> static int in_room(void) { return V32(GS_MODE)==3 && V32(CUR_MAP)==room_map; }
+116,118c118,123
+<     flag(0x39,0);                      /* 765 note door closed (Practice uses door flag 0x39 for map 0x79) */
+<     flag(0x53,1); flag(0x54,1);        /* CCW puzzle switch as Practice leaves it for its non-switch moves */
+<     V8(0x8037f2c5)=0x79; V8(0x8037f2c6)=(u8)(pal_job[3]?pal_job[3]:1); V8(0x8037f2c7)=0; V8(0x8037f2c8)=0; V8(0x8037f2c4)=1;
+---
+>     /* vX: job[3] = entry (0 = 1), job[4] = map (0 = 0x79), job[5] = note-door open flag to clear (0 = 0x39 as before;
+>        note doors use FILEPROG_39 + door index, e.g. 0x3C = 260 door in map 0x71, 0x40 = 765) */
+>     room_map = pal_job[4] ? (pal_job[4]&0xff) : 0x79;
+>     flag(pal_job[5] ? pal_job[5] : 0x39, 0);
+>     if(room_map==0x79) { flag(0x53,1); flag(0x54,1); }   /* CCW puzzle switch as Practice leaves it */
+>     V8(0x8037f2c5)=(u8)room_map; V8(0x8037f2c6)=(u8)(pal_job[3]?pal_job[3]:1); V8(0x8037f2c7)=0; V8(0x8037f2c8)=0; V8(0x8037f2c4)=1;
+172a178,200
+> 
+> /* vX F_FORCE (DIAGNOSTIC forced lag): time_setDeltaReal_frames (PAL 0x8033E154, US 0x8033DD04) is replaced by
+>    pal_setframes. In a TEST with F_FORCE, the first frame that starts at least job[53] VI after the B update gets
+>    job[54] frames (default 3 = the 0.06 s cap) instead of the console's own count, once. Otherwise identical to the
+>    game's function: frames clamped 1..15, seconds = frames * (1/50) capped at 0.06 (PAL). (The v3 timed pokes of
+>    0x80384E60/64 were overwritten by this function at the next frame start and never changed a step.) */
+> void pal_setframes(s32 f) {
+>     if((pal_job[2]&F_FORCE) && pal_job[1]==K_TEST && pal.phase==P_RUN && !pal.forced && practice_vi_count-pal.vi_b>=pal_job[53]) {
+>         f=(s32)(pal_job[54]?pal_job[54]:3); pal.forced=practice_vi_count-pal.vi_b; pal_res[30]=pal.forced;
+>     }
+>     if(f>15) f=15; if(f<1) f=1;
+>     V32(0x80384E64u)=(u32)f;
+>     V32(0x80384E60u)= f==1 ? 0x3CA3D70Au : f==2 ? 0x3D23D70Au : 0x3D75C28Fu;   /* 0.02, 0.04, 0.06 (cap) as f32 bits */
+> }
+> static void dt_patch(void) {
+>     if(pal.dt_patched) return;
+>     if(V32(0x8033E154u)!=0x27BDFFE8u) return;               /* not the expected PAL code: leave the game alone */
+>     u32 s0=int_off();
+>     V32(0x8033E154u)=0x08000000u|(((u32)pal_setframes>>2)&0x3FFFFFFu); V32(0x8033E158u)=0;
+>     for(u32 a=0x8033E140u;a<0x8033E180u;a+=16) __asm__ volatile(".set push\n\t.set mips3\n\tcache 0x10,0(%0)\n\t.set pop"::"r"(a));
+>     int_restore(s0);
+>     pal.dt_patched=1;
+> }
+196a225,226
+>     if(pal_job[2]&F_FORCE) dt_patch();
+>     pal.forced=0; pal_res[30]=0;
