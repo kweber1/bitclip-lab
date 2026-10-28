@@ -1,0 +1,31 @@
+--- ../pal6/sc64pal-v6.c	2026-10-28 20:55:46.334707419 +0000
++++ sc64pal-v7.c	2026-10-28 21:54:19.964642995 +0000
+@@ -31,7 +31,7 @@
+ #define V32(a) (*(volatile u32 *)(a))
+ #define VF(a) (*(volatile float *)(a))
+ 
+-#define PAL_VERSION 6u
++#define PAL_VERSION 7u
+ #define SC64_REG_IDENT  0xBFFF000Cu
+ #define SC64_REG_KEY    0xBFFF0010u
+ #define SC64_BUF        0xBFFE0000u
+@@ -332,7 +332,7 @@
+         record(vi,dvi);
+         u32 k=fkey(V32(POS_Y)); if(k<pal.miny_key) pal.miny_key=k;
+         float y=fb(V32(POS_Y)), fy=fb(pal_job[5]);
+-        if(y<fy-300.0f) pal.below++;
++        if(y<fy-1300.0f) pal.below++;
+         u32 runmax=pal_job[16]?pal_job[16]:140;
+         if(pal.below>=10 || v>=runmax) {
+             u32 mk=pal.miny_key; pal_res[24]=(mk&0x80000000u)?(mk&0x7fffffffu):~mk;
+--- ../pal6/tas.c	2026-10-28 20:41:34.726559102 +0000
++++ tas.c	2026-10-28 21:50:15.428448297 +0000
+@@ -55,7 +55,7 @@
+ /* Runs once per native controller/game update, before held-button counters. */
+ int pal_joy(u32,u32*);
+ void tas_joy_wrap(void) {
+-    { u32 pad; if(pal_joy(V32(INPUT),&pad)) { V32(INPUT)=pad; tas_joy_original(); V32(INPUT)=pad&0x10000000u; return; } } /* v4: agent Start stays visible (pause) */
++    { u32 pad; if(pal_joy(V32(INPUT),&pad)) { V32(INPUT)=pad; tas_joy_original(); V32(INPUT)=pad&0x1000FFFFu; return; } } /* v4: agent Start stays visible (pause) */
+     u32 original=practice_input(V32(INPUT)), now=ticks();
+     u16 buttons=(u16)(original>>16);
+     u32 injected=original, restore=original;
