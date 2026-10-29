@@ -32,14 +32,13 @@ static Room host_room(const HostRoom &h) { Room r; r.TF = hp(h.TF); r.TI = hp(h.
 template <class T> static const T *up(const std::vector<T> &v) { T *p; size_t n = v.size() ? v.size() : 1; CK(cudaMalloc(&p, n * sizeof(T))); if (v.size()) CK(cudaMemcpy(p, v.data(), v.size() * sizeof(T), cudaMemcpyHostToDevice)); return p; }
 static Room dev_room(const HostRoom &h) { Room r; r.TF = up(h.TF); r.TI = up(h.TI); r.CLI = up(h.CLI); r.CLF = up(h.CLF); r.CELLS = up(h.CELLS); r.PF = up(h.PF); r.PI = up(h.PI); r.PC = up(h.PC); r.GR = up(h.GR); r.RF = up(h.RF); return r; }
 
-// crack seams whose holes drop onto the tunnel floor (endpoints of the census points)
-__constant__ float SEG[4][4] = { { 4444.73779f, 6192.96777f, 4661.05371f, 6263.28955f }, { 4387.69824f, 6253.67822f, 4400.12842f, 6215.44189f },
-                                 { 4629.23975f, 5628.17041f, 4844.13574f, 5698.27832f }, { 4352.97363f, 6476.04443f, 4567.96924f, 6545.93701f } };
-static const float SEGH[4][4] = { { 4444.73779f, 6192.96777f, 4661.05371f, 6263.28955f }, { 4387.69824f, 6253.67822f, 4400.12842f, 6215.44189f },
-                                  { 4629.23975f, 5628.17041f, 4844.13574f, 5698.27832f }, { 4352.97363f, 6476.04443f, 4567.96924f, 6545.93701f } };
-HD static float segDist(const float S[4][4], float x, float z) {
+// every shared edge of the flat y 891 floor above the tunnel (13 seams)
+#define NSEG 13
+__constant__ float SEG[NSEG][4] = { { 4411.0f, 6182.0f, 4694.0f, 6274.0f }, { 4694.0f, 6274.0f, 4877.0f, 5709.0f }, { 4411.0f, 6182.0f, 4877.0f, 5709.0f }, { 4595.0f, 5617.0f, 4877.0f, 5709.0f }, { 4411.0f, 6182.0f, 4595.0f, 5617.0f }, { 4877.0f, 5709.0f, 4969.0f, 5427.0f }, { 4687.0f, 5335.0f, 4969.0f, 5427.0f }, { 4687.0f, 5335.0f, 4877.0f, 5709.0f }, { 4595.0f, 5617.0f, 4687.0f, 5335.0f }, { 4404.0f, 5243.0f, 4595.0f, 5617.0f }, { 4319.0f, 6465.0f, 4602.0f, 6557.0f }, { 4319.0f, 6465.0f, 4411.0f, 6182.0f }, { 4319.0f, 6465.0f, 4694.0f, 6274.0f } };
+static const float SEGH[NSEG][4] = { { 4411.0f, 6182.0f, 4694.0f, 6274.0f }, { 4694.0f, 6274.0f, 4877.0f, 5709.0f }, { 4411.0f, 6182.0f, 4877.0f, 5709.0f }, { 4595.0f, 5617.0f, 4877.0f, 5709.0f }, { 4411.0f, 6182.0f, 4595.0f, 5617.0f }, { 4877.0f, 5709.0f, 4969.0f, 5427.0f }, { 4687.0f, 5335.0f, 4969.0f, 5427.0f }, { 4687.0f, 5335.0f, 4877.0f, 5709.0f }, { 4595.0f, 5617.0f, 4687.0f, 5335.0f }, { 4404.0f, 5243.0f, 4595.0f, 5617.0f }, { 4319.0f, 6465.0f, 4602.0f, 6557.0f }, { 4319.0f, 6465.0f, 4411.0f, 6182.0f }, { 4319.0f, 6465.0f, 4694.0f, 6274.0f } };
+HD static float segDist(const float S[NSEG][4], float x, float z) {
   float best = 1e30f;
-  for (int i = 0; i < 4; i++) { float ax = S[i][0], az = S[i][1], dx = S[i][2] - ax, dz = S[i][3] - az;
+  for (int i = 0; i < NSEG; i++) { float ax = S[i][0], az = S[i][1], dx = S[i][2] - ax, dz = S[i][3] - az;
     float t = ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz); t = t < 0 ? 0 : (t > 1 ? 1 : t);
     float ex = ax + t * dx - x, ez = az + t * dz - z; float d = sqrtf(ex * ex + ez * ez); if (d < best) best = d; }
   return best;
@@ -133,6 +132,7 @@ int main(int argc, char **argv) {
   for (int d = 1; d <= depth && level.size(); d++) {
     std::vector<Player> next; std::vector<int> nextId; std::vector<float> nextSd;
     for (long long b = 0; b < (long long)level.size(); b += CH) {
+      { FILE *st = fopen("fpc2.stop", "r"); if (st) { fclose(st); say("stopped (fpc2.stop)\n"); fclose(fo); fclose(fp); return 0; } }
       long long np = std::min(CH, (long long)level.size() - b), nk = np * NCHILD;
       CK(cudaMemcpy(dp, level.data() + b, np * sizeof(Player), cudaMemcpyHostToDevice));
       k_expand<<<(unsigned)((nk + 127) / 128), 128>>>(R, dA, dp, np, dk, dok, dkey, dsd); CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
