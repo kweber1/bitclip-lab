@@ -18,7 +18,7 @@
 
 #define CK(x) do { cudaError_t e_ = (x); if (e_ != cudaSuccess) { fprintf(stderr, "CUDA %s at %s:%d\n", cudaGetErrorString(e_), __FILE__, __LINE__); exit(1); } } while (0)
 #define NK 101
-#define NM 7
+#define NM 15
 #define NCHILD (NK * NM)
 #define NFIN (NK * 2 * 4 * 6)
 
@@ -52,21 +52,35 @@ static HD int settle(const Room &R, const unsigned short *A, Player &P) {
     if (still >= 5) return P.pos[1] > 800; }
   return 0;
 }
+// travel moves (twirl first, then):
+//  0 punch | 1-4 punch cancel (A on update 1/2, A held 3/12 updates)
+//  5 barge tap, Z held 10 | 6 barge tap, Z held 40 | 7 barge B held 10, Z 15 | 8 barge B held 20, Z 30
+//  9 barge B held 40, Z let go right after the B press | 10 barge B held 40, Z held 50
+//  11 barge B held 40, Z let go after the press, then Z again (held 20) after B is let go
+//  12-14 punch, then hold Z (from update 1 / 4 / 10)
 static HD void moveInp(int m, int i, Inp &in) {
   in.A = 0; in.B = 0; in.Z = 0;
   switch (m) {
     case 0: in.B = i < 1; break;
-    case 1: in.Z = i < 10; in.B = i >= 5 && i < 7; break;
-    case 2: in.Z = i < 30; in.B = i >= 5 && i < 25; break;
-    case 3: in.B = i == 0; in.A = i >= 1 && i < 4; break;
-    case 4: in.B = i == 0; in.A = i >= 1 && i < 13; break;
-    case 5: in.B = i == 0; in.A = i >= 2 && i < 5; break;
-    case 6: in.B = i == 0; in.A = i >= 2 && i < 14; break;
+    case 1: in.B = i == 0; in.A = i >= 1 && i < 4; break;
+    case 2: in.B = i == 0; in.A = i >= 1 && i < 13; break;
+    case 3: in.B = i == 0; in.A = i >= 2 && i < 5; break;
+    case 4: in.B = i == 0; in.A = i >= 2 && i < 14; break;
+    case 5: in.Z = i < 10; in.B = i >= 5 && i < 7; break;
+    case 6: in.Z = i < 40; in.B = i >= 5 && i < 7; break;
+    case 7: in.Z = i < 15; in.B = i >= 5 && i < 15; break;
+    case 8: in.Z = i < 30; in.B = i >= 5 && i < 25; break;
+    case 9: in.Z = i < 7; in.B = i >= 5 && i < 45; break;
+    case 10: in.Z = i < 50; in.B = i >= 5 && i < 45; break;
+    case 11: in.Z = i < 7 || (i >= 47 && i < 67); in.B = i >= 5 && i < 45; break;
+    case 12: in.B = i == 0; in.Z = i >= 1 && i < 40; break;     // punch, then hold Z right away
+    case 13: in.B = i == 0; in.Z = i >= 4 && i < 40; break;     // punch, then hold Z a moment later
+    case 14: in.B = i == 0; in.Z = i >= 10 && i < 40; break;    // punch, then hold Z near the end of the punch
   }
 }
 static HD int travel(const Room &R, const unsigned short *A, Player &P, int j) {
   int k = j / NM - 50, m = j % NM; if (k) pl_fpTwirl(P, k);
-  for (int i = 0; i < 40; i++) { Inp in; moveInp(m, i, in); pl_step(R, A, P, in, 2); if (P.bad) return 0; }
+  for (int i = 0; i < 70; i++) { Inp in; moveInp(m, i, in); pl_step(R, A, P, in, 2); if (P.bad) return 0; }
   return settle(R, A, P);
 }
 static HD void finParams(int f, int &k, int &c, int &h, int &z) {
@@ -122,7 +136,7 @@ int main(int argc, char **argv) {
   std::unordered_set<unsigned long long> seen; seen.reserve(1 << 24);
   seen.insert(keyOf(0, Pst.pos[0], Pst.pos[2], Pst.yaw, segDist(SEGH, Pst.pos[0], Pst.pos[2])));
   std::vector<Player> level(1, Pst); std::vector<int> levelId(1, 0); gParent.push_back(-1); gMove.push_back(-1);
-  const long long CH = 4000;
+  const long long CH = 2500;
   Player *dp, *dk, *dg; unsigned char *dok; unsigned long long *dkey; float *dsd; long long *didx;
   CK(cudaMalloc(&dp, CH * sizeof(Player))); CK(cudaMalloc(&dk, CH * NCHILD * sizeof(Player))); CK(cudaMalloc(&dok, CH * NCHILD));
   CK(cudaMalloc(&dkey, CH * NCHILD * 8)); CK(cudaMalloc(&dsd, CH * NCHILD * 4)); CK(cudaMalloc(&didx, CH * NCHILD * 8)); CK(cudaMalloc(&dg, CH * NCHILD * sizeof(Player)));
