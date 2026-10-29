@@ -99,7 +99,7 @@ class Player {
   // o: {map, pos, vel, yaw, cam, version ('PAL'|'NTSC'), state, grounded}
   constructor(world, o = {}) {
     this.world = world; this.map = o.map ?? 0; this.cam = F(o.cam ?? 0);
-    this.pos = (o.pos || [0, 0, 0]).map(F); this.vel = (o.vel || [0, 0, 0]).map(F);
+    this.pos = (o.pos || [0, 0, 0]).map(F); this.vel = (o.vel || [0, (o.grounded ?? true) ? -1 : 0, 0]).map(F);  // standing Banjo has vy = -1 (every grounded update sets it)
     this.yaw = F(o.yaw ?? 0); this.ideal = F(o.yawIdeal ?? this.yaw); this.yawState = 1; this.yawB = [F(700), F(7.5)]; this.yawU = F(360);
     this.yawMode = 1; this.yawThresh = 0;
     this.ptype = PHYS.NORMAL; this.thv = 0; this.tyaw = this.ideal; this.grav = F(-2700); this.term = F(-4000);

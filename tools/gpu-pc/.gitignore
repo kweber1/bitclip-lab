@@ -1,0 +1,10 @@
+*.bin
+*.bin.json
+*_cpu.txt
+*_ref.txt
+*_gpu.txt
+bkpc_cpu
+t.cpp
+all950.json
+sample6.json
+spot1.json
