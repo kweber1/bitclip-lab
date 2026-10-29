@@ -5,7 +5,7 @@
 #include "bkmove_port.h"
 
 #define MAXUPD 40
-#define MAXLAG 4
+#define MAXLAG 12
 struct Job { int nspots, nyaw, nparam, npat, maxUpd, standCheck; };
 struct Hit { int s, yi, pi, qi, k, holds, clipAt, clip; float endY, x0, z0, pad; };
 

@@ -18,7 +18,7 @@ const spots = JSON.parse(fs.readFileSync(args[0]));
 const cancel = opt('--cancel', '1,2,3,4').split(',').map(Number);
 const hold = opt('--hold', '2,3,4,5,6,7,8,9,10,11,12,14').split(',').map(Number);
 const dirs = +opt('--dirs', '8'); const maxUpd = +opt('--maxupd', '40'); const stand = args.includes('--nostand') ? 0 : 1;
-const MAXLAG = 4;
+const MAXLAG = 12;
 
 // ---- room packing (bkcol_port.h layout)
 function packWorld(opa, xlu, props, margin, map) {
@@ -63,7 +63,7 @@ const flats = flatYs.map(y => { const L = 60000;
 const yaws = []; const seen = new Set();
 for (let i = 0; i < dirs; i++) { const s = SR.stickFor(360 * i / dirs, F(0), 1); if (!seen.has(s.yaw)) { seen.add(s.yaw); yaws.push(F(s.yaw)); } }
 const params = []; for (const c of cancel) for (const h of hold) params.push(c, h);
-const pm = opt('--pats', 'none'); let pats;
+let pm = opt('--pats', 'none'); if (pm.startsWith('@')) pm = fs.readFileSync(pm.slice(1), 'utf8').trim(); let pats;
 if (pm === 'none') pats = [[]];
 else if (pm === 'single') { pats = [[]]; for (let u = 0; u < maxUpd; u++) pats.push([u]); }
 else if (pm === 'early') { pats = [[]]; for (let u = 2; u <= 12; u++) pats.push([u]); }
