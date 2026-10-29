@@ -13,6 +13,9 @@
 #define S_LANDING 0x20
 #define S_FALL 0x2F
 #define S_TUMBLE 0x3D
+#define S_CROUCH 0x7
+#define S_BBUSTER 0xF
+#define S_BBARGE 0x13
 #define S_SPLAT 0x72
 #define PH_NONE 0
 #define PH_NORMAL 2
@@ -135,6 +138,7 @@ struct Player {
   Anim anim; int grounded, stable, floorType, holdCounter; Tracker tr; World w;
   float slopeTimer, st5, st6; float fallStart[3]; int fallHeight;
   int state; int v_ph, v_rot; float lastD[3]; float dt; int bad;
+  float timers[3], timersLast[3]; float v_h0, v_t, v_spd; int v_still; int fA, fB, fC; float dpos[3]; const unsigned short *acos;
   // last step results
   float tgt[3]; int held, hits;
 };
@@ -147,6 +151,13 @@ static HD inline int pl_isActive(const Player &P) { int fl = (int)P.tr.unk4C; re
 static HD inline void pl_setUT(Player &P, int ys, int ym, int pt) { P.yawState = ys; P.yawMode = ym; P.ptype = pt; }
 static HD inline void pl_walkTarget(Player &P) { if (P.szone == 0) P.thv = 0; else P.bad = 1; }
 static HD inline void pl_setHVel(Player &P, float yaw, float mag) { float v[3]; rot_yaw(yaw, mag, v); P.vel[0] = v[0]; P.vel[1] = v[1]; P.vel[2] = v[2]; }
+static HD inline float pl_hvel(const Player &P) { return sqrtf((P.vel[0] * P.vel[0]) + (P.vel[2] * P.vel[2])); }
+static HD inline void pl_setTimer(Player &P, int i, float v) { P.timers[i] = v; P.timersLast[i] = v; }
+static HD inline int pl_decTimer(Player &P, int i) { P.timersLast[i] = P.timers[i]; if (P.timers[i] == 0) return 0; P.timers[i] = ml_max_f(0, P.timers[i] - P.dt); return P.timers[i] == 0; }
+static HD inline int pl_shouldFall(const Player &P) { return 60.0f < (P.pos[1] - pl_floorY(P)); }
+static HD inline int pl_yawOf(const Player &P, const float *v, float *out) { // func_8025801C
+  float h = sqrtf((v[2] * v[2]) + (v[0] * v[0])); if (h < 0.01) return 0;
+  float y = ml_acosf(P.acos, v[0] / h); if (v[2] < 0) y = 180.0f - y; if (v[0] < 0) y = 360.0f - y; *out = y; return 1; }
 static HD inline int pl_groundType(const Player &P) { int t = surface_type_map(P.map, P.tr.unk4C); return t == 3 ? 4 : 2; }
 
 static HD void pl_setState(Player &P, int id);
@@ -161,10 +172,18 @@ static HD void st_init(Player &P, int id) {
       pl_walkTarget(P); pl_setHVel(P, P.ideal, P.thv); P.vel[1] = 710.0f; P.grav = -1350.0f; P.v_ph = 0; break;
     case S_FALL: an_play(P.anim, 0xB0, 0.38f, A_LOOP); pl_setUT(P, 1, 3, PH_AIRBORN); P.v_ph = 0; break;
     case S_TUMBLE: an_play(P.anim, 0x68, 0.35f, A_LOOP); pl_setUT(P, 1, 3, PH_AIRBORN); P.bad = 1; break; // timers not ported
+    case S_CROUCH: { an_reset(P.anim); P.anim.id = 1; P.anim.dur = 0.5f; P.anim.type = A_ONCE; an_setStart(P.anim, 0); an_go(P.anim);
+      P.yawState = 3; P.yawB0 = 350.0f; P.yawB1 = 14.0f; P.yawMode = 7; P.yawThresh = 8.0f; P.ptype = PH_LOCKED;
+      pl_setTimer(P, 0, 0.7f); pl_setTimer(P, 1, 0.2f); P.v_h0 = pl_hvel(P); float y; if (pl_yawOf(P, P.vel, &y)) P.tyaw = mlNormalizeAngle(y); break; }
+    case S_BBARGE: an_reset(P.anim); P.anim.id = 0x1C; P.anim.dur = 1.0f; an_setSub(P.anim, 0, 0.375f); P.anim.type = A_ONCE; an_go(P.anim);
+      pl_setUT(P, 1, 3, PH_LOCKED); P.tyaw = mlNormalizeAngle(P.ideal); P.thv = (float)((double)P.thv * 0.3); pl_setHVel(P, P.ideal, P.thv);
+      P.v_ph = 0; P.fA = P.fB = P.fC = 0; pl_setTimer(P, 2, 0.01f); P.v_spd = 0; break;
+    case S_BBUSTER: an_reset(P.anim); P.anim.id = 0x1D; P.anim.dur = 1.02f; an_setSub(P.anim, 0, 0.35f); P.anim.type = A_ONCE; an_go(P.anim);
+      pl_setUT(P, 1, 3, PH_AIRBORN); P.grav = 0; P.thv = 0; P.vel[0] = P.vel[1] = P.vel[2] = 0; P.v_t = 0.0001f; P.v_ph = 0; P.v_still = 0; break;
     default: P.bad = 1;
   }
 }
-static HD void st_end(Player &P, int id) { if (id == S_JUMP) P.grav = -2700.0f; }
+static HD void st_end(Player &P, int id) { if (id == S_JUMP) P.grav = -2700.0f; if (id == S_BBUSTER) { P.grav = -2700.0f; P.term = -4000.0f; } }
 static HD void pl_setState(Player &P, int id) { if (!id) return; st_end(P, P.state); P.state = id; P.v_ph = 0; P.v_rot = 0; st_init(P, id); }
 static HD int standNext(Player &P, int r) {
   if (P.szone != 0) P.bad = 1; if (P.keyZ0 > 0) r = 0x7; if (pl_pressed(P.keyB0)) r = S_CLAW; if (pl_pressed(P.keyA0)) r = (P.keyZ0 > 0) ? 0x12 : S_JUMP; if (pl_isSliding(P)) r = 0x32; return r;
@@ -191,6 +210,35 @@ static HD void st_update(Player &P) {
       pl_walkTarget(P);
       if (P.v_ph == 0 && pl_isAboveFloorBy(P, 0x5A)) { an_reset(P.anim); P.anim.id = 8; P.anim.dur = 2.0f; an_setStart(P.anim, 0.6667f); P.anim.type = A_ONCE; an_go(P.anim); P.v_ph = 1; }
       if (P.fallHeight > 1000 && !pl_isStable(P)) n = S_TUMBLE; if (pl_pressed(P.keyZ0)) n = 0xF; if (pl_isStable(P)) n = S_LANDING; pl_setState(P, n); return;
+    case S_CROUCH: {
+      pl_decTimer(P, 0); pl_decTimer(P, 1); P.thv = ml_map_f(P.timers[0], 0, 0.3f, 0, P.v_h0);
+      if (pl_isSliding(P)) n = 0x32; if (pl_shouldFall(P)) n = S_FALL;
+      if (P.keyZ1 > 0) { n = S_IDLE; if (pl_pressed(P.keyB0)) n = S_CLAW; if (pl_pressed(P.keyA0)) n = S_JUMP; }   // Z released: jumpType = JUMP
+      else { if (pl_pressed(P.keyA0)) n = 0x12; if (pl_pressed(P.keyB0)) n = S_BBARGE; }
+      if (n == S_IDLE && P.timers[1] != 0) n = 0; pl_setState(P, n); return; }
+    case S_BBARGE: {
+      if (P.keyB1 > 0) P.fA = 1;
+      switch (P.v_ph) {
+        case 0: if (!an_stopped(P.anim)) break; if (!P.fA) { P.fC = 1; P.v_spd = 850.0f; } else P.v_spd = 500.0f; pl_setTimer(P, 1, 0.01f); P.v_ph = 1; break;
+        case 1: pl_decTimer(P, 1); if (!P.fB && P.timers[1] < 0.1) P.fB = 1; if (P.timers[1] != 0) break;
+          P.anim.dur = 1.0f; an_setSub(P.anim, 0, 0.565f); P.anim.type = A_ONCE; P.thv = P.v_spd; pl_setHVel(P, P.ideal, P.thv); P.v_ph = 2; break;
+        case 2: P.thv = P.v_spd; if (an_stopped(P.anim)) { P.anim.dur = 2.0f; an_setSub(P.anim, 0, 0.6f); P.anim.type = A_ONCE; pl_setTimer(P, 0, 0.1f); P.v_ph = 3; } break;
+        case 3: pl_decTimer(P, 0); if (!P.fC || P.timers[0] == 0) P.v_spd = P.v_spd - 80.0f; P.thv = P.v_spd;
+          if (P.v_spd < 200) { P.anim.dur = 1.5f; an_setSub(P.anim, 0, 1.0f); P.anim.type = A_ONCE; P.v_ph = 4; } break;
+        case 4: if (!pl_isStable(P)) n = S_FALL; if (an_isAt(P.anim, 0.7f)) P.v_spd = 0; P.thv = P.v_spd; if (an_isAt(P.anim, 0.9193f)) n = S_LANDING; break;
+      }
+      pl_setState(P, n); return; }
+    case S_BBUSTER: {
+      switch (P.v_ph) {
+        case 0: if (an_stopped(P.anim)) { P.anim.dur = 0.4f; P.v_ph = 1; } break;
+        case 1: P.v_t = P.v_t - P.dt; if (P.v_t <= 0) { P.term = -5000.0f; P.grav = -20000.0f; P.vel[1] = 2300.0f; P.v_ph = 2; } break;
+        case 2: P.v_still = absf(P.dpos[1]) < 1.0 ? P.v_still + 1 : 0;
+          if (pl_isStable(P) || !(P.v_still < 4)) { P.vel[0] = P.vel[1] = P.vel[2] = 0; P.grav = 0; P.thv = 0; P.v_t = 0.09f; P.v_ph = 3; } break;
+        case 3: P.v_t = P.v_t - P.dt; if (P.v_t <= 0) { P.vel[1] = 730.0f; P.grav = -2110.0f; an_setSub(P.anim, 0, 0.7299f); P.anim.dur = 1.9f; P.anim.type = A_ONCE; P.v_ph = 4; } break;
+        case 4: pl_walkTarget(P); if (an_stopped(P.anim)) { an_setSub(P.anim, 0, 0.74f); P.anim.dur = 15.0f; P.anim.type = A_ONCE; }
+          if (pl_isStable(P)) { an_setSub(P.anim, 0, 1.0f); P.anim.dur = 1.9f; P.anim.type = A_ONCE; n = S_LANDING; } break;
+      }
+      pl_setState(P, n); return; }
     default: P.bad = 1; return;
   }
 }
@@ -242,7 +290,7 @@ static HD void pl_slope(Player &P) {
 static HD inline void key_upd(int h, int &c0, int &c1) { c0 = h ? c0 + 1 : 0; c1 = c0 ? 0 : c1 + 1; }
 // one update. frames 2 or 3 (PAL: dt = min(frames/50, 0.06))
 static HD void pl_step(const Room &R_, const unsigned short *ACOS, Player &P, Inp in, int frames) {
-  P.dt = (float)fmin(frames * (1.0 / 50), 0.06);
+  P.acos = ACOS; P.dt = (float)fmin(frames * (1.0 / 50), 0.06);
   float old[3] = { P.pos[0], P.pos[1], P.pos[2] };
   key_upd(in.A, P.keyA0, P.keyA1); key_upd(in.B, P.keyB0, P.keyB1); key_upd(in.Z, P.keyZ0, P.keyZ1);
   P.sdist = 0; P.szone = 0; P.szp = 0;
@@ -251,6 +299,7 @@ static HD void pl_step(const Room &R_, const unsigned short *ACOS, Player &P, In
   if (pl_isStable(P)) { P.fallStart[0] = tgt[0]; P.fallStart[1] = tgt[1]; P.fallStart[2] = tgt[2]; }
   P.fallHeight = (int)truncf(P.fallStart[1] - tgt[1]);
   Pred r; predict(R_, ACOS, &P.w, old, tgt, P.grounded, P.holdCounter, &P.tr, &r);
+  P.dpos[0] = r.result[0] - old[0]; P.dpos[1] = r.result[1] - old[1]; P.dpos[2] = r.result[2] - old[2];
   P.pos[0] = r.result[0]; P.pos[1] = r.result[1]; P.pos[2] = r.result[2]; P.grounded = r.grounded; P.holdCounter = r.hold_counter_after;
   float fy = pl_floorY(P); int below = P.tr.unk58 && P.pos[1] < fy;
   if (below && P.pos[1] < (fy - 70.0f)) { P.floorType = 3; if (P.grounded && P.vel[1] < 0) P.vel[1] = -1.0f; }
@@ -262,6 +311,12 @@ static HD void pl_step(const Room &R_, const unsigned short *ACOS, Player &P, In
   pl_slope(P);
   P.tgt[0] = tgt[0]; P.tgt[1] = tgt[1]; P.tgt[2] = tgt[2]; P.held = r.held; P.hits = r.hits;
 }
+static HD void pl_fpTwirl(Player &P, int m) { // bkmove.js fpTwirl
+  float sg = m < 0 ? -3.6f : 3.6f; int n = m < 0 ? -m : m;
+  float e = P.yaw + 180.0f; if (e >= 360) e = e - 360.0f; if (e < 0) e = e + 360.0f;
+  for (int i = 0; i < n; i++) { e = e + sg; if (e >= 360) e = e - 360.0f; if (e < 0) e = e + 360.0f; }
+  float y = e + 180.0f; if (y >= 360) y = y - 360.0f; if (y < 0) y = y + 360.0f;
+  P.yaw = y; P.ideal = y; P.tyaw = y; }
 static HD void pl_init(const Room &R_, const unsigned short *ACOS, Player &P, int map, float x, float y, float z, float yaw) {
   P.map = map; P.cam = 0; P.pos[0] = x; P.pos[1] = y; P.pos[2] = z; P.vel[0] = 0; P.vel[1] = -1.0f; P.vel[2] = 0;
   P.yaw = yaw; P.ideal = yaw; P.yawState = 1; P.yawB0 = 700.0f; P.yawB1 = 7.5f; P.yawU = 360.0f; P.yawMode = 1; P.yawThresh = 0;
@@ -272,7 +327,8 @@ static HD void pl_init(const Room &R_, const unsigned short *ACOS, Player &P, in
   P.grounded = 1; P.stable = 1; P.floorType = 2; P.holdCounter = 0;
   tracker_init(&P.tr, P.pos); P.w.has_stored = 0; P.slopeTimer = 0; P.st5 = 0; P.st6 = 0;
   P.fallStart[0] = x; P.fallStart[1] = y; P.fallStart[2] = z; P.fallHeight = 0; P.state = 0; P.v_ph = 0; P.v_rot = 0; P.lastD[0] = P.lastD[1] = P.lastD[2] = 0; P.bad = 0;
-  P.dt = 0; P.held = 0; P.hits = 0;
+  P.dt = 0; P.held = 0; P.hits = 0; P.acos = ACOS;
+  for (int i = 0; i < 3; i++) { P.timers[i] = 0; P.timersLast[i] = 0; P.dpos[i] = 0; } P.v_h0 = P.v_t = P.v_spd = 0; P.v_still = 0; P.fA = P.fB = P.fC = 0;
   Pred r; predict(R_, ACOS, &P.w, P.pos, P.pos, P.grounded, 0, &P.tr, &r);
   P.grounded = r.grounded; P.stable = P.grounded; P.floorType = P.grounded ? pl_groundType(P) : 1;
   pl_setState(P, S_IDLE);
