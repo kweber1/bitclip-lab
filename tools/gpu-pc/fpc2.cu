@@ -18,7 +18,7 @@
 
 #define CK(x) do { cudaError_t e_ = (x); if (e_ != cudaSuccess) { fprintf(stderr, "CUDA %s at %s:%d\n", cudaGetErrorString(e_), __FILE__, __LINE__); exit(1); } } while (0)
 #define NK 101
-#define NM 15
+#define NM 11
 #define NCHILD (NK * NM)
 #define NFIN (NK * 2 * 4 * 6)
 
@@ -54,10 +54,8 @@ static HD int settle(const Room &R, const unsigned short *A, Player &P) {
 }
 // travel moves (twirl first, then):
 //  0 punch | 1-4 punch cancel (A on update 1/2, A held 3/12 updates)
-//  5 barge tap, Z held 10 | 6 barge tap, Z held 40 | 7 barge B held 10, Z 15 | 8 barge B held 20, Z 30
-//  9 barge B held 40, Z let go right after the B press | 10 barge B held 40, Z held 50
-//  11 barge B held 40, Z let go after the press, then Z again (held 20) after B is let go
-//  12-14 punch, then hold Z (from update 1 / 4 / 10)
+//  5 barge tap, Z held 10 | 6 barge tap, Z held 40 | 7 barge holding Z and B down a long time (B 40 updates)
+//  8-10 punch, then hold Z (from update 1 / 4 / 10)
 static HD void moveInp(int m, int i, Inp &in) {
   in.A = 0; in.B = 0; in.Z = 0;
   switch (m) {
@@ -68,14 +66,10 @@ static HD void moveInp(int m, int i, Inp &in) {
     case 4: in.B = i == 0; in.A = i >= 2 && i < 14; break;
     case 5: in.Z = i < 10; in.B = i >= 5 && i < 7; break;
     case 6: in.Z = i < 40; in.B = i >= 5 && i < 7; break;
-    case 7: in.Z = i < 15; in.B = i >= 5 && i < 15; break;
-    case 8: in.Z = i < 30; in.B = i >= 5 && i < 25; break;
-    case 9: in.Z = i < 7; in.B = i >= 5 && i < 45; break;
-    case 10: in.Z = i < 50; in.B = i >= 5 && i < 45; break;
-    case 11: in.Z = i < 7 || (i >= 47 && i < 67); in.B = i >= 5 && i < 45; break;
-    case 12: in.B = i == 0; in.Z = i >= 1 && i < 40; break;     // punch, then hold Z right away
-    case 13: in.B = i == 0; in.Z = i >= 4 && i < 40; break;     // punch, then hold Z a moment later
-    case 14: in.B = i == 0; in.Z = i >= 10 && i < 40; break;    // punch, then hold Z near the end of the punch
+    case 7: in.Z = i < 50; in.B = i >= 5 && i < 45; break;
+    case 8: in.B = i == 0; in.Z = i >= 1 && i < 40; break;
+    case 9: in.B = i == 0; in.Z = i >= 4 && i < 40; break;
+    case 10: in.B = i == 0; in.Z = i >= 10 && i < 40; break;
   }
 }
 static HD int travel(const Room &R, const unsigned short *A, Player &P, int j) {
