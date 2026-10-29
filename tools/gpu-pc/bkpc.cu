@@ -1,5 +1,6 @@
 // bkpc.cu -- GPU (CUDA) standing punch-cancel clip search for one room. Port of bkclipsetup.js solve() + bkmove.js + bkcol.js.
-// usage: bkpc <job.bin> <out.txt> [--cpu N]  (--cpu: run the first N cases on the CPU instead, for checking)
+// usage: bkpc <job.bin> <out.txt> [--clips] [--cpu N]  (--clips: write only clips, not holds)
+// was: bkpc <job.bin> <out.txt> [--cpu N]  (--cpu: run the first N cases on the CPU instead, for checking)
 // Build: nvcc -O3 -arch=sm_89 -fmad=false -prec-div=true -prec-sqrt=true -ftz=false -o bkpc.exe bkpc.cu
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,7 +45,7 @@ __global__ void k_search(Room RR, Rooms8 FR, const unsigned short *ACOS, Job J, 
 #endif
 int main(int argc, char **argv) {
   if (argc < 3) { fprintf(stderr, "usage: bkpc job.bin out.txt [--cpu N] [--first F]\n"); return 1; }
-  long long cpuN = -1, firstArg = 0; for (int i = 3; i < argc; i++) { if (!strcmp(argv[i], "--cpu") && i + 1 < argc) cpuN = atoll(argv[++i]); else if (!strcmp(argv[i], "--first") && i + 1 < argc) firstArg = atoll(argv[++i]); }
+  long long cpuN = -1, firstArg = 0; int clipsOnly = 0; for (int i = 3; i < argc; i++) { if (!strcmp(argv[i], "--clips")) clipsOnly = 1; if (!strcmp(argv[i], "--cpu") && i + 1 < argc) cpuN = atoll(argv[++i]); else if (!strcmp(argv[i], "--first") && i + 1 < argc) firstArg = atoll(argv[++i]); }
   fin = fopen(argv[1], "rb"); if (!fin) { fprintf(stderr, "cannot open %s\n", argv[1]); return 1; }
   if (rdi() != 0x42504331) { fprintf(stderr, "bad magic\n"); return 1; }
   std::vector<unsigned short> acos = rdv<unsigned short>();
@@ -65,7 +66,7 @@ int main(int argc, char **argv) {
     Room R = host_room(hr); Rooms8 FRm; for (int i = 0; i < nflat && i < 8; i++) FRm.r[i] = host_room(hf[i]); long long n = cpuN < total - firstArg ? cpuN : total - firstArg; unsigned nb = 0, nh = 0;
     for (long long id = firstArg; id < firstArg + n; id++) { Case c = decode(id, J); Hit h[MAXUPD]; int bad = 0;
       int k = pc_case(R, FRm.r[(int)spots[c.s * 4 + 3]], acos.data(), J, spots[c.s * 4], spots[c.s * 4 + 1], spots[c.s * 4 + 2], yaws[c.yi], params[c.pi * 2], params[c.pi * 2 + 1], &pats[c.qi * MAXLAG], h, &bad);
-      nb += bad; for (int q = 0; q < k; q++) { union { float f; unsigned u; } a, b; a.f = h[q].x0; b.f = h[q].z0;
+      nb += bad; for (int q = 0; q < k; q++) { if (clipsOnly && !h[q].clip) continue; union { float f; unsigned u; } a, b; a.f = h[q].x0; b.f = h[q].z0;
         fprintf(fo, "%d %d %d %d %d %d %d %d %.6f %08X %08X\n", c.s, c.yi, c.pi, c.qi, h[q].k, h[q].holds, h[q].clipAt, h[q].clip, h[q].endY, a.u, b.u); nh++; } }
     double s = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     fprintf(stderr, "CPU: %lld cases, %u results, %u unsupported, %.1f s\n", n, nh, nb, s); fclose(fo); return 0;
@@ -88,7 +89,7 @@ int main(int argc, char **argv) {
     unsigned int nh, nb; CK(cudaMemcpy(&nh, dN, 4, cudaMemcpyDeviceToHost)); CK(cudaMemcpy(&nb, dB, 4, cudaMemcpyDeviceToHost));
     if (nh > MAXH) { fprintf(stderr, "hit buffer overflow (%u)\n", nh); nh = MAXH; }
     if (nh) { CK(cudaMemcpy(hh.data(), dH, sizeof(Hit) * nh, cudaMemcpyDeviceToHost));
-      for (unsigned q = 0; q < nh; q++) { const Hit &h = hh[q]; union { float f; unsigned u; } a, b; a.f = h.x0; b.f = h.z0;
+      for (unsigned q = 0; q < nh; q++) { const Hit &h = hh[q]; if (clipsOnly && !h.clip) continue; union { float f; unsigned u; } a, b; a.f = h.x0; b.f = h.z0;
         fprintf(fo, "%d %d %d %d %d %d %d %d %.6f %08X %08X\n", h.s, h.yi, h.pi, h.qi, h.k, h.holds, h.clipAt, h.clip, h.endY, a.u, b.u); } fflush(fo); }
     totHits += nh; totBad += nb; done += n;
     double el = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
