@@ -75,6 +75,35 @@ static HD inline int surface_type_plain(uint flags) {
   return 1;
 }
 
+// surface_type with the per-map table (bkmove.js MAP_SURF)
+static HD inline int surface_type_map(int map, uint flags) {
+  if (flags & 0x80000000u) return surface_type_plain(flags);
+  int s = 0; if (flags & 0x200) s = 1; if (flags & 0x400) s = 2; if (flags & 0x800) s = 3; if (flags & 0x1000) s = 4;
+  switch (map) {
+    case 0x1: { const int t_[5] = { 1, 7, 6, 5, 1 }; return t_[s]; }
+    case 0x2: { const int t_[5] = { 1, 5, 6, 1, 1 }; return t_[s]; }
+    case 0x7: { const int t_[5] = { 2, 5, 6, 1, 1 }; return t_[s]; }
+    case 0x26: { const int t_[5] = { 1, 5, 1, 1, 1 }; return t_[s]; }
+    case 0xB: { const int t_[5] = { 1, 9, 10, 8, 1 }; return t_[s]; }
+    case 0xD: { const int t_[5] = { 8, 11, 1, 1, 1 }; return t_[s]; }
+    case 0x12: { const int t_[5] = { 2, 6, 1, 1, 1 }; return t_[s]; }
+    case 0x13: { const int t_[5] = { 6, 1, 1, 6, 1 }; return t_[s]; }
+    case 0x14: { const int t_[5] = { 6, 1, 1, 1, 1 }; return t_[s]; }
+    case 0x15: { const int t_[5] = { 6, 1, 1, 1, 1 }; return t_[s]; }
+    case 0x16: { const int t_[5] = { 6, 1, 1, 1, 1 }; return t_[s]; }
+    case 0x1A: { const int t_[5] = { 6, 1, 1, 1, 1 }; return t_[s]; }
+    case 0x1B: { const int t_[5] = { 1, 7, 6, 12, 5 }; return t_[s]; }
+    case 0x21: { const int t_[5] = { 1, 9, 10, 8, 1 }; return t_[s]; }
+    case 0x22: { const int t_[5] = { 1, 9, 10, 8, 1 }; return t_[s]; }
+    case 0x23: { const int t_[5] = { 1, 9, 10, 8, 1 }; return t_[s]; }
+    case 0x27: { const int t_[5] = { 3, 5, 3, 1, 1 }; return t_[s]; }
+    case 0x31: { const int t_[5] = { 9, 10, 5, 6, 1 }; return t_[s]; }
+    case 0x46: { const int t_[5] = { 3, 1, 1, 1, 1 }; return t_[s]; }
+    case 0x72: { const int t_[5] = { 1, 8, 11, 3, 5 }; return t_[s]; }
+    case 0x6F: { const int t_[5] = { 1, 3, 3, 1, 1 }; return t_[s]; }
+    case 0x40: { const int t_[5] = { 1, 6, 5, 3, 7 }; return t_[s]; }
+    default: return 1; }
+}
 struct Anim { int type; float dur, timer, anim, sub0, sub1, start; int def, dir, id; };
 static HD inline void an_reset(Anim &a) { a.type = A_LOOP; a.def = 1; a.timer = 0; a.start = 0; a.sub0 = 0; a.sub1 = 1.0f; a.dur = 2.0f; a.dir = 1; }
 static HD inline void an_go(Anim &a) { a.anim = a.def ? (a.dir ? 0.0f : 0.99999899f) : a.start; a.timer = a.anim; }
@@ -118,7 +147,7 @@ static HD inline int pl_isActive(const Player &P) { int fl = (int)P.tr.unk4C; re
 static HD inline void pl_setUT(Player &P, int ys, int ym, int pt) { P.yawState = ys; P.yawMode = ym; P.ptype = pt; }
 static HD inline void pl_walkTarget(Player &P) { if (P.szone == 0) P.thv = 0; else P.bad = 1; }
 static HD inline void pl_setHVel(Player &P, float yaw, float mag) { float v[3]; rot_yaw(yaw, mag, v); P.vel[0] = v[0]; P.vel[1] = v[1]; P.vel[2] = v[2]; }
-static HD inline int pl_groundType(const Player &P) { int t = surface_type_plain(P.tr.unk4C); return t == 3 ? 4 : 2; }
+static HD inline int pl_groundType(const Player &P) { int t = surface_type_map(P.map, P.tr.unk4C); return t == 3 ? 4 : 2; }
 
 static HD void pl_setState(Player &P, int id);
 static HD void st_init(Player &P, int id) {

@@ -2,6 +2,8 @@
 // libultra acos table, and the search: crack spots, facings, punch-cancel A timings and lag patterns.
 // usage: node pack.js <spots.json [[x,y,z,..],...]> <out.bin> [--map 0x71] [--cancel 1,2,3,4] [--hold 2,3,...] [--dirs 8]
 //        [--pats none|single|early|LIST] [--maxupd 40] [--nostand] [--root <bitclip-lab dir>]
+// --pats: short = one 1-frame update on every update; short2 = every pair of 1-frame updates; shortlong = one short + one long;
+// (in LIST, u+1000 = a 1-frame update on update u)
 // --pats: none = no lag only; single = [] + one long update on every update 0..maxupd-1; early = [] + one on 2..12;
 //         LIST = semicolon-separated patterns of comma-separated 0-based updates, e.g. "24;23;25,28" ("-" = no lag)
 'use strict';
@@ -66,6 +68,9 @@ const params = []; for (const c of cancel) for (const h of hold) params.push(c, 
 let pm = opt('--pats', 'none'); if (pm.startsWith('@')) pm = fs.readFileSync(pm.slice(1), 'utf8').trim(); let pats;
 if (pm === 'none') pats = [[]];
 else if (pm === 'single') { pats = [[]]; for (let u = 0; u < maxUpd; u++) pats.push([u]); }
+else if (pm === 'short') { pats = [[]]; for (let u = 0; u < maxUpd; u++) pats.push([u + 1000]); }
+else if (pm === 'short2') { pats = [[]]; for (let u = 0; u < maxUpd; u++) for (let v = u + 1; v < maxUpd; v++) pats.push([u + 1000, v + 1000]); }
+else if (pm === 'shortlong') { pats = [[]]; for (let u = 0; u < maxUpd; u++) for (let v = 0; v < maxUpd; v++) if (u !== v) pats.push([u + 1000, v]); }
 else if (pm === 'early') { pats = [[]]; for (let u = 2; u <= 12; u++) pats.push([u]); }
 else pats = pm.split(';').map(s => s === '-' ? [] : s.split(',').map(Number));
 const patsFlat = []; for (const p of pats) { for (let q = 0; q < MAXLAG; q++) patsFlat.push(q < p.length ? p[q] : -1); }
