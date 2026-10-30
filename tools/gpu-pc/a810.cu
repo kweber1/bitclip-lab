@@ -64,7 +64,10 @@ __global__ void k_run(Room R, const unsigned short *A, const float *orig, const 
     Player P; stand(R, A, P, orig[2 * (2 * s + phr)], orig[2 * (2 * s + phr) + 1], yaw); float m = 0;
     if (G_MODE == 9) { float thr = -(float)G_THR; float m9 = 0; float prevy = 0; Player Q = P;
     for (int i = 0; i < NU; i++) { Inp in = { i >= 1 && i <= K, i == 0, 0, 0, 0 }; int d = dtOf(ph, 0, i); if (i > 0 && prevy < thr && prevy > -300) d = 3;
-      pl_step(R, A, Q, in, d); prevy = Q.pos[1]; if (Q.pos[1] < m9) m9 = Q.pos[1]; if (Q.bad) break; }
+      float y0 = Q.pos[1]; pl_step(R, A, Q, in, d);
+      float tgt = y0 + Q.vel[1] * Q.dt;            // where this update tried to go (the console trace shows this while held)
+      prevy = (Q.pos[1] > tgt + 1.0f) ? tgt : Q.pos[1];   // held/pushed: use the target depth
+      if (Q.pos[1] < m9) m9 = Q.pos[1]; if (Q.bad) break; }
     miny[t] = m9; return; }
   for (int i = 0; i < NU; i++) { Inp in = { i >= 1 && i <= K, i == 0, 0, 0, 0 }; pl_step(R, A, P, in, p[i]); if (P.pos[1] < m) m = P.pos[1]; if (P.bad) break; }
     miny[t] = m; return; }
