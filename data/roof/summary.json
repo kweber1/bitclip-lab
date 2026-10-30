@@ -1,0 +1,794 @@
+[
+ {
+  "map": "0x01",
+  "total": 47988,
+  "shown": 47988,
+  "beePAL": 1574,
+  "flyPAL": 852,
+  "beeNTSC": 718,
+  "flyNTSC": 624
+ },
+ {
+  "map": "0x02",
+  "total": 21978,
+  "shown": 21978,
+  "beePAL": 4,
+  "flyPAL": 43,
+  "beeNTSC": 0,
+  "flyNTSC": 5
+ },
+ {
+  "map": "0x05",
+  "total": 1168,
+  "shown": 1168,
+  "beePAL": 885,
+  "flyPAL": 598,
+  "beeNTSC": 815,
+  "flyNTSC": 480
+ },
+ {
+  "map": "0x06",
+  "total": 10847,
+  "shown": 10847,
+  "beePAL": 9865,
+  "flyPAL": 4904,
+  "beeNTSC": 5702,
+  "flyNTSC": 986
+ },
+ {
+  "map": "0x07",
+  "total": 44671,
+  "shown": 44671,
+  "beePAL": 1292,
+  "flyPAL": 49,
+  "beeNTSC": 410,
+  "flyNTSC": 1
+ },
+ {
+  "map": "0x0A",
+  "total": 3186,
+  "shown": 3186,
+  "beePAL": 1119,
+  "flyPAL": 920,
+  "beeNTSC": 1021,
+  "flyNTSC": 741
+ },
+ {
+  "map": "0x0B",
+  "total": 200146,
+  "shown": 60000,
+  "beePAL": 7504,
+  "flyPAL": 3671,
+  "beeNTSC": 3631,
+  "flyNTSC": 3032
+ },
+ {
+  "map": "0x0C",
+  "total": 6939,
+  "shown": 6939,
+  "beePAL": 2739,
+  "flyPAL": 1312,
+  "beeNTSC": 2073,
+  "flyNTSC": 1300
+ },
+ {
+  "map": "0x0D",
+  "total": 27122,
+  "shown": 27122,
+  "beePAL": 1385,
+  "flyPAL": 626,
+  "beeNTSC": 1312,
+  "flyNTSC": 80
+ },
+ {
+  "map": "0x0E",
+  "total": 19346,
+  "shown": 19346,
+  "beePAL": 96,
+  "flyPAL": 23,
+  "beeNTSC": 23,
+  "flyNTSC": 10
+ },
+ {
+  "map": "0x10",
+  "total": 60486,
+  "shown": 60000,
+  "beePAL": 11231,
+  "flyPAL": 7625,
+  "beeNTSC": 7913,
+  "flyNTSC": 0
+ },
+ {
+  "map": "0x11",
+  "total": 50085,
+  "shown": 50085,
+  "beePAL": 4368,
+  "flyPAL": 475,
+  "beeNTSC": 1602,
+  "flyNTSC": 1
+ },
+ {
+  "map": "0x12",
+  "total": 5501,
+  "shown": 5501,
+  "beePAL": 3329,
+  "flyPAL": 3303,
+  "beeNTSC": 3327,
+  "flyNTSC": 3299
+ },
+ {
+  "map": "0x13",
+  "total": 8234,
+  "shown": 8234,
+  "beePAL": 130,
+  "flyPAL": 81,
+  "beeNTSC": 104,
+  "flyNTSC": 51
+ },
+ {
+  "map": "0x14",
+  "total": 34506,
+  "shown": 34506,
+  "beePAL": 4050,
+  "flyPAL": 897,
+  "beeNTSC": 1059,
+  "flyNTSC": 727
+ },
+ {
+  "map": "0x15",
+  "total": 15954,
+  "shown": 15954,
+  "beePAL": 1101,
+  "flyPAL": 876,
+  "beeNTSC": 1068,
+  "flyNTSC": 0
+ },
+ {
+  "map": "0x16",
+  "total": 18338,
+  "shown": 18338,
+  "beePAL": 2872,
+  "flyPAL": 135,
+  "beeNTSC": 0,
+  "flyNTSC": 0
+ },
+ {
+  "map": "0x1A",
+  "total": 1223,
+  "shown": 1223,
+  "beePAL": 1146,
+  "flyPAL": 1139,
+  "beeNTSC": 1146,
+  "flyNTSC": 1139
+ },
+ {
+  "map": "0x1B",
+  "total": 16131,
+  "shown": 16131,
+  "beePAL": 267,
+  "flyPAL": 322,
+  "beeNTSC": 236,
+  "flyNTSC": 322
+ },
+ {
+  "map": "0x1C",
+  "total": 33249,
+  "shown": 33249,
+  "beePAL": 419,
+  "flyPAL": 176,
+  "beeNTSC": 64,
+  "flyNTSC": 89
+ },
+ {
+  "map": "0x1D",
+  "total": 6460,
+  "shown": 6460,
+  "beePAL": 1182,
+  "flyPAL": 183,
+  "beeNTSC": 358,
+  "flyNTSC": 202
+ },
+ {
+  "map": "0x21",
+  "total": 9084,
+  "shown": 9084,
+  "beePAL": 3112,
+  "flyPAL": 202,
+  "beeNTSC": 231,
+  "flyNTSC": 5
+ },
+ {
+  "map": "0x22",
+  "total": 169957,
+  "shown": 60000,
+  "beePAL": 4932,
+  "flyPAL": 715,
+  "beeNTSC": 870,
+  "flyNTSC": 17
+ },
+ {
+  "map": "0x23",
+  "total": 9553,
+  "shown": 9553,
+  "beePAL": 196,
+  "flyPAL": 102,
+  "beeNTSC": 106,
+  "flyNTSC": 18
+ },
+ {
+  "map": "0x24",
+  "total": 0,
+  "shown": 0,
+  "beePAL": 0,
+  "flyPAL": 0,
+  "beeNTSC": 0,
+  "flyNTSC": 0
+ },
+ {
+  "map": "0x25",
+  "total": 55474,
+  "shown": 55474,
+  "beePAL": 3836,
+  "flyPAL": 3451,
+  "beeNTSC": 3831,
+  "flyNTSC": 3416
+ },
+ {
+  "map": "0x26",
+  "total": 1580,
+  "shown": 1580,
+  "beePAL": 801,
+  "flyPAL": 735,
+  "beeNTSC": 800,
+  "flyNTSC": 735
+ },
+ {
+  "map": "0x27",
+  "total": 179144,
+  "shown": 60000,
+  "beePAL": 12872,
+  "flyPAL": 2266,
+  "beeNTSC": 6866,
+  "flyNTSC": 1560
+ },
+ {
+  "map": "0x28",
+  "total": 1304,
+  "shown": 1304,
+  "beePAL": 1304,
+  "flyPAL": 1304,
+  "beeNTSC": 1304,
+  "flyNTSC": 1304
+ },
+ {
+  "map": "0x29",
+  "total": 1728,
+  "shown": 1728,
+  "beePAL": 1610,
+  "flyPAL": 1562,
+  "beeNTSC": 1622,
+  "flyNTSC": 1544
+ },
+ {
+  "map": "0x2A",
+  "total": 3317,
+  "shown": 3317,
+  "beePAL": 2880,
+  "flyPAL": 3044,
+  "beeNTSC": 2880,
+  "flyNTSC": 3046
+ },
+ {
+  "map": "0x2B",
+  "total": 1926,
+  "shown": 1926,
+  "beePAL": 173,
+  "flyPAL": 0,
+  "beeNTSC": 0,
+  "flyNTSC": 0
+ },
+ {
+  "map": "0x2C",
+  "total": 1053,
+  "shown": 1053,
+  "beePAL": 885,
+  "flyPAL": 741,
+  "beeNTSC": 886,
+  "flyNTSC": 692
+ },
+ {
+  "map": "0x2D",
+  "total": 1404,
+  "shown": 1404,
+  "beePAL": 1404,
+  "flyPAL": 39,
+  "beeNTSC": 52,
+  "flyNTSC": 32
+ },
+ {
+  "map": "0x2E",
+  "total": 7043,
+  "shown": 7043,
+  "beePAL": 6590,
+  "flyPAL": 6279,
+  "beeNTSC": 6590,
+  "flyNTSC": 6279
+ },
+ {
+  "map": "0x2F",
+  "total": 13043,
+  "shown": 13043,
+  "beePAL": 1692,
+  "flyPAL": 336,
+  "beeNTSC": 424,
+  "flyNTSC": 336
+ },
+ {
+  "map": "0x31",
+  "total": 47840,
+  "shown": 47840,
+  "beePAL": 1493,
+  "flyPAL": 107,
+  "beeNTSC": 108,
+  "flyNTSC": 37
+ },
+ {
+  "map": "0x34",
+  "total": 4077,
+  "shown": 4077,
+  "beePAL": 178,
+  "flyPAL": 61,
+  "beeNTSC": 43,
+  "flyNTSC": 41
+ },
+ {
+  "map": "0x35",
+  "total": 1731,
+  "shown": 1731,
+  "beePAL": 1724,
+  "flyPAL": 65,
+  "beeNTSC": 68,
+  "flyNTSC": 66
+ },
+ {
+  "map": "0x36",
+  "total": 538,
+  "shown": 538,
+  "beePAL": 520,
+  "flyPAL": 0,
+  "beeNTSC": 0,
+  "flyNTSC": 0
+ },
+ {
+  "map": "0x37",
+  "total": 1522,
+  "shown": 1522,
+  "beePAL": 1231,
+  "flyPAL": 1084,
+  "beeNTSC": 1231,
+  "flyNTSC": 1077
+ },
+ {
+  "map": "0x38",
+  "total": 605,
+  "shown": 605,
+  "beePAL": 558,
+  "flyPAL": 533,
+  "beeNTSC": 558,
+  "flyNTSC": 531
+ },
+ {
+  "map": "0x39",
+  "total": 1079,
+  "shown": 1079,
+  "beePAL": 1066,
+  "flyPAL": 1054,
+  "beeNTSC": 1065,
+  "flyNTSC": 1055
+ },
+ {
+  "map": "0x3A",
+  "total": 465,
+  "shown": 465,
+  "beePAL": 462,
+  "flyPAL": 453,
+  "beeNTSC": 463,
+  "flyNTSC": 402
+ },
+ {
+  "map": "0x3B",
+  "total": 3385,
+  "shown": 3385,
+  "beePAL": 346,
+  "flyPAL": 399,
+  "beeNTSC": 348,
+  "flyNTSC": 342
+ },
+ {
+  "map": "0x3C",
+  "total": 3744,
+  "shown": 3744,
+  "beePAL": 2882,
+  "flyPAL": 2768,
+  "beeNTSC": 2869,
+  "flyNTSC": 746
+ },
+ {
+  "map": "0x3D",
+  "total": 2935,
+  "shown": 2935,
+  "beePAL": 2402,
+  "flyPAL": 2077,
+  "beeNTSC": 2402,
+  "flyNTSC": 2077
+ },
+ {
+  "map": "0x3E",
+  "total": 1537,
+  "shown": 1537,
+  "beePAL": 1291,
+  "flyPAL": 1128,
+  "beeNTSC": 1291,
+  "flyNTSC": 1128
+ },
+ {
+  "map": "0x3F",
+  "total": 1062,
+  "shown": 1062,
+  "beePAL": 792,
+  "flyPAL": 639,
+  "beeNTSC": 792,
+  "flyNTSC": 639
+ },
+ {
+  "map": "0x40",
+  "total": 126363,
+  "shown": 60000,
+  "beePAL": 16283,
+  "flyPAL": 5509,
+  "beeNTSC": 4756,
+  "flyNTSC": 4910
+ },
+ {
+  "map": "0x41",
+  "total": 31353,
+  "shown": 31353,
+  "beePAL": 2500,
+  "flyPAL": 3,
+  "beeNTSC": 1026,
+  "flyNTSC": 3
+ },
+ {
+  "map": "0x43",
+  "total": 62624,
+  "shown": 60000,
+  "beePAL": 5756,
+  "flyPAL": 2426,
+  "beeNTSC": 2531,
+  "flyNTSC": 1402
+ },
+ {
+  "map": "0x44",
+  "total": 62345,
+  "shown": 60000,
+  "beePAL": 6920,
+  "flyPAL": 3401,
+  "beeNTSC": 3158,
+  "flyNTSC": 2385
+ },
+ {
+  "map": "0x45",
+  "total": 62069,
+  "shown": 60000,
+  "beePAL": 5753,
+  "flyPAL": 3241,
+  "beeNTSC": 2697,
+  "flyNTSC": 2180
+ },
+ {
+  "map": "0x46",
+  "total": 121462,
+  "shown": 60000,
+  "beePAL": 10712,
+  "flyPAL": 2528,
+  "beeNTSC": 2669,
+  "flyNTSC": 1353
+ },
+ {
+  "map": "0x53",
+  "total": 68875,
+  "shown": 60000,
+  "beePAL": 3179,
+  "flyPAL": 4253,
+  "beeNTSC": 2814,
+  "flyNTSC": 2701
+ },
+ {
+  "map": "0x5A",
+  "total": 21945,
+  "shown": 21945,
+  "beePAL": 4302,
+  "flyPAL": 5794,
+  "beeNTSC": 3291,
+  "flyNTSC": 5009
+ },
+ {
+  "map": "0x5E",
+  "total": 6252,
+  "shown": 6252,
+  "beePAL": 4820,
+  "flyPAL": 3118,
+  "beeNTSC": 3276,
+  "flyNTSC": 2471
+ },
+ {
+  "map": "0x62",
+  "total": 18572,
+  "shown": 18572,
+  "beePAL": 1431,
+  "flyPAL": 0,
+  "beeNTSC": 1340,
+  "flyNTSC": 2
+ },
+ {
+  "map": "0x63",
+  "total": 19708,
+  "shown": 19708,
+  "beePAL": 1414,
+  "flyPAL": 1,
+  "beeNTSC": 1340,
+  "flyNTSC": 1
+ },
+ {
+  "map": "0x65",
+  "total": 2241,
+  "shown": 2241,
+  "beePAL": 119,
+  "flyPAL": 184,
+  "beeNTSC": 96,
+  "flyNTSC": 138
+ },
+ {
+  "map": "0x69",
+  "total": 84915,
+  "shown": 60000,
+  "beePAL": 12230,
+  "flyPAL": 3958,
+  "beeNTSC": 4752,
+  "flyNTSC": 1176
+ },
+ {
+  "map": "0x6A",
+  "total": 44144,
+  "shown": 44144,
+  "beePAL": 2468,
+  "flyPAL": 1462,
+  "beeNTSC": 1856,
+  "flyNTSC": 218
+ },
+ {
+  "map": "0x6B",
+  "total": 68215,
+  "shown": 60000,
+  "beePAL": 14328,
+  "flyPAL": 2526,
+  "beeNTSC": 2705,
+  "flyNTSC": 1450
+ },
+ {
+  "map": "0x6C",
+  "total": 5336,
+  "shown": 5336,
+  "beePAL": 3351,
+  "flyPAL": 2811,
+  "beeNTSC": 3022,
+  "flyNTSC": 2618
+ },
+ {
+  "map": "0x6D",
+  "total": 77481,
+  "shown": 60000,
+  "beePAL": 4089,
+  "flyPAL": 5895,
+  "beeNTSC": 3683,
+  "flyNTSC": 4717
+ },
+ {
+  "map": "0x6E",
+  "total": 61173,
+  "shown": 60000,
+  "beePAL": 4456,
+  "flyPAL": 3425,
+  "beeNTSC": 1882,
+  "flyNTSC": 1816
+ },
+ {
+  "map": "0x6F",
+  "total": 178162,
+  "shown": 60000,
+  "beePAL": 17190,
+  "flyPAL": 2804,
+  "beeNTSC": 3715,
+  "flyNTSC": 1562
+ },
+ {
+  "map": "0x70",
+  "total": 83945,
+  "shown": 60000,
+  "beePAL": 940,
+  "flyPAL": 257,
+  "beeNTSC": 407,
+  "flyNTSC": 167
+ },
+ {
+  "map": "0x71",
+  "total": 38733,
+  "shown": 38733,
+  "beePAL": 2568,
+  "flyPAL": 341,
+  "beeNTSC": 327,
+  "flyNTSC": 56
+ },
+ {
+  "map": "0x72",
+  "total": 112449,
+  "shown": 60000,
+  "beePAL": 5531,
+  "flyPAL": 3333,
+  "beeNTSC": 1175,
+  "flyNTSC": 1185
+ },
+ {
+  "map": "0x74",
+  "total": 64799,
+  "shown": 60000,
+  "beePAL": 5835,
+  "flyPAL": 1231,
+  "beeNTSC": 214,
+  "flyNTSC": 1020
+ },
+ {
+  "map": "0x75",
+  "total": 65964,
+  "shown": 60000,
+  "beePAL": 39409,
+  "flyPAL": 3634,
+  "beeNTSC": 36924,
+  "flyNTSC": 2180
+ },
+ {
+  "map": "0x76",
+  "total": 75060,
+  "shown": 60000,
+  "beePAL": 631,
+  "flyPAL": 236,
+  "beeNTSC": 369,
+  "flyNTSC": 154
+ },
+ {
+  "map": "0x77",
+  "total": 48219,
+  "shown": 48219,
+  "beePAL": 1370,
+  "flyPAL": 1184,
+  "beeNTSC": 1142,
+  "flyNTSC": 0
+ },
+ {
+  "map": "0x78",
+  "total": 180010,
+  "shown": 60000,
+  "beePAL": 6827,
+  "flyPAL": 4101,
+  "beeNTSC": 3306,
+  "flyNTSC": 3227
+ },
+ {
+  "map": "0x79",
+  "total": 78705,
+  "shown": 60000,
+  "beePAL": 8924,
+  "flyPAL": 2356,
+  "beeNTSC": 2074,
+  "flyNTSC": 958
+ },
+ {
+  "map": "0x7A",
+  "total": 50409,
+  "shown": 50409,
+  "beePAL": 1431,
+  "flyPAL": 856,
+  "beeNTSC": 961,
+  "flyNTSC": 893
+ },
+ {
+  "map": "0x7F",
+  "total": 72384,
+  "shown": 60000,
+  "beePAL": 4697,
+  "flyPAL": 961,
+  "beeNTSC": 2198,
+  "flyNTSC": 27
+ },
+ {
+  "map": "0x80",
+  "total": 18425,
+  "shown": 18425,
+  "beePAL": 1724,
+  "flyPAL": 2,
+  "beeNTSC": 2,
+  "flyNTSC": 0
+ },
+ {
+  "map": "0x8B",
+  "total": 15326,
+  "shown": 15326,
+  "beePAL": 2672,
+  "flyPAL": 1156,
+  "beeNTSC": 1255,
+  "flyNTSC": 1078
+ },
+ {
+  "map": "0x8C",
+  "total": 7832,
+  "shown": 7832,
+  "beePAL": 3510,
+  "flyPAL": 3265,
+  "beeNTSC": 3507,
+  "flyNTSC": 3251
+ },
+ {
+  "map": "0x8D",
+  "total": 15471,
+  "shown": 15471,
+  "beePAL": 953,
+  "flyPAL": 810,
+  "beeNTSC": 876,
+  "flyNTSC": 334
+ },
+ {
+  "map": "0x8E",
+  "total": 41021,
+  "shown": 41021,
+  "beePAL": 53,
+  "flyPAL": 66,
+  "beeNTSC": 36,
+  "flyNTSC": 66
+ },
+ {
+  "map": "0x8F",
+  "total": 9709,
+  "shown": 9709,
+  "beePAL": 1856,
+  "flyPAL": 1300,
+  "beeNTSC": 1318,
+  "flyNTSC": 0
+ },
+ {
+  "map": "0x90",
+  "total": 1999,
+  "shown": 1999,
+  "beePAL": 1892,
+  "flyPAL": 846,
+  "beeNTSC": 849,
+  "flyNTSC": 0
+ },
+ {
+  "map": "0x92",
+  "total": 29424,
+  "shown": 29424,
+  "beePAL": 1845,
+  "flyPAL": 92,
+  "beeNTSC": 487,
+  "flyNTSC": 6
+ },
+ {
+  "map": "0x93",
+  "total": 259354,
+  "shown": 60000,
+  "beePAL": 16861,
+  "flyPAL": 5603,
+  "beeNTSC": 6094,
+  "flyNTSC": 2497
+ }
+]
