@@ -66,9 +66,9 @@ const FRICTION = [0.0, 0.07, 0.29, 0.15, 0.05].map(F); // commonParticle.c D_803
 // ---- states (enums.h bs_e)
 const S = { IDLE: 0x1, WALK_SLOW: 0x2, WALK: 0x3, WALK_FAST: 0x4, JUMP: 0x5, CLAW: 0x6, CROUCH: 0x7, SKID: 0xC, BBUSTER: 0xF, BFLIP: 0x12, BBARGE: 0x13,
   WALK_CREEP: 0x1F, LANDING: 0x20, FALL: 0x2F, ROLL: 0x31, SLIDE: 0x32, TUMBLE: 0x3D, SPLAT: 0x72,
-  TROT_ENTER: 0x14, TROT_IDLE: 0x15, TROT_WALK: 0x16, TROT_EXIT: 0x17, TROT_JUMP: 0x08, TROT_FALL: 0x71, TROT_SLIDE: 0x45 };
+  BFLAP: 0x10, BPECK: 0x11, OW: 0xE, WW_ENTER: 0x1A, WW_IDLE: 0x1B, WW_WALK: 0x1C, WW_JUMP: 0x1D, WW_EXIT: 0x1E, SHOCK_CHARGE: 0x21, SHOCK_JUMP: 0x22, DIVE_IDLE: 0x2B, DIVE_B: 0x2C, SWIM_IDLE: 0x2D, SWIM: 0x2E, DIVE_ENTER: 0x30, DIVE_A: 0x39, LAND_WATER: 0x4C, TROT_ENTER: 0x14, TROT_IDLE: 0x15, TROT_WALK: 0x16, TROT_EXIT: 0x17, TROT_JUMP: 0x08, TROT_FALL: 0x71, TROT_SLIDE: 0x45 };
 const SNAME = {}; for (const k in S) SNAME[S[k]] = k;
-const PHYS = { NONE: 0, UNK1: 1, NORMAL: 2, LOCKED: 4, AIRBORN: 6 }; // physics types used here
+const PHYS = { NONE: 0, UNK1: 1, NORMAL: 2, LOCKED: 4, AIRBORN: 6, NOGRAV: 9, MOVECLEAR: 5 }; // LOCKED = BA_PHYSICS_LOCKED_ROTATION; MOVECLEAR = BA_PHYSICS_UNK4; NOGRAV = BA_PHYSICS_NO_GRAVITY // physics types used here
 const ONCE = 1, LOOP = 2, STOPPED = 4;
 
 class AnimCtrl {
@@ -104,14 +104,16 @@ class Player {
     this.yawMode = 1; this.yawThresh = 0;
     this.ptype = PHYS.NORMAL; this.thv = 0; this.tyaw = this.ideal; this.grav = F(-2700); this.term = F(-4000);
     this.zones = [0.12, 0.2, 0.5, 0.75, 1.0].map(F); this.stick = { x: 0, y: 0, dist: 0, angle: 0, zone: 0, zp: 0 };
-    this.keys = { A: [0, 1], B: [0, 1], Z: [0, 1], Cl: [0, 1] }; // [held count, released count]; Cl = C-Left
+    this.keys = { A: [0, 1], B: [0, 1], Z: [0, 1], Cl: [0, 1], Cr: [0, 1] }; // [held count, released count]; Cl = C-Left
     this.timers = new Float32Array(8); this.timersLast = new Float32Array(8);
     this.anim = new AnimCtrl(); this.anim.play(0x6F, 5.5, ONCE);
     this.grounded = o.grounded ?? true; this.stable = this.grounded; this.floorType = this.grounded ? 2 : 1; this.holdCounter = 0;
     this.tracker = new BK.Tracker({ unk28: this.pos }); this.slopeTimer = 0; this.stateTimer5 = 0; this.stateTimer6 = 0;
     this.fallStart = this.pos.slice(); this.fallState = 0; this.dpos = [0, 0, 0];
     this.state = 0; this.prevState = 0; this.nextState = 0; this.v = {}; // per-state locals
-    this.update = 0; this.flags = { A: false, B: false, C: false };
+    this.update = 0; this.flags = { A: false, B: false, C: false }; this.hasFlapped = false; this.hasPecked = false;
+    this.abil = Object.assign({ flap: true, peck: true, buster: true, wonderwing: true, shock: true }, o.abilities || {});
+    this.feathers = o.feathers ?? 0; this.onPad = false; this.colMode = 1; this.waterBelow = false; this.inWater = false; this.canJumpOut = false; this.accel = 0; this.tvel = [0, 0, 0];
     this.rate = (o.version || 'PAL') === 'NTSC' ? 60 : 50; this.cap = this.rate === 60 ? 0.05 : 0.06;
     // one collision probe so the tracker knows the floor under the start position
     const r = BK.predict(world, this.pos, this.pos, { grounded: this.grounded, tracker: this.tracker });
@@ -141,11 +143,13 @@ class Player {
       case 0: this.thv = 0; break; case 1: this.thv = ml_interpolate_f(zp, 30, 80); break; case 2: this.thv = ml_interpolate_f(zp, 80, 150); break;
       case 3: this.thv = ml_interpolate_f(zp, 150, 225); break; case 4: this.thv = ml_interpolate_f(zp, 225, 500); break; }
   }
+  canFlap() { return !this.hasFlapped && !this.hasPecked && this.abil.flap; } // can_feathery_flap
+  canPeck() { return !this.hasPecked && !this.hasFlapped && this.abil.peck; } // can_peck
   jumpType() { return this.held('Z') ? S.BFLIP : S.JUMP; }
   _groundType() { const t = surface_type(this.map, this.tracker.unk4C | 0); return t === 3 ? 4 : 2; }
   // ---- input (bakey_update, bastick_update)
   readInput(inp) {
-    for (const k of ['A', 'B', 'Z', 'Cl']) { const h = !!inp[k]; const c = this.keys[k]; c[0] = h ? c[0] + 1 : 0; c[1] = c[0] ? 0 : c[1] + 1; }
+    for (const k of ['A', 'B', 'Z', 'Cl', 'Cr']) { const h = !!inp[k]; const c = this.keys[k]; c[0] = h ? c[0] + 1 : 0; c[1] = c[0] ? 0 : c[1] + 1; }
     const norm = (v, mn, mx) => { v = Math.trunc(v || 0); if (v > 0) { v = v > mx ? mx : v < mn ? mn : v; v = Math.trunc(((v - mn) * 80) / (mx - mn)); }
       else if (v < 0) { v = v < -mx ? -mx : v > -mn ? -mn : v; v = Math.trunc(((v + mn) * 80) / (mx - mn)); } return fmul(F(1 / 80), v); };
     const s = this.stick; s.x = norm(inp.sx, 7, 59); s.y = norm(inp.sy, 7, 61);
@@ -157,12 +161,17 @@ class Player {
     else if (d <= z[3]) { s.zone = 3; s.zp = zp(z[2], z[3]); } else if (d <= z[4]) { s.zone = 4; s.zp = zp(z[3], z[4]); }
   }
   // ---- state machine (code_13780.c)
-  setState(id) { if (!id) return; this.nextState = id; const e = this.END[this.state]; if (e) e.call(this); this.prevState = this.state; this.state = id; this.nextState = 0; this.v = {}; const i = this.INIT[id]; if (i) i.call(this); }
+  setState(id) { if (this._wt) { const w = this._wt; this._wt = null; const t = w.call(this); if (t) id = t; } if (!id) return; this.nextState = id; const e = this.END[this.state]; if (e) e.call(this); this.prevState = this.state; this.state = id; this.nextState = 0; this.v = {}; const i = this.INIT[id]; if (i) i.call(this); }
   // ---- physics (ba/physics.c)
   physics() {
     if (this.ptype === PHYS.NORMAL) this.tyaw = mlNormalizeAngle(this.ideal);
     else if (this.ptype === PHYS.AIRBORN) { if (0 < this.stick.dist) this.tyaw = mlNormalizeAngle(this.stickRel()); }
     else if (this.ptype === PHYS.NONE) { this.lastD = [0, 0, 0]; return this.pos.slice(); }
+    else if (this.ptype === PHYS.MOVECLEAR) { const d = this.vel.map(v => fmul(v, this.dt)); this.vel = [0, 0, 0]; this.lastD = d; return [fadd(this.pos[0], d[0]), fadd(this.pos[1], d[1]), fadd(this.pos[2], d[2])]; } // func_8029740C
+    else if (this.ptype === PHYS.NOGRAV) { // __baphysics_update_no_gravity: velocity eases to the 3D target velocity (this.tvel) at this.accel
+      const k = fmul(this.dt, this.accel); const dv = [0, 1, 2].map(i => fmul(fsub(this.tvel[i], this.vel[i]), k));
+      if (fadd(fadd(fmul(dv[0], dv[0]), fmul(dv[1], dv[1])), fmul(dv[2], dv[2])) < 0.02) this.vel = this.tvel.slice(); else this.vel = [0, 1, 2].map(i => fadd(this.vel[i], dv[i]));
+      const d = this.vel.map(v => fmul(v, this.dt)); this.lastD = d; return [fadd(this.pos[0], d[0]), fadd(this.pos[1], d[1]), fadd(this.pos[2], d[2])]; }
     else if (this.ptype === PHYS.UNK1) { // func_802971DC: plain ballistic flight (the cauldron launch)
       this.vel[1] = fadd(this.vel[1], fmul(this.dt, this.grav)); if (this.vel[1] < this.term) this.vel[1] = this.term;
       const d = this.vel.map(v => fmul(v, this.dt)); this.lastD = d; return [fadd(this.pos[0], d[0]), fadd(this.pos[1], d[1]), fadd(this.pos[2], d[2])]; }
@@ -212,6 +221,7 @@ class Player {
   // ---- one update
   step(inp = {}, frames = 2) {
     if (inp.cam !== undefined) this.cam = F(inp.cam);
+    if (inp.pad !== undefined) this.onPad = !!inp.pad;  // standing on a shock spring pad (BA_FLAG_2_ON_SPRING_PAD, set by the pad's marker)
     if (this.world.timeline) this.world.tick(frames);  // recorded moving objects: this update's frame
     if (inp.fp) { this.fpTwirl(inp.fp); inp = {}; }  // first-person (C-Up) twirl, then a normal standing update
     // crouch-face to an exact facing (Z, Z + stick, release): in the game the facing is the camera-relative stick angle, so a
@@ -219,8 +229,10 @@ class Player {
     if (inp.face != null) { const y = mlNormalizeAngle(F(inp.face)); this.yaw = y; this.ideal = y; this.tyaw = y; inp = {}; }
     this.dt = this.dtOf(frames); this.update++; const old = this.pos.slice();
     this.readInput(inp);
-    const u = this.UPDATE[this.state]; if (u) u.call(this);
+    const u = this.UPDATE[this.state]; if (u) { this._wt = WATER_TO[this.state] || null; u.call(this); this._wt = null; }
     const tgt = this.physics();
+    this.canJumpOut = false; // D_8037C27E
+    if (this.colMode === 3 && this.tracker.unk59 && tgt[1] > fsub(this.tracker.posY, 70)) { tgt[1] = fsub(this.tracker.posY, 70); this.canJumpOut = true; this.vel[1] = F(1); }
     // bafalldamage_update: runs after physics, before collision (uses the stable flag from the previous update and the uncollided position)
     if (this.isStable()) { this.fallStart = tgt.map(F); }
     this.fallHeight = Math.trunc(F(this.fallStart[1] - F(tgt[1])));
@@ -231,14 +243,16 @@ class Player {
       : this.ghost ? { result: tgt, grounded: false, hold_counter_after: 0, held: false, hits: 0, result_bits: null }
       : BK.predict(this.world, old, tgt, { grounded: this.grounded, tracker: this.tracker, hold_counter: this.holdCounter });
     const res = r.result.map(F); this.pos = res; this.grounded = !!r.grounded; this.holdCounter = r.hold_counter_after;
-    const fy = this.floorY(); const below = this.tracker.unk58 && res[1] < fy;
-    if (below && res[1] < fsub(fy, 70)) { this.floorType = 3; if (this.grounded && this.vel[1] < 0) this.vel[1] = F(-1); }
+    const fy = this.floorY(); const wy = this.tracker.posY; if (this.tracker.unk59) this.waterBelow = res[1] < wy; // D_8037C278 (water surface, not the floor)
+    if (this.waterBelow && res[1] < fsub(wy, 70)) { this.floorType = 3; if (this.grounded && this.vel[1] < 0) this.vel[1] = F(-1); }
     else if (this.grounded) { this.floorType = this._groundType(); if (this.vel[1] < 0) this.vel[1] = F(-1); }
     else this.floorType = 1;
     this.dpos = [fsub(res[0], old[0]), fsub(res[1], old[1]), fsub(res[2], old[2])];
     this.yawStep();
     this.anim.update(this.dt);
+    this.inWater = this.waterBelow && res[1] < (this.inWater ? fadd(fsub(wy, 50), 2) : fsub(fsub(wy, 50), 2)); // func_8028B59C
     this.stable = this.grounded; // func_8028B71C
+    if (this.isStable() || this.inWater) { this.hasPecked = false; this.hasFlapped = false; } // func_80294E60
     this.slope(); // func_80294E60 -> func_80294BDC
     let tag = r.held ? 'HOLD' : r.hits > 0 ? 'PUSH' : this.grounded ? 'GROUND' : 'AIR';
     return { update: this.update, frames, dt: this.dt, state: this.state, stateName: SNAME[this.state] || ('0x' + this.state.toString(16)), target: tgt, pos: res.slice(), vel: this.vel.slice(),
@@ -256,8 +270,183 @@ class Player {
 
 // ---- state methods (bs/*.c), bound to Player
 // (talon trot states are at the end of the file)
+
 const INIT = {}, UPDATE = {}, END = {};
 const P = Player.prototype; P.INIT = INIT; P.UPDATE = UPDATE; P.END = END;
+
+// ---- feathery flap (bs/bFlap.c): A in the air after a jump / fall
+const FLAP_DUR = [0.15, 0.2, 0.27, 0.38, 0.4]; // func_802A2858 (default 0.7)
+INIT[S.BFLAP] = function () {
+  this.anim.play(0x18, 0.3, ONCE); this.setUpdateTypes(1, 1, PHYS.NORMAL);
+  if (this.stick.dist !== 0) this.setIdeal(this.stickRel()); this.tyaw = mlNormalizeAngle(this.ideal);
+  this.walkTarget(); this.setHVel(this.ideal, this.thv); this.vel[1] = 0; this.grav = F(-1100);
+  this.hasFlapped = true; this.setTimer(0, 2.5); this.v.cnt = 0; this.v.t1 = 0; this.v.t0 = 0; this.v.ph = 0;
+};
+P._flapTick = function (counting) { // bafalldamage_start, func_802A2900, func_802A2810, func_802A28CC
+  this.fallStart = this.pos.slice(); this.v.t0 = this.v.t1; this.v.t1 = fadd(this.v.t1, this.dt);
+  if (counting) { if (this.anim.isAt(0.9)) this.v.cnt++; this.anim.dur = F(this.v.cnt < 5 ? FLAP_DUR[this.v.cnt] : 0.7); }
+};
+UPDATE[S.BFLAP] = function () {
+  let n = 0; this.walkTarget(); const a = this.anim;
+  switch (this.v.ph) {
+    case 0: this._flapTick(false);
+      if (a.isAt(0.9)) { a.reset(); a.id = 0x17; a.dur = F(this.v.cnt < 5 ? FLAP_DUR[this.v.cnt] : 0.7); a.type = LOOP; a.setStart(0); a.go();
+        this.vel[1] = F(280); this.grav = F(-1100); this.term = F(-399.9); this.v.ph = 1; } break;
+    case 1: this._flapTick(true); if (0.67 <= this.v.t1) this.v.ph = 2; break;
+    case 2: this._flapTick(true); if (this.v.cnt === 4) this.v.ph = 3;
+      if (this.released('A')) { this.grav = F(-2700); this.term = F(-4000); a.dur = F(1); this.v.ph = 4; } break;
+    case 3: this._flapTick(true);
+      if (this.released('A')) { this.grav = F(-2700); this.term = F(-4000); a.dur = F(1); this.v.ph = 4; }
+      else this.thv = F(this.thv * 0.35); break;
+    case 4: if (this.fallHeight > 1000 && !this.isStable()) n = S.TUMBLE; break;
+  }
+  this.decTimer(0); if (this.timers[0] === 0) n = S.FALL;
+  if (this.pressed('Z')) n = S.BBUSTER; if (this.isStable()) n = S.WALK_SLOW; this.setState(n);
+};
+END[S.BFLAP] = function () { this.grav = F(-2700); this.term = F(-4000); };
+// ---- mid-air peck / rat-a-tat rap (bs/bPeck.c): B in the air
+INIT[S.BPECK] = function () {
+  this.v.trot = this.prevState === S.TROT_JUMP; this.anim.play(0x1A, 0.2, ONCE);
+  this.setUpdateTypes(3, 1, PHYS.AIRBORN); this.yawB = [F(1200), F(10)]; this.grav = F(-1400); this.vel[1] = F(120); this.v.n = 0; this.v.ph = 0;
+};
+P._peck = function () { this.hasPecked = true; this.vel[1] = F(120); this.v.n++; }; // func_802A664C
+UPDATE[S.BPECK] = function () {
+  let n = 0; const a = this.anim; this.walkTarget(); if (this.v.trot) this.thv = F(this.thv * 0.1);
+  switch (this.v.ph) {
+    case 0: if (a.isAt(0.9126)) { a.id = 0x19; a.setStart(0); a.dur = F(0.35); a.type = LOOP; a.go(); this.v.t = F(0.5); this.v.ph = 1; } break;
+    case 1: if (a.isAt(0.1621)) this._peck(); if (a.isAt(0.7)) this._peck(); this.v.t = fsub(this.v.t, this.dt);
+      if (this.v.t < 0) { a.reset(); a.id = 0x1A; a.dir = 0; a.dur = F(0.2); a.type = ONCE; a.go(); this.v.ph = 2; } break;
+    case 2: if (a.stopped()) n = S.FALL; break;
+  }
+  if (this.isStable()) n = S.IDLE; this.setState(n);
+};
+END[S.BPECK] = function () { this.grav = F(-2700); };
+
+// ---- getting hit (bs/ow.c + rebound.c func_802B360C): knocked away from a hazard. hit(src, type): type = BA_REBOUND_x id
+const REBOUND = { 1: [1, 510, -1200, 200], 2: [1, 600, -1500, 300], 3: [1, 510, -1200, 100], 4: [1, 510, -1200, 200], 5: [1, 510, -1200, 300], 6: [1, 510, -1200, 400],
+  7: [1, 510, -1200, 500], 8: [1, 600, -1500, 100], 9: [1, 600, -1500, 200], 0xA: [1, 600, -1500, 300], 0xB: [1, 600, -1500, 400], 0xC: [1, 600, -1500, 500],
+  0xD: [2, 300, -1200, 0], 0xF: [1, 300, -1200, 0] }; // code_117D0.c s_rebound_list: [unk1, vy, gravity, horizontal speed]
+P.hit = function (src, type) { this.hitSrc = src.map(F); this.hitType = type; this.setState(S.OW); };
+P._knockback = function () { // func_802B360C (non-launch types)
+  const rb = REBOUND[this.hitType] || REBOUND[1]; this.v.rb = rb; const yw = yaw_of([fsub(this.pos[0], this.hitSrc[0]), 0, fsub(this.pos[2], this.hitSrc[2])]) ?? 0;
+  this.setIdeal(F(yw + 180.0)); this.thv = F(rb[3]); this.tyaw = yw; this.setHVel(yw, this.thv); this.vel[1] = F(rb[1]); this.grav = F(rb[2]);
+  this.setUpdateTypes(1, 2, rb[0] === 2 ? PHYS.AIRBORN : PHYS.LOCKED); this.yaw = this.ideal;
+};
+INIT[S.OW] = function () { this.anim.reset(); this.anim.setSub(0, 0.5344); this.anim.id = 0x4D; this.anim.dur = F(1.7); this.anim.type = ONCE; this.anim.go(); this._knockback(); this.v.ph = 0; };
+UPDATE[S.OW] = function () {
+  let n = 0; if (this.v.rb[0] === 2) this.walkTarget(); // func_802B37DC
+  if (this.v.ph === 0 && this.isAboveFloorBy(0x5A)) { this.anim.setSub(0, 1); this.v.ph = 1; }
+  if (this.fallHeight > 1000 && !this.isStable()) n = S.TUMBLE; if (this.isStable()) n = S.WALK_SLOW; this.setState(n);
+};
+END[S.OW] = function () { this.grav = F(-2700); };
+// ---- wonderwing (bs/bWhirl.c): crouch + C-Right with gold feathers; Z held keeps it (Z released -> exit); one feather every 2 s
+P.wwTarget = function () { this.thv = this.stick.zone ? ml_interpolate_f(this.stick.zp, 80, 425) : 0; }; // func_802AA400
+const WW_SET = new Set([S.WW_IDLE, S.WW_WALK, S.WW_JUMP, S.WW_EXIT]);
+P.wwEnd = function () { if (!WW_SET.has(this.nextState)) this.zones = [0.12, 0.2, 0.5, 0.75, 1.0].map(F); };
+P.wwFeather = function (n) { this.wwT = fadd(this.wwT || 0, this.dt); if (2.0 < this.wwT) { this.wwT = 0; this.feathers--; if (this.feathers < 0) { this.feathers = 0; n = S.WW_EXIT; } } return n; }; // func_802AA58C
+P.wwNext = function (n) { if (this.stick.zone > 0) n = S.WW_WALK; if (this.released('Z')) n = S.WW_EXIT; if (this.pressed('A') && this.isStable()) n = S.WW_JUMP; return n; }; // func_802AA510
+INIT[S.WW_ENTER] = function () { this.anim.play(0x22, 0.5, ONCE); this.setUpdateTypes(1, 1, PHYS.NORMAL); this.thv = 0; this.zones[0] = F(0.03); this.zones[1] = F(1.0); this.wwT = 0; };
+UPDATE[S.WW_ENTER] = function () { this.setState(this.anim.stopped() ? S.WW_IDLE : 0); };
+END[S.WW_ENTER] = P.wwEnd;
+INIT[S.WW_IDLE] = function () { this.anim.play(0x23, 1.0, LOOP); this.setUpdateTypes(1, 1, PHYS.NORMAL); this.thv = 0; };
+UPDATE[S.WW_IDLE] = function () { let n = this.wwNext(0); n = this.wwFeather(n); if (this.isSliding()) n = S.SLIDE; this.setState(n); };
+END[S.WW_IDLE] = P.wwEnd;
+INIT[S.WW_WALK] = function () { this.anim.play(0x11, 0.53, LOOP); this.setUpdateTypes(1, 1, PHYS.NORMAL); };
+UPDATE[S.WW_WALK] = function () {
+  let n = 0; this.wwTarget(); if (!this.stick.zone && this.slowerThan(1)) n = S.WW_IDLE; if (this.released('Z')) n = S.WW_EXIT;
+  if (this.pressed('A') && this.isStable()) n = S.WW_JUMP; n = this.wwFeather(n); if (this.isSliding()) n = S.SLIDE; this.setState(n);
+};
+END[S.WW_WALK] = P.wwEnd;
+INIT[S.WW_JUMP] = function () {
+  this.anim.reset(); this.anim.id = 0x1B; this.anim.dur = F(0.8); this.anim.setStart(0.14); this.anim.setSub(0, 0.4495); this.anim.type = ONCE; this.anim.go();
+  this.setUpdateTypes(1, 3, PHYS.AIRBORN); if (this.stick.dist !== 0) this.setIdeal(this.stickRel()); this.tyaw = mlNormalizeAngle(this.ideal);
+  this.wwTarget(); this.setHVel(this.ideal, this.thv); this.vel[1] = F(693.5); this.grav = F(-1200); this.v.ph = 0;
+};
+UPDATE[S.WW_JUMP] = function () {
+  let n = 0; this.wwTarget(); if (this.released('A') && 0 < this.vel[1]) this.grav = F(-2700);
+  switch (this.v.ph) {
+    case 0: if (this.isAboveFloorBy(0x82)) { this.anim.setSub(0, 1); this.anim.dur = F(0.8); this.anim.type = ONCE; this.v.ph = 1; } break;
+    case 1: if (this.isStable()) this.v.ph = 2; break;
+    case 2: if (this.anim.stopped()) n = S.WW_IDLE; n = this.wwNext(n); break;
+  }
+  n = this.wwFeather(n); this.setState(n);
+};
+END[S.WW_JUMP] = function () { this.grav = F(-2700); this.wwEnd(); };
+INIT[S.WW_EXIT] = function () { this.anim.reset(); this.anim.dir = 0; this.anim.id = 0x22; this.anim.dur = F(0.5); this.anim.type = ONCE; this.anim.go(); this.yawMode = 2; this.thv = 0; };
+UPDATE[S.WW_EXIT] = function () { this.setState(this.anim.stopped() ? S.IDLE : 0); };
+END[S.WW_EXIT] = P.wwEnd;
+// ---- shock spring jump (bs/bShock.c): jump on a shock pad (inp.pad) -> charge; A still held at anim 0.3637 -> 1250 u/s jump
+INIT[S.SHOCK_CHARGE] = function () {
+  this.anim.reset(); this.anim.id = 0x48; this.anim.dur = F(4.2); this.anim.setSub(0, 0.1061); this.anim.type = ONCE; this.anim.go();
+  this.setUpdateTypes(1, 3, PHYS.AIRBORN); if (this.stick.dist !== 0) this.setIdeal(this.stickRel()); this.tyaw = mlNormalizeAngle(this.ideal);
+  this.walkTarget(); this.setHVel(this.ideal, this.thv); this.pos[1] = fadd(this.pos[1], -50); this.v.dn = true; this.v.go = true; this.v.ph = 0;
+};
+UPDATE[S.SHOCK_CHARGE] = function () {
+  let n = 0; const a = this.anim; this.walkTarget(); if (this.released('A') && 0 < this.vel[1]) this.grav = F(-2700);
+  if (this.v.ph === 0) { if (this.fallHeight > 1000 && !this.isStable()) n = S.TUMBLE; if (this.isAboveFloorBy(0x82)) { a.setSub(0, 1); a.dur = F(2.8); a.type = ONCE; this.v.ph = 1; } }
+  else { if (a.isAt(0.4036)) a.dur = F(1.4); if (a.stopped()) n = S.IDLE; }
+  if (this.isAboveFloorBy(0x3C)) { if (a.timer < 0.3637 && this.released('A')) this.v.go = false; if (this.isStable()) this.thv = 0; }
+  else { if (this.pressed('A') && this.canFlap()) n = S.BFLAP; if (this.pressed('Z')) n = S.BBUSTER; }
+  if (a.isAt(0.3637) && this.v.go) n = S.SHOCK_JUMP;
+  if (a.isAt(0.5551)) { this.vel[1] = F(180); if (this.v.dn) { this.pos[1] = fadd(this.pos[1], 50); this.v.dn = false; } }
+  this.setState(n);
+};
+END[S.SHOCK_CHARGE] = function () { if (this.v.dn) this.pos[1] = fadd(this.pos[1], 50); };
+INIT[S.SHOCK_JUMP] = function () {
+  this.anim.reset(); this.anim.id = 0x49; this.anim.dur = F(0.8); this.anim.setStart(0.5304); this.anim.setSub(0, 1); this.anim.type = ONCE; this.anim.go();
+  this.setUpdateTypes(1, 3, PHYS.AIRBORN); if (this.stick.dist !== 0) this.setIdeal(this.stickRel()); this.tyaw = mlNormalizeAngle(this.ideal);
+  this.walkTarget(); this.setHVel(this.ideal, this.thv); this.vel[1] = F(1250); this.grav = F(-1200); this.pos[1] = fadd(this.pos[1], -50); this.v.ph = 0;
+};
+UPDATE[S.SHOCK_JUMP] = function () {
+  let n = 0; this.walkTarget(); if (this.anim.isAt(0.7) && this.released('A') && 0 < this.vel[1]) this.grav = F(-2700);
+  if (this.v.ph === 0 && this.vel[1] < 0) n = S.FALL;
+  if (!this.isStable()) { if (this.fallHeight > 1000) n = S.TUMBLE; if (this.pressed('A') && this.canFlap()) n = S.BFLAP; if (this.pressed('Z')) n = S.BBUSTER; }
+  this.setState(n);
+};
+END[S.SHOCK_JUMP] = function () { if (this.nextState !== S.BPECK) this.grav = F(-2700); this.pos[1] = fadd(this.pos[1], 50); };
+
+// ---- water (bs/swim.c, bs/bSwim.c landing; collision mode 3 in code_C4B0.c func_80293F0C; player_inWater in playerutils.c)
+// Each land/air state's own "if (player_inWater()) next = ..." check, applied to the value it passes to setState.
+const toSwim = function () { return this.inWater ? S.SWIM_IDLE : 0; }, toLand = function () { return this.inWater ? S.LAND_WATER : 0; };
+const WATER_TO = {};
+for (const id of [S.IDLE, S.WALK_CREEP, S.WALK_SLOW, S.WALK, S.WALK_FAST, S.CROUCH, S.LANDING, S.TROT_IDLE, S.TROT_WALK, S.WW_IDLE, S.WW_WALK]) WATER_TO[id] = toSwim;
+for (const id of [S.CLAW, S.BBARGE, S.ROLL, S.SLIDE, S.FALL, S.BFLAP, S.BPECK, S.BBUSTER, S.TUMBLE, S.TROT_JUMP, S.TROT_SLIDE, S.WW_JUMP]) WATER_TO[id] = toLand;
+WATER_TO[S.JUMP] = function () { return this.vel[1] < 0 && this.inWater ? S.LAND_WATER : 0; };
+WATER_TO[S.SHOCK_CHARGE] = WATER_TO[S.JUMP];
+WATER_TO[S.OW] = function () { return this.inWater && this.vel[1] <= 0 ? S.LAND_WATER : 0; };
+const SWIM_SET = new Set([S.SWIM_IDLE, S.SWIM, S.LAND_WATER]);   // bsswim_inset
+P.enteredWater = function () { this.grav = F(100); this.term = F(133.33); this.zones[0] = F(0.03); this.zones[1] = F(1.0); this.colMode = 3; }; // __bsswim_enteredWater
+P.swimEnd = function () { if (!SWIM_SET.has(this.nextState)) { this.term = F(-4000); this.grav = F(-2700); this.zones = [0.12, 0.2, 0.5, 0.75, 1.0].map(F); this.colMode = 1; } };
+INIT[S.LAND_WATER] = function () {
+  let h = fsub(this.fallStart[1], this.tracker.posY); if (this.prevState === S.BBUSTER) h = ml_max_f(h, 600); // func_8029494C
+  if (h > 80) { this.anim.reset(); this.anim.id = 0x4F; this.anim.type = STOPPED; this.anim.dur = F(1.2); this.anim.setStart(0.8204); this.anim.go(); }
+  else { this.anim.reset(); this.anim.id = 0x57; this.anim.type = LOOP; this.anim.dur = F(1.2); this.anim.setStart(0.6412); this.anim.go(); }
+  this.v.vy = ml_map_f(h, 40, 1000, -300, -1200); this.vel[1] = this.v.vy;
+  this.setUpdateTypes(3, 3, PHYS.AIRBORN); this.grav = 0; this.term = F(-399.99); this.zones[0] = F(0.03); this.zones[1] = F(1.0); this.colMode = 3; this.accel = F(2); // func_802A744C
+};
+UPDATE[S.LAND_WATER] = function () {
+  let n = 0; if (this.v.vy < 0) { this.v.vy = F(this.v.vy + ml_max_f(absf(this.v.vy) * 0.1, 50.0)); this.vel[1] = this.v.vy; }
+  if (this.isStable()) n = S.SWIM_IDLE; if (!this.inWater) n = S.IDLE; if (this.vel[1] >= 0) n = S.SWIM_IDLE; this.setState(n);
+};
+END[S.LAND_WATER] = function () { if (!SWIM_SET.has(this.nextState)) { this.term = F(-4000); this.grav = F(-2700); this.zones = [0.12, 0.2, 0.5, 0.75, 1.0].map(F); this.colMode = 1; } }; // func_802A75B0
+INIT[S.SWIM_IDLE] = function () {
+  if (this.anim.id === 0x57 && this.prevState !== S.LAND_WATER) { this.anim.id = 0x57; this.anim.type = LOOP; this.anim.dur = F(1.2); }
+  else { this.anim.reset(); this.anim.id = 0x57; this.anim.type = LOOP; this.anim.setStart(0.3); this.anim.dur = F(1.2); this.anim.go(); }
+  this.setUpdateTypes(3, 3, PHYS.NORMAL); this.yawB = [F(500), F(5)]; this.thv = 0; this.enteredWater();
+};
+UPDATE[S.SWIM_IDLE] = function () {
+  let n = 0; if (this.stick.zone === 1) n = S.SWIM; if (!this.inWater) n = S.IDLE; if (this.canJumpOut && this.pressed('A')) n = S.JUMP; this.setState(n);
+};
+END[S.SWIM_IDLE] = P.swimEnd;
+INIT[S.SWIM] = function () {
+  if (this.anim.id !== 0x39) { this.anim.reset(); this.anim.id = 0x39; this.anim.setStart(0.8); this.anim.type = LOOP; this.anim.go(); }
+  this.yawState = 3; this.yawB = [F(500), F(5)]; this.yawMode = 1; this.ptype = PHYS.NORMAL;
+};
+UPDATE[S.SWIM] = function () {
+  let n = 0; this.thv = this.stick.zone ? ml_interpolate_f(this.stick.zp, 30, 300) : 0; // __bsswim_updateVelocity
+  if (this.stick.zone === 0) n = S.SWIM_IDLE; if (!this.inWater) n = S.IDLE; if (this.canJumpOut && this.pressed('A')) n = S.JUMP; this.setState(n);
+};
+END[S.SWIM] = P.swimEnd;
 function standNext(r) { // func_802B488C
   switch (this.stick.zone) { case 1: r = S.WALK_CREEP; break; case 2: r = S.WALK_SLOW; break; case 3: r = S.WALK; break; case 4: r = S.WALK_FAST; break; }
   if (this.held('Z')) r = S.CROUCH; if (this.pressed('B')) r = S.CLAW; if (this.pressed('A')) r = this.jumpType(); if (this.isSliding()) r = S.SLIDE; return r;
@@ -314,29 +503,34 @@ UPDATE[S.CROUCH] = function () {
   this.decTimer(0); this.decTimer(1); this.thv = ml_map_f(this.timers[0], 0, 0.3, 0, this.v.h0);
   let n = 0; if (this.isSliding()) n = S.SLIDE; if (this.shouldFall()) n = S.FALL;
   if (this.released('Z')) { n = S.IDLE; if (this.pressed('B')) n = S.CLAW; if (this.pressed('A')) n = this.jumpType(); }
-  else { if (this.pressed('Cl')) n = S.TROT_ENTER; if (this.pressed('A')) n = S.BFLIP; if (this.pressed('B')) n = S.BBARGE; }
+  else { if (this.pressed('Cl')) n = S.TROT_ENTER; if (this.pressed('Cr') && this.abil.wonderwing && this.feathers > 0) n = S.WW_ENTER; if (this.pressed('A')) n = S.BFLIP; if (this.pressed('B')) n = S.BBARGE; }
   if (n === S.IDLE && this.timers[1] !== 0) n = 0; this.setState(n);
 };
 INIT[S.JUMP] = function () {
   this.anim.reset(); this.anim.id = 8; this.anim.dur = F(1.9); this.anim.setStart(0.3); this.anim.setSub(0, 0.5042); this.anim.type = ONCE; this.anim.go();
   this.setUpdateTypes(1, 3, PHYS.AIRBORN); if (this.stick.dist !== 0) this.setIdeal(this.stickRel()); this.tyaw = mlNormalizeAngle(this.ideal);
-  this.walkTarget(); this.setHVel(this.ideal, this.thv); this.vel[1] = F(710); this.grav = F(-1350); this.v.ph = 0;
+  this.walkTarget(); this.setHVel(this.ideal, this.thv); this.vel[1] = F(this.prevState === S.SWIM_IDLE || this.prevState === S.SWIM ? 610 : 710); this.grav = F(-1350); this.v.ph = 0;
+  this.v.pad = this.onPad && this.abil.shock; // D_8037D4C2
 };
 UPDATE[S.JUMP] = function () {
   let n = 0; this.walkTarget();
-  if (this.released('A') && 0 < this.vel[1]) this.grav = F(-2700);
+  if (this.released('A') && 0 < this.vel[1] && !this.v.pad) this.grav = F(-2700);
   if (this.v.ph === 0) { if (this.anim.stopped()) { this.anim.setSub(0, 0.6667); this.anim.dur = F(4); this.anim.type = ONCE; this.v.ph = 1; }
     if (this.isAboveFloorBy(0x82)) { this.anim.setSub(0, 1); this.anim.dur = F(1.4); this.anim.type = ONCE; this.v.ph = 2; } }
-  else if (this.v.ph === 1) { if (500 < fsub(this.pos[1], this.floorY())) n = S.FALL; if (this.isAboveFloorBy(0x5A)) { this.anim.setSub(0, 1); this.anim.dur = F(2); this.anim.type = ONCE; this.v.ph = 2; } }
+  else if (this.v.ph === 1) { if (500 < fsub(this.pos[1], this.floorY())) n = S.FALL; if (this.v.pad) { this.v.pad = false; n = S.SHOCK_CHARGE; } if (this.isAboveFloorBy(0x5A)) { this.anim.setSub(0, 1); this.anim.dur = F(2); this.anim.type = ONCE; this.v.ph = 2; } }
+  if (this.released('A')) this.v.pad = false;
   if (this.fallHeight > 1000 && !this.isStable()) n = S.TUMBLE;
+  if (this.pressed('A') && this.canFlap()) n = S.BFLAP; if (this.pressed('B') && this.canPeck()) n = S.BPECK;
   if (this.pressed('Z')) n = S.BBUSTER; if (this.isStable()) n = S.LANDING; this.setState(n);
 };
-END[S.JUMP] = function () { this.grav = F(-2700); };
+END[S.JUMP] = function () { if (this.nextState !== S.BPECK) this.grav = F(-2700); };
 INIT[S.FALL] = function () { this.anim.play(0xB0, 0.38, LOOP); this.setUpdateTypes(1, 3, PHYS.AIRBORN); this.v.ph = 0; };
 UPDATE[S.FALL] = function () {
   let n = 0; this.walkTarget();
   if (this.v.ph === 0 && this.isAboveFloorBy(0x5A)) { this.anim.reset(); this.anim.id = 8; this.anim.dur = F(2); this.anim.setStart(0.6667); this.anim.type = ONCE; this.anim.go(); this.v.ph = 1; }
-  if (this.fallHeight > 1000 && !this.isStable()) n = S.TUMBLE; if (this.pressed('Z')) n = S.BBUSTER; if (this.isStable()) n = S.LANDING; this.setState(n);
+  if (this.fallHeight > 1000 && !this.isStable()) n = S.TUMBLE;
+  if (this.pressed('A') && this.canFlap() && !this.hasPecked) n = S.BFLAP; if (this.pressed('B') && this.canPeck()) n = S.BPECK;
+  if (this.pressed('Z')) n = S.BBUSTER; if (this.isStable()) n = S.LANDING; this.setState(n);
 };
 INIT[S.TUMBLE] = function () { this.anim.play(0x68, 0.35, LOOP); this.setUpdateTypes(1, 3, PHYS.AIRBORN); this.setTimer(0, 0.5); this.setTimer(1, 0.41); };
 UPDATE[S.TUMBLE] = function () { let n = 0; this.decTimer(1); this.decTimer(0); this.walkTarget(); if (this.timers[0] !== 0 && this.pressed('Z')) n = S.BBUSTER; if (this.isStable()) n = S.SPLAT; this.setState(n); };
