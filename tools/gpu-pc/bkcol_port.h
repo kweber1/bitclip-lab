@@ -419,8 +419,7 @@ static HD void tr_update(RA, Tracker *T, World *w) {
 // ---- predict
 typedef struct { float u0[3], uC[3], u34[3], u28[3], u1C[3]; int u18; int u8C; } Iter;
 typedef struct { int hits, held; float result[3]; int grounded, grounded_from_floor, hold_counter_after; } Pred;
-static HD void predict(RA, const unsigned short *ACOS, World *w, const float *old_in, const float *target, int grounded, int hold_counter, Tracker *tr, Pred *out) {
-  float h = 80.0f, r = 35.0f; uint marker_filter = 0x400000; uint filt = marker_filter | 0x1E0000;
+static HD void predict_hr(RA, const unsigned short *ACOS, World *w, const float *old_in, const float *target, int grounded, int hold_counter, Tracker *tr, Pred *out, float h, float r) { uint marker_filter = 0x400000; uint filt = marker_filter | 0x1E0000;
   float old[3], tgt[3], d238[3]; VCP(old, old_in); VCP(tgt, target); vsub(d238, tgt, old);
   tr->unk54 = marker_filter;
   int stg = grounded ? 1 : 0;
@@ -495,6 +494,8 @@ static HD void predict(RA, const unsigned short *ACOS, World *w, const float *ol
   out->hits = count; out->held = held; out->grounded = grounded_out; out->grounded_from_floor = stg;
   out->hold_counter_after = falling_hold ? (hold_counter + 1 < 3 ? hold_counter + 1 : 3) : 0;
 }
+static HD void predict(RA, const unsigned short *ACOS, World *w, const float *old_in, const float *target, int grounded, int hold_counter, Tracker *tr, Pred *out) {
+  predict_hr(RP, ACOS, w, old_in, target, grounded, hold_counter, tr, out, 80.0f, 35.0f); }
 
 
 #undef TF
