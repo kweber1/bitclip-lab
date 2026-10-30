@@ -520,7 +520,7 @@ function predict(world, old, target, o = {}) {
   let grounded_out = st.grounded; const forced = (hold_counter === 3); if (forced) grounded_out = 1;
   const new_counter = falling_hold ? Math.min(hold_counter + 1, 3) : 0;
   return { hits: count, held, result, result_bits: result.map(x => bits(x).toString(16).toUpperCase().padStart(8, '0')), grounded: grounded_out,
-    grounded_from_floor: st.grounded, forced_grounded: forced, falling_hold, hold_counter_after: new_counter, last_hit: last204 ? last204.idx : null, last_n, trace: log };
+    grounded_from_floor: st.grounded, forced_grounded: forced, falling_hold, hold_counter_after: new_counter, last_hit: last204 ? last204.idx : null, last_flags: last204 ? last204.flags : 0, last_n, trace: log };
 }
 
 // ---- several updates

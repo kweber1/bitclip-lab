@@ -263,7 +263,7 @@ class Player {
       : this.ghost ? { result: tgt, grounded: false, hold_counter_after: 0, held: false, hits: 0, result_bits: null }
       : BK.predict(this.world, old, tgt, { grounded: this.grounded, tracker: this.tracker, hold_counter: this.holdCounter, height: this.colH, radius: this.colR, d238 });
     const res = r.result.map(F); this.pos = res; this.grounded = !!r.grounded; this.holdCounter = r.hold_counter_after;
-    this.wallHits = r.hits | 0; if (r.last_n) this.wallN = r.last_n.map(F); else if (!r.hits) this.wallN = [0, 0, 0];
+    this.wallHits = r.hits | 0; this.wallFlags = r.last_flags | 0; if (r.last_n) this.wallN = r.last_n.map(F); else if (!r.hits) this.wallN = [0, 0, 0];
     const fy = this.floorY(); const wy = this.tracker.posY; if (this.tracker.unk59) this.waterBelow = res[1] < wy; // D_8037C278 (water surface, not the floor)
     if (this.waterBelow && res[1] < fsub(wy, 70)) { this.floorType = 3; if (this.grounded && this.vel[1] < 0) this.vel[1] = F(-1); }
     else if (this.grounded) { this.floorType = this._groundType(); if (this.vel[1] < 0) this.vel[1] = F(-1); }
