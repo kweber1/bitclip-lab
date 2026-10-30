@@ -30,7 +30,7 @@ __constant__ int G_MODE;
 #else
 static int G_MODE;
 #endif
-HD static int dtOf(int phase, int flip, int i) { if (G_MODE == 1) return 3; if (G_MODE == 2) return 2; if (G_MODE == 3) return i < flip ? 3 : 2;   // mode 3: 3-VI for the first N (= flip) updates from the claw, then 2-VI int first = phase ? 2 : 3; int d = (i % 2 == 0) ? first : 5 - first; if (flip && i == flip) d = 5 - d; return d; }
+HD static int dtOf(int phase, int flip, int i) { if (G_MODE == 1) return 3; if (G_MODE == 2) return 2; if (G_MODE == 3) return i < flip ? 3 : 2; /* mode 3: 3-VI for the first N (= flip) updates from the claw, then 2-VI */ int first = phase ? 2 : 3; int d = (i % 2 == 0) ? first : 5 - first; if (flip && i == flip) d = 5 - d; return d; }
 HD static void stand(const Room &R, const unsigned short *A, Player &P, float x, float z, float yaw) {
   pl_init(R, A, P, 0x93, x, 0.0f, z, yaw); Inp none = { 0, 0, 0, 0, 0 }; for (int i = 0; i < 10; i++) pl_step(R, A, P, none, 2); }
 // standing spot for spot (cx, cz) and claw length d0: returns 1 and (ox, oz)
