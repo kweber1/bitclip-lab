@@ -1646,6 +1646,8 @@
 "ntsc_holds": 135570,
 "ntsc_clips": 165,
 "ntsc_slopeclips": 107,
-"pose": 8
+"pose": 8,
+"lower": 92939,
+"lower_through": 18413
 }
 ]
