@@ -89,12 +89,22 @@ class CollisionList {
     this.name = name; this.V = vertices.map(v => v.map(a => a | 0)); this.global_norm = F(global_norm);
     if (!header) { this.min = [0, 0, 0]; this.max = [0, 0, 0]; this.y_stride = this.z_stride = 0; this.scale = 0; this.cells = [[0, triangles.length]]; }
     else { this.min = header.slice(0, 3); this.max = header.slice(3, 6); this.y_stride = header[6]; this.z_stride = header[7]; this.scale = header[9]; this.cells = cells.map(c => [c[0], c[1]]); }
-    this.tris = triangles.map((t, i) => { const vi = [this.V[t[0]], this.V[t[1]], this.V[t[2]]];
+    this.raw = triangles; this.tris = triangles.map((t, i) => this._tri(t, i)); this.V0 = this.V.map(v => v.slice()); this._vt = null;
+  }
+  _tri(t, i) { const vi = [this.V[t[0]], this.V[t[1]], this.V[t[2]]];
       const v = vi.map(p => [F(p[0]), F(p[1]), F(p[2])]);
       const ab = vsub(v[1], v[0]), ac = vsub(v[2], v[0]); const cr = cross(ab, ac); const L = F(100000.0);
       const lineN = (L < cr[0] || L < cr[1] || L < cr[2] || cr[0] < -L || cr[1] < -L || cr[2] < -L) ? [fdiv(cr[0], L), fdiv(cr[1], L), fdiv(cr[2], L)] : cr;
       const tmin = [0, 1, 2].map(j => Math.min(v[0][j], v[1][j], v[2][j])), tmax = [0, 1, 2].map(j => Math.max(v[0][j], v[1][j], v[2][j]));
-      return { lst: this, idx: i, v, vi, unk6: t[3], flags: _s32(t[4]), ab, ac, lineN, unitN: normalize(cr), tmin, tmax }; });
+      return { lst: this, idx: i, v, vi, unk6: t[3], flags: _s32(t[4]), ab, ac, lineN, unitN: normalize(cr), tmin, tmax }; }
+  // animated vertices (mesh transforms, code_C5440.c: water waves etc. write the model bin's vertex list, which collision reads):
+  // set vertex k to [x, y, z] (s16) and rebuild the triangles that use it
+  setVerts(list) {
+    if (!this._vt) { this._vt = this.V.map(() => []); this.raw.forEach((t, i) => { for (let j = 0; j < 3; j++) this._vt[t[j]].push(i); }); }
+    const dirty = new Set();
+    for (const [k, p] of list) { const v = this.V[k]; if (v[0] === p[0] && v[1] === p[1] && v[2] === p[2]) continue; v[0] = p[0]; v[1] = p[1]; v[2] = p[2]; for (const i of this._vt[k]) dirty.add(i); }
+    for (const i of dirty) this.tris[i] = this._tri(this.raw[i], i);
+    return dirty.size;
   }
   cells_for(mn, mx, is_float) {
     if (this.scale === 0) return [0];

@@ -112,7 +112,7 @@ class Player {
     this.timers = new Float32Array(8); this.timersLast = new Float32Array(8);
     this.anim = new AnimCtrl(); this.anim.play(0x6F, 5.5, ONCE);
     this.grounded = o.grounded ?? true; this.stable = this.grounded; this.floorType = this.grounded ? 2 : 1; this.holdCounter = 0;
-    this.tracker = new BK.Tracker({ unk28: this.pos }); this.slopeTimer = 0; this.stateTimer5 = 0; this.stateTimer6 = 0;
+    this.tracker = new BK.Tracker({ unk28: this.pos, mode: o.trackerMode ?? 2 }); if (o.trackerMode === 1) this.tracker.set_mode(1); // 1 = fresh tracker (finds water above) this.slopeTimer = 0; this.stateTimer5 = 0; this.stateTimer6 = 0;
     this.fallStart = this.pos.slice(); this.fallState = 0; this.dpos = [0, 0, 0];
     this.state = 0; this.prevState = 0; this.nextState = 0; this.v = {}; // per-state locals
     this.update = 0; this.flags = { A: false, B: false, C: false }; this.hasFlapped = false; this.hasPecked = false;
@@ -120,10 +120,12 @@ class Player {
     this.feathers = o.feathers ?? 0; this.onPad = false; this.colMode = 1; this.waterBelow = false; this.inWater = false; this.canJumpOut = false; this.accel = 0; this.tvel = [0, 0, 0];
     this.pitch = 0; this.pitchIdeal = 0; this.pitchLim = F(500); this.pitchVel = F(0.8); this.diveCd = 0; this.wallHits = 0; this.wallN = [0, 0, 0];
     this.colHT = F(80); this.colRT = F(35); this.colH = F(80); this.colR = F(35); // D_8037C1F0 (target) / D_8037C1F8 (eased 1 unit per update): func_80293D48(height, radius) // pitch.c, bainput_diveCooldown, D_8037C27D/D_8037C258
-    this.rate = (o.version || 'PAL') === 'NTSC' ? 60 : 50; this.cap = this.rate === 60 ? 0.05 : 0.06;
+    this.gtimer = o.gtimer ?? null; this.rate = (o.version || 'PAL') === 'NTSC' ? 60 : 50; this.cap = this.rate === 60 ? 0.05 : 0.06;
     // one collision probe so the tracker knows the floor under the start position
     const r = BK.predict(world, this.pos, this.pos, { grounded: this.grounded, tracker: this.tracker });
     this.grounded = !!r.grounded; this.stable = this.grounded; this.floorType = this.grounded ? this._groundType() : 1;
+    if (this.tracker.unk59) { const wy = this.tracker.posY; this.waterBelow = this.pos[1] < wy; this.inWater = this.waterBelow && this.pos[1] < fsub(fsub(wy, 50), 2);
+      if (this.waterBelow && this.pos[1] < fsub(wy, 70)) this.floorType = 3; }
     this.setState(o.state ?? S.IDLE);
   }
   // ---- helpers
@@ -245,6 +247,7 @@ class Player {
     const u = this.UPDATE[this.state]; if (u) { this._wt = WATER_TO[this.state] || null; u.call(this); this._wt = null; }
     const tgt = this.physics();
     this.canJumpOut = false; // D_8037C27E
+    const d238 = [fsub(tgt[0], old[0]), fsub(tgt[1], old[1]), fsub(tgt[2], old[2])]; // D_8037C238: taken before the water clamp below
     if (this.colMode === 3 && this.tracker.unk59 && tgt[1] > fsub(this.tracker.posY, 70)) { tgt[1] = fsub(this.tracker.posY, 70); this.canJumpOut = true; this.vel[1] = F(1); }
     if (this.preCollide) this.preCollide(tgt); // module hook (e.g. climbing, collision mode 5: func_80293440)
     // bafalldamage_update: runs after physics, before collision (uses the stable flag from the previous update and the uncollided position)
@@ -253,11 +256,12 @@ class Player {
     // collision (func_80293F0C)
     // ghost mode (route search pre-pass): no collision at all, Banjo flies through everything
     // ghost 'flat': the floor is taken as flat at the current floor height and nothing else is solid (fast run-ups)
+    if (this.gtimer != null) { this.tracker.timer_odd = this.gtimer & 1; this.gtimer++; } // gGlobalTimer (1 per update): deep-water floor tracker (mode 4) alternates floor / water rays
     const ease = (t, c) => (c < t ? ml_min_f(t, fadd(c, 1)) : t < c ? ml_max_f(t, fsub(c, 1)) : c); // func_80293EAC
     this.colH = ease(this.colHT, this.colH); this.colR = ease(this.colRT, this.colR);
     const r = this.ghost === 'flat' ? { result: [tgt[0], this.floorY(), tgt[2]], grounded: true, hold_counter_after: 0, held: false, hits: 0, result_bits: null }
       : this.ghost ? { result: tgt, grounded: false, hold_counter_after: 0, held: false, hits: 0, result_bits: null }
-      : BK.predict(this.world, old, tgt, { grounded: this.grounded, tracker: this.tracker, hold_counter: this.holdCounter, height: this.colH, radius: this.colR });
+      : BK.predict(this.world, old, tgt, { grounded: this.grounded, tracker: this.tracker, hold_counter: this.holdCounter, height: this.colH, radius: this.colR, d238 });
     const res = r.result.map(F); this.pos = res; this.grounded = !!r.grounded; this.holdCounter = r.hold_counter_after;
     this.wallHits = r.hits | 0; if (r.last_n) this.wallN = r.last_n.map(F); else if (!r.hits) this.wallN = [0, 0, 0];
     const fy = this.floorY(); const wy = this.tracker.posY; if (this.tracker.unk59) this.waterBelow = res[1] < wy; // D_8037C278 (water surface, not the floor)
@@ -272,6 +276,7 @@ class Player {
     this.stable = this.grounded; // func_8028B71C
     if (this.isStable() || this.inWater) { this.hasPecked = false; this.hasFlapped = false; } // func_80294E60
     this.slope(); // func_80294E60 -> func_80294BDC
+    if (this.world.meshes) this.world.meshes.tick(this.dt); // gsworld_update -> func_8034C9D4 (animated map vertices, bkmesh.js), after the player
     let tag = r.held ? 'HOLD' : r.hits > 0 ? 'PUSH' : this.grounded ? 'GROUND' : 'AIR';
     return { update: this.update, frames, dt: this.dt, state: this.state, stateName: SNAME[this.state] || ('0x' + this.state.toString(16)), target: tgt, pos: res.slice(), vel: this.vel.slice(),
       yaw: this.yaw, ideal: this.ideal, thv: this.thv, grounded: this.grounded ? 1 : 0, hits: r.hits, held: r.held, tag, floorY: fy, bits: r.result_bits };
