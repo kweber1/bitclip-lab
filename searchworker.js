@@ -1,5 +1,5 @@
 // Route search worker for the Bit-Clip Lab: runs bksearch.js off the page's main thread so the 3D view stays smooth.
-importScripts('bkcol.js', 'bkmove.js', 'bksearch.js', 'bkclipsetup.js', 'bkchain.js', 'bkexact.js', 'bkgpu.js');
+importScripts('bkcol.js', 'bkmove.js', 'bkmove_misc.js', 'bkmove_fly.js', 'bkmove_forms.js', 'bkmesh.js', 'bksearch.js', 'bkclipsetup.js', 'bkchain.js', 'bkexact.js', 'bkgpu.js');
 let stopFlag = false;
 self.onmessage = async (e) => {
   const m = e.data;

@@ -1,6 +1,6 @@
 // Chain-search worker thread (Bit-Clip Lab): keeps the standing states it makes (cache by id), tries every move / final move from
 // them, and replays a state from its inputs only when it does not have it.
-importScripts('bkcol.js', 'bkmove.js', 'bksearch.js', 'bkexact.js', 'bkchain.js');
+importScripts('bkcol.js', 'bkmove.js', 'bkmove_misc.js', 'bkmove_fly.js', 'bkmove_forms.js', 'bkmesh.js', 'bksearch.js', 'bkexact.js', 'bkchain.js');
 let C = null, wid = -1; const cache = new Map(); const CAP = 20000;
 const keep = (id, Q) => { cache.set(id, Q); if (cache.size > CAP) cache.delete(cache.keys().next().value); };
 const stateOf = (n) => { const P = cache.get(n.id); if (P) { cache.delete(n.id); cache.set(n.id, P); return P; } return n.ins ? C.replay(n.ins) : null; };
