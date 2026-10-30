@@ -374,10 +374,18 @@ P.step = function (inp = {}, frames = 2) {
     else if (!NO_CLIMB_INTR.has(this.state) && !this.flagF && !(st0 && this.vel[1] < 0)) this.setState(S.CLIMB_IDLE);
   }
   this._climbTouch = false;
+  // flight camera (dynamic camera state 4, bkcam.js FlyCam): set by bsbfly_init (and the other fly states that call func_802914CC(4)),
+  // left when the bomb flies (state 5) or flight ends; it updates after the player, and the beak bomb reads its rotation (viewport)
+  const fc = this.flyCamObj;
+  if (fc) { const on = CAM4.has(this.state) && !(this.state === S.BOMB && this.v.ph === 1);
+    if (on) { if (!fc.active) { fc.bomb(false); fc.active = true; } if (this.state === S.BOMB && !fc.bombOn) { fc.bomb(true); fc.bombOn = true; }
+      fc.update({ pos: this.pos, yaw: this.yaw, pitch: this.pitch, floorY: this.floorY() }, frames); this.flyCam = [fc.rot[0], fc.rot[1]]; }
+    else { fc.active = false; fc.bombOn = false; } }
   row.state = this.state; row.stateName = SNAME[this.state] || ('0x' + this.state.toString(16)); row.pitch = this.pitch;
   return row;
 };
 
+const CAM4 = new Set([S.FLY, S.BOMB, S.BEAKBOMB_CRASH, S.FLY_KNOCKBACK, S.FLY_OW]);
 const api = { FLY_SET, CLIMB_SET };
 L.fly = api;
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
