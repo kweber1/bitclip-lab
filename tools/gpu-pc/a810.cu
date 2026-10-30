@@ -47,9 +47,15 @@ __global__ void k_origin(Room R, const unsigned short *A, const float *spots, in
   int t = blockIdx.x * blockDim.x + threadIdx.x; if (t >= ns * 2) return; int s = t / 2, ph = t % 2;
   float o[2]; ok[t] = origin(R, A, spots[2 * s], spots[2 * s + 1], yaw, ph ? 2 : 3, o); orig[2 * t] = o[0]; orig[2 * t + 1] = o[1];
 }
-__global__ void k_run(Room R, const unsigned short *A, const float *orig, const unsigned char *ok, int ns, float yaw, float *miny, const unsigned char *pat, int nc) {
+__global__ void k_run(Room R, const unsigned short *A, const float *orig, const unsigned char *ok, int ns, float yaw, float *miny, const unsigned char *pat, int nc, const float *SP) {
   long long t = (long long)blockIdx.x * blockDim.x + threadIdx.x; if (t >= (long long)ns * nc) return;
   int s = (int)(t / nc), c = (int)(t % nc); int K = c % NK + 1; c /= NK; int flip = c % NF; int ph = c / NF;
+  if (G_MODE == 5) { // drop from rest at height h above the spot, recorded pattern; case = pattern * NK + height index (h = 80 * (K))
+    const unsigned char *p = pat + (size_t)c * NU; float h = 80.0f * (float)K;
+    Player P; float cx = SP[2 * s], cz = SP[2 * s + 1]; pl_init(R, A, P, 0x93, cx, h, cz, yaw); float m = 1e9f;
+    for (int i = 0; i < NU + 30; i++) { Inp none = { 0, 0, 0, 0, 0 }; pl_step(R, A, P, none, p[i < NU ? i : NU - 1]); if (P.pos[1] < m) m = P.pos[1]; if (P.bad) break;
+      if (P.grounded && P.pos[1] > -1.0f && P.pos[1] < 1.0f) break; }
+    miny[t] = m; return; }
   if (G_MODE == 4) { // recorded pattern c (one length per update from the claw), A held K
     const unsigned char *p = pat + (size_t)c * NU; int phr = p[0] == 2 ? 1 : 0;
     if (!ok[2 * s + phr]) { miny[t] = 1e9f; return; }
@@ -66,11 +72,11 @@ __global__ void k_run(Room R, const unsigned short *A, const float *orig, const 
 }
 int main(int argc, char **argv) {
   if (argc < 5) { fprintf(stderr, "usage: a810 room.bin spots.txt out.txt progress.txt [yaw]\n"); return 1; }
-  float yaw = argc > 5 ? (float)atof(argv[5]) : 45.0f; int mode = argc > 6 ? (!strcmp(argv[6], "all3") ? 1 : !strcmp(argv[6], "all2") ? 2 : !strcmp(argv[6], "3then2") ? 3 : !strcmp(argv[6], "file") ? 4 : 0) : 0;
+  float yaw = argc > 5 ? (float)atof(argv[5]) : 45.0f; int mode = argc > 6 ? (!strcmp(argv[6], "all3") ? 1 : !strcmp(argv[6], "all2") ? 2 : !strcmp(argv[6], "3then2") ? 3 : !strcmp(argv[6], "file") ? 4 : !strcmp(argv[6], "drop") ? 5 : 0) : 0;
   std::vector<unsigned char> PAT; std::vector<std::string> PN;
-  if (mode == 4) { FILE *f = fopen(argv[7], "r"); char nm[128], ps[512];
+  if (mode == 4 || mode == 5) { FILE *f = fopen(argv[7], "r"); char nm[128], ps[512];
     while (f && fscanf(f, "%127s %511s", nm, ps) == 2) { PN.push_back(nm); for (int i = 0; i < NU; i++) { int d = (i < (int)strlen(ps)) ? ps[i] - '0' : 2; PAT.push_back((unsigned char)(d == 3 ? 3 : 2)); } } if (f) fclose(f); }
-  int nc = mode == 4 ? (int)PN.size() * NK : NCASE;
+  int nc = (mode == 4 || mode == 5) ? (int)PN.size() * NK : NCASE;
   fin = fopen(argv[1], "rb"); if (!fin || rdi() != 0x42504331) { fprintf(stderr, "bad room.bin\n"); return 1; }
   std::vector<unsigned short> acos = rdv<unsigned short>(); HostRoom hr = read_room(); fclose(fin);
   std::vector<float> sp; std::vector<unsigned> sb; { FILE *f = fopen(argv[2], "r"); char a[64], b[64];
@@ -79,7 +85,7 @@ int main(int argc, char **argv) {
   fprintf(fp, "spots %d, cases per spot %d, yaw %.3f, patterns %zu\n", ns, nc, yaw, PN.size()); fflush(fp);
   auto t0 = std::chrono::steady_clock::now();
   CK(cudaDeviceSetLimit(cudaLimitStackSize, 32768)); CK(cudaMemcpyToSymbol(G_MODE, &mode, sizeof(int)));
-  fprintf(fp, "mode %s\n", mode == 1 ? "all 3-VI updates" : mode == 2 ? "all 2-VI updates" : mode == 3 ? "3-VI for the first N updates (case f<N>, N = 0..33), then 2-VI" : mode == 4 ? "recorded patterns from file" : "alternation + single flips"); fflush(fp);
+  fprintf(fp, "mode %s\n", mode == 1 ? "all 3-VI updates" : mode == 2 ? "all 2-VI updates" : mode == 3 ? "3-VI for the first N updates (case f<N>, N = 0..33), then 2-VI" : mode == 4 ? "recorded patterns from file" : mode == 5 ? "drop from rest at h = 80..960 above the spot, recorded patterns" : "alternation + single flips"); fflush(fp);
   Room R = dev_room(hr); const unsigned short *dA = up(acos); const float *dS = up(sp);
   float *dO; unsigned char *dOk; CK(cudaMalloc(&dO, ns * 4 * sizeof(float))); CK(cudaMalloc(&dOk, ns * 2));
   k_origin<<<(ns * 2 + 63) / 64, 64>>>(R, dA, dS, ns, yaw, dO, dOk); CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
@@ -90,12 +96,12 @@ int main(int argc, char **argv) {
   unsigned char *dP = 0; if (PAT.size()) { CK(cudaMalloc(&dP, PAT.size())); CK(cudaMemcpy(dP, PAT.data(), PAT.size(), cudaMemcpyHostToDevice)); } else CK(cudaMalloc(&dP, 1));
   long long nclipCases = 0; int nclipSpots = 0;
   for (int s0 = 0; s0 < ns; s0 += CH) { int n = ns - s0 < CH ? ns - s0 : CH; long long nt = (long long)n * nc;
-    k_run<<<(unsigned)((nt + 127) / 128), 128>>>(R, dA, dO + s0 * 4, dOk + s0 * 2, n, yaw, dM, dP, nc); CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
+    k_run<<<(unsigned)((nt + 127) / 128), 128>>>(R, dA, dO + s0 * 4, dOk + s0 * 2, n, yaw, dM, dP, nc, dS + s0 * 2); CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
     CK(cudaMemcpy(M.data(), dM, nt * 4, cudaMemcpyDeviceToHost));
     for (int s = 0; s < n; s++) { int si = s0 + s; std::vector<int> cl; for (int c = 0; c < nc; c++) if (M[(size_t)s * nc + c] < -300) cl.push_back(c);
       if (cl.empty()) continue; nclipSpots++; nclipCases += cl.size();
       fprintf(fo, "%d %08x %08x x %.7f z %.7f | clips %zu |", si, sb[2 * si], sb[2 * si + 1], sp[2 * si], sp[2 * si + 1], cl.size());
-      for (int c : cl) { int K = c % NK + 1, cc = c / NK, flip = cc % NF, ph = cc / NF; if (mode == 4) fprintf(fo, " %s_K%d", PN[cc].c_str(), K); else fprintf(fo, " %c%s%d_K%d", ph ? 'B' : 'A', flip ? "f" : "", flip, K); }
+      for (int c : cl) { int K = c % NK + 1, cc = c / NK, flip = cc % NF, ph = cc / NF; if (mode == 4) fprintf(fo, " %s_K%d", PN[cc].c_str(), K); else if (mode == 5) fprintf(fo, " %s_H%d", PN[cc].c_str(), 80 * K); else fprintf(fo, " %c%s%d_K%d", ph ? 'B' : 'A', flip ? "f" : "", flip, K); }
       for (int ph = 0; ph < 2; ph++) if (Ok[2 * si + ph]) fprintf(fo, " | stand%c %.7f %.7f", ph ? 'B' : 'A', O[4 * si + 2 * ph], O[4 * si + 2 * ph + 1]);
       fprintf(fo, "\n"); }
     fflush(fo);
