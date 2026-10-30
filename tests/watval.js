@@ -13,7 +13,7 @@ let n=0,bad=0;
 for(let i=i0+1;i<rows.length;i++){const x=rows[i],p=rows[i-1];if(x.gtime===p.gtime)continue;
   const src=rows[i+SH];const b=parseInt(src.gbtn,16);P.cam=F(+(process.env.CAMCUR?x.cam:p.cam));
   if(process.env.DBG&&+x.frame===+process.env.DBG){const _p=BK.predict;BK.predict=function(...a){const r=_p.apply(this,a);console.log('PREDICT old',a[1].map(Number),'tgt',a[2].map(Number),'res',r.result,'hits',r.hits,JSON.stringify(r.trace.map(t=>t.map(v=>Array.isArray(v)?v.map(q=>+(+q).toFixed(3)):v))));return r;};}
-  const o=P.step({A:!!(b&0x8000),B:!!(b&0x4000),Z:!!(b&0x2000),R:!!(b&0x10),sx:+src.gsx,sy:+src.gsy},+x.dtvi||2);n++;
+  const o=P.step({A:!!(b&0x8000),B:!!(b&0x4000),Z:!!(b&0x2000),R:!!(b&0x10),Cu:!!(b&0x8),Cd:!!(b&0x4),Cl:!!(b&0x2),Cr:!!(b&0x1),sx:+src.gsx,sy:+src.gsy},+x.dtvi||2);n++;
   const g=[+x.x,+x.y,+x.z];const d=Math.max(...[0,1,2].map(k=>Math.abs(o.pos[k]-g[k])));const st=parseInt(x.state,16);
   const flag=(d>1e-3||st!==o.state);if(flag)bad++;
   if(process.env.TR)console.log(x.frame,"trk",P.tracker.mode,P.tracker.posY,P.tracker.posX,x.trY,x.trmode);if(flag&&bad<=25||process.env.ALL)console.log(x.frame,'game',x.state,g.map(v=>v.toFixed(3)).join(','),'vy',(+x.vy).toFixed(2),'yaw',(+x.yaw).toFixed(3),'v',(+x.vx).toFixed(2),(+x.vz).toFixed(2),'| sim',o.state.toString(16),'yaw',o.yaw.toFixed(3),'v',o.vel[0].toFixed(2),o.vel[2].toFixed(2),o.pos.map(v=>v.toFixed(3)).join(','),'vy',o.vel[1].toFixed(2),'d',d.toFixed(4));
