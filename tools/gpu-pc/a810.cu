@@ -31,7 +31,7 @@ __constant__ int G_MODE;
 #else
 static int G_MODE;
 #endif
-HD static int dtOf(int phase, int flip, int i) { if (G_MODE == 1) return 3; if (G_MODE == 2) return 2; if (G_MODE == 3) return i < flip ? 3 : 2; /* mode 3: 3-VI for the first N (= flip) updates from the claw, then 2-VI */ int first = phase ? 2 : 3; int d = (i % 2 == 0) ? first : 5 - first; if (flip && i == flip) d = 5 - d; return d; }
+HD static int dtOf(int phase, int flip, int i) { if (G_MODE == 1) return 3; if (G_MODE == 2) return 2; if (G_MODE == 6) { if (i < flip) return 3; int j = i - flip, first = phase ? 2 : 3; return (j % 2 == 0) ? first : 5 - first; } /* 3s for N, then alternation */ if (G_MODE == 7) { if (i >= flip) return 3; int first = phase ? 2 : 3; return (i % 2 == 0) ? first : 5 - first; } /* alternation for N, then 3s */ if (G_MODE == 3) return i < flip ? 3 : 2; /* mode 3: 3-VI for the first N (= flip) updates from the claw, then 2-VI */ int first = phase ? 2 : 3; int d = (i % 2 == 0) ? first : 5 - first; if (flip && i == flip) d = 5 - d; return d; }
 HD static void stand(const Room &R, const unsigned short *A, Player &P, float x, float z, float yaw) {
   pl_init(R, A, P, 0x93, x, 0.0f, z, yaw); Inp none = { 0, 0, 0, 0, 0 }; for (int i = 0; i < 10; i++) pl_step(R, A, P, none, 2); }
 // standing spot for spot (cx, cz) and claw length d0: returns 1 and (ox, oz)
@@ -65,14 +65,16 @@ __global__ void k_run(Room R, const unsigned short *A, const float *orig, const 
   if (G_MODE == 1) { if (ph || flip) { miny[t] = 1e9f; return; } }   // all 3: claw is a 3-VI update (origin A), one pattern
   if (G_MODE == 2) { if (!ph || flip) { miny[t] = 1e9f; return; } }  // all 2: claw 2 VI (origin B)
   if (G_MODE == 3) { if (ph != (flip == 0 ? 1 : 0)) { miny[t] = 1e9f; return; } }  // 3s then 2s: claw 3 VI unless N = 0
-  if (!ok[2 * s + ph]) { miny[t] = 1e9f; return; }
-  Player P; stand(R, A, P, orig[2 * (2 * s + ph)], orig[2 * (2 * s + ph) + 1], yaw); float m = 0;
+  int pho = ph;   // origin phase: from the claw update length
+  if (G_MODE == 6 || G_MODE == 7) { int d0 = dtOf(ph, flip, 0); pho = d0 == 2 ? 1 : 0; if (G_MODE == 6 && flip > 0 && ph == 1 && 0) {} }
+  if (!ok[2 * s + pho]) { miny[t] = 1e9f; return; }
+  Player P; stand(R, A, P, orig[2 * (2 * s + pho)], orig[2 * (2 * s + pho) + 1], yaw); float m = 0;
   for (int i = 0; i < NU; i++) { Inp in = { i >= 1 && i <= K, i == 0, 0, 0, 0 }; pl_step(R, A, P, in, dtOf(ph, flip, i)); if (P.pos[1] < m) m = P.pos[1]; if (P.bad) break; }
   miny[t] = m;
 }
 int main(int argc, char **argv) {
   if (argc < 5) { fprintf(stderr, "usage: a810 room.bin spots.txt out.txt progress.txt [yaw]\n"); return 1; }
-  float yaw = argc > 5 ? (float)atof(argv[5]) : 45.0f; int mode = argc > 6 ? (!strcmp(argv[6], "all3") ? 1 : !strcmp(argv[6], "all2") ? 2 : !strcmp(argv[6], "3then2") ? 3 : !strcmp(argv[6], "file") ? 4 : !strcmp(argv[6], "drop") ? 5 : 0) : 0;
+  float yaw = argc > 5 ? (float)atof(argv[5]) : 45.0f; int mode = argc > 6 ? (!strcmp(argv[6], "all3") ? 1 : !strcmp(argv[6], "all2") ? 2 : !strcmp(argv[6], "3then2") ? 3 : !strcmp(argv[6], "file") ? 4 : !strcmp(argv[6], "drop") ? 5 : !strcmp(argv[6], "3thenalt") ? 6 : !strcmp(argv[6], "altthen3") ? 7 : 0) : 0;
   std::vector<unsigned char> PAT; std::vector<std::string> PN;
   if (mode == 4 || mode == 5) { FILE *f = fopen(argv[7], "r"); char nm[128], ps[512];
     while (f && fscanf(f, "%127s %511s", nm, ps) == 2) { PN.push_back(nm); for (int i = 0; i < NU; i++) { int d = (i < (int)strlen(ps)) ? ps[i] - '0' : 2; PAT.push_back((unsigned char)(d == 3 ? 3 : 2)); } } if (f) fclose(f); }
@@ -85,7 +87,7 @@ int main(int argc, char **argv) {
   fprintf(fp, "spots %d, cases per spot %d, yaw %.3f, patterns %zu\n", ns, nc, yaw, PN.size()); fflush(fp);
   auto t0 = std::chrono::steady_clock::now();
   CK(cudaDeviceSetLimit(cudaLimitStackSize, 32768)); CK(cudaMemcpyToSymbol(G_MODE, &mode, sizeof(int)));
-  fprintf(fp, "mode %s\n", mode == 1 ? "all 3-VI updates" : mode == 2 ? "all 2-VI updates" : mode == 3 ? "3-VI for the first N updates (case f<N>, N = 0..33), then 2-VI" : mode == 4 ? "recorded patterns from file" : mode == 5 ? "drop from rest at h = 80..960 above the spot, recorded patterns" : "alternation + single flips"); fflush(fp);
+  fprintf(fp, "mode %s\n", mode == 1 ? "all 3-VI updates" : mode == 2 ? "all 2-VI updates" : mode == 3 ? "3-VI for the first N updates (case f<N>, N = 0..33), then 2-VI" : mode == 4 ? "recorded patterns from file" : mode == 5 ? "drop from rest at h = 80..960 above the spot, recorded patterns" : mode == 6 ? "3s for N updates (f<N>) then alternation (phase A: 3 first / B: 2 first)" : mode == 7 ? "alternation (phase) for N updates (f<N>) then 3s" : "alternation + single flips"); fflush(fp);
   Room R = dev_room(hr); const unsigned short *dA = up(acos); const float *dS = up(sp);
   float *dO; unsigned char *dOk; CK(cudaMalloc(&dO, ns * 4 * sizeof(float))); CK(cudaMalloc(&dOk, ns * 2));
   k_origin<<<(ns * 2 + 63) / 64, 64>>>(R, dA, dS, ns, yaw, dO, dOk); CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
