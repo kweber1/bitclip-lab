@@ -3,7 +3,7 @@
 //        heights h = HMIN + k*HSTEP, k < NH.
 //  bomb: beak bomb, BA_PHYSICS_UNK8 (pos += vel*dt, no gravity) at 4200 along a direction from dirs.txt, the line passing
 //        through the crack spot; start 3+phase steps back up the line, phase = k/NP.
-// A case clips when Banjo gets more than 150 under the crack's floor. Build with -DBK_RATE=50 (PAL dt 0.04) or 60 (NTSC).
+// A case clips when Banjo gets more than 150 under the crack's floor and there is floor above him (under_floor). Build with -DBK_RATE=50 (PAL dt 0.04) or 60 (NTSC).
 // usage: padscan room.bin spots.txt dirs.txt out.txt progress.txt   (spots: "xbits ybits zbits" hex; dirs: "dxbits dybits dzbits" hex)
 // env: PS_HMIN PS_HSTEP PS_NH PS_NP (defaults 60 0.5 1300 64)
 #include <stdio.h>
@@ -26,6 +26,13 @@ template <class T> static const T *up(const std::vector<T> &v) { T *p; size_t n 
 #endif
 static inline float fb(unsigned u) { union { unsigned u; float f; } c; c.u = u; return c.f; }
 
+// under the floor (not a fall off a ledge next to the crack): of 4 vertical rays 10 to the sides of Banjo's x/z, from 50 above the
+// crack's floor down to 10 above Banjo, at least 2 hit an up-facing triangle within 10 of the crack's floor height
+HD static int under_floor(const Room &R, const float *pos, float floorY) { int hits = 0; World w; w.has_stored = 0;
+  const float dx[4] = { 10, -10, 0, 0 }, dz[4] = { 0, 0, 10, -10 };
+  for (int i = 0; i < 4; i++) { float x = pos[0] + dx[i], z = pos[2] + dz[i]; float a[3] = { x, floorY + 50.0f, z }, b[3] = { x, pos[1] + 10.0f, z }, n[3] = { 0, 0, 0 };
+    int t = bk_line(R, &w, a, b, n, 0); float d = b[1] - floorY; if (t >= 0 && n[1] > 0.4f && (d < 0 ? -d : d) < 10.0f) hits++; }
+  return hits >= 2; }
 // returns 1 = clip; *minY = lowest feet height reached (relative to the floor), *upd = updates run
 HD static int run(const Room &R, const unsigned short *A, float *pos, float *vel, float grav, float term, float dt, int maxU, float floorY, int stopOnGround, float *minY) {
   Tracker tr; tracker_init(&tr, pos); World w; w.has_stored = 0; int grounded = 0, hold = 0; float m = pos[1];
@@ -37,7 +44,7 @@ HD static int run(const Room &R, const unsigned short *A, float *pos, float *vel
     pos[0] = r.result[0]; pos[1] = r.result[1]; pos[2] = r.result[2]; grounded = r.grounded; hold = r.hold_counter_after;
     if (grounded && vel[1] < 0 && grav != 0) vel[1] = -1.0f;
     if (pos[1] < m) m = pos[1];
-    if (pos[1] < floorY - 150.0f) { *minY = m - floorY; return 1; }
+    if (pos[1] < floorY - 150.0f) { *minY = m - floorY; return under_floor(R, pos, floorY) ? 1 : 2; }
     if (grounded && (stopOnGround || pos[1] > floorY - 5.0f)) { *minY = m - floorY; return 0; }
   }
   *minY = m - floorY; return 0;
@@ -53,7 +60,7 @@ void k_drop(Room R, const unsigned short *A, const float *SP, int ns, float hmin
 #endif
   int s = (int)(t / nh), k = (int)(t % nh); float cx = SP[3 * s], cy = SP[3 * s + 1], cz = SP[3 * s + 2];
   float h = (float)((double)hmin + (double)k * (double)hstep); float pos[3] = { cx, cy + h, cz }, vel[3] = { 0, 0, 0 }; float my;
-  out[t] = (unsigned char)run(R, A, pos, vel, -2700.0f, -4000.0f, dt, 80, cy, 0, &my);
+  out[t] = (unsigned char)(run(R, A, pos, vel, -2700.0f, -4000.0f, dt, 80, cy, 0, &my) == 1);
 #ifndef __CUDACC__
   }
 #endif
@@ -71,7 +78,7 @@ void k_bomb(Room R, const unsigned short *A, const float *SP, int ns, const floa
   float c[3] = { SP[3 * s], SP[3 * s + 1], SP[3 * s + 2] }; float vel[3], step[3], pos[3];
   float back = (float)(3.0 + (double)k / (double)np);
   for (int i = 0; i < 3; i++) { vel[i] = D[3 * d + i] * 4200.0f; step[i] = vel[i] * dt; float sb = step[i] * back; pos[i] = c[i] - sb; }
-  float my; out[t] = (unsigned char)run(R, A, pos, vel, 0.0f, 0.0f, dt, 12, c[1], 1, &my);
+  float my; out[t] = (unsigned char)(run(R, A, pos, vel, 0.0f, 0.0f, dt, 12, c[1], 1, &my) == 1);
 #ifndef __CUDACC__
   }
 #endif
@@ -114,10 +121,10 @@ int main(int argc, char **argv) {
 #else
   // CPU check: first N cases of each kernel, printed one per line (compare with padscan_ref.js check)
   int N = argc > 6 ? atoi(argv[6]) : 100; Room R; R.TF = hr.TF.data(); R.TI = hr.TI.data(); R.CLI = hr.CLI.data(); R.CLF = hr.CLF.data(); R.CELLS = hr.CELLS.data(); R.PF = hr.PF.data(); R.PI = hr.PI.data(); R.PC = hr.PC.data(); R.GR = hr.GR.data(); R.RF = hr.RF.data();
-  for (int t = 0; t < N && t < ns * nh; t++) { int s = t / nh, k = t % nh; float cy = sp[3 * s + 1]; float h = (float)((double)hmin + (double)k * (double)hstep);
+  for (int t = 0; t < N && (long long)t < (long long)ns * nh; t++) { int s = t / nh, k = t % nh; float cy = sp[3 * s + 1]; float h = (float)((double)hmin + (double)k * (double)hstep);
     float pos[3] = { sp[3 * s], cy + h, sp[3 * s + 2] }, vel[3] = { 0, 0, 0 }, my; int c = run(R, acos.data(), pos, vel, -2700.0f, -4000.0f, dt, 80, cy, 0, &my);
     fprintf(fo, "D %d %d %d %08x %08x %08x\n", s, k, c, fbits(pos[0]), fbits(pos[1]), fbits(pos[2])); }
-  for (int t = 0; t < N && t < ns * nd * np; t++) { int s = t / (nd * np), rem = t % (nd * np), d = rem / np, k = rem % np; float c3[3] = { sp[3 * s], sp[3 * s + 1], sp[3 * s + 2] }, vel[3], step[3], pos[3];
+  for (int t = 0; t < N && (long long)t < (long long)ns * nd * np; t++) { int s = t / (nd * np), rem = t % (nd * np), d = rem / np, k = rem % np; float c3[3] = { sp[3 * s], sp[3 * s + 1], sp[3 * s + 2] }, vel[3], step[3], pos[3];
     float back = (float)(3.0 + (double)k / (double)np); for (int i = 0; i < 3; i++) { vel[i] = dd[3 * d + i] * 4200.0f; step[i] = vel[i] * dt; float sb = step[i] * back; pos[i] = c3[i] - sb; }
     float my; int c = run(R, acos.data(), pos, vel, 0.0f, 0.0f, dt, 12, c3[1], 1, &my); fprintf(fo, "B %d %d %d %d %08x %08x %08x\n", s, d, k, c, fbits(pos[0]), fbits(pos[1]), fbits(pos[2])); }
 #endif

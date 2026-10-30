@@ -17,12 +17,14 @@ function mk(BK) {
       pos = r.result.map(F); grounded = !!r.grounded; hold = r.hold_counter_after; if (r.held) holds++;
       if (grounded && vel[1] < 0 && grav !== 0) vel[1] = F(-1);
       if (pos[1] < minY) minY = pos[1];
-      if (pos[1] < floorY - 150) return { clip: 1, u, minY, holds, pos };
+      if (pos[1] < floorY - 150) { const uf = underFloor(world, pos, floorY); return { clip: uf ? 1 : 0, ledge: uf ? 0 : 1, u, minY, holds, pos }; }
       if (grounded && (stopOnGround || pos[1] > floorY - 5)) return { clip: 0, u, minY, holds, landY: pos[1], pos };
     }
     return { clip: 0, u: maxU, minY, holds, pos };
   }
   const absf = (x) => (x < 0 ? -x : x);
+  function underFloor(world, pos, floorY) { let hits = 0; for (const [dx, dz] of [[10, 0], [-10, 0], [0, 10], [0, -10]]) { const x = F(pos[0] + dx), z = F(pos[2] + dz);
+    const a = [x, F(floorY + 50), z], b = [x, F(pos[1] + 10), z], n = [0, 0, 0]; world.stored = null; const t = world.line(a, b, n, 0); const d = F(b[1] - floorY); if (t && n[1] > 0.4 && (d < 0 ? -d : d) < 10) hits++; } return hits >= 2; }
   function drop(world, c, h, dt) { return run(world, [c[0], F(c[1] + F(h)), c[2]], [0, 0, 0], F(-2700), F(-4000), dt, 80, c[1], false); }
   function bomb(world, c, dir, phase, dt, speed = 4200) {
     const v = dir.map(x => F(x * speed)); const step = [F(v[0] * dt), F(v[1] * dt), F(v[2] * dt)];
