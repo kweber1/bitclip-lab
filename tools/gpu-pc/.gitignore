@@ -8,3 +8,7 @@ t.cpp
 all950.json
 sample6.json
 spot1.json
+*.json
+!package.json
+*m.txt
+c307*

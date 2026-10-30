@@ -5,7 +5,7 @@
 #include "bkmove_port.h"
 
 #define MAXUPD 40
-#define MAXLAG 4
+#define MAXLAG 12
 struct Job { int nspots, nyaw, nparam, npat, maxUpd, standCheck; };
 struct Hit { int s, yi, pi, qi, k, holds, clipAt, clip; float endY, x0, z0, pad; };
 
@@ -40,7 +40,8 @@ static HD int invertChain(float target, const float *incs, int ninc, int keep, f
   for (int j = 0; j < nc; j++) outc[j] = cands[j]; return nc;
 }
 static HD inline Inp pc_inp(int i, int c, int h) { Inp r; r.B = (i == 0); r.A = (i >= c && i < c + h); r.Z = 0; return r; }
-static HD inline int has_lag(const int *lag, int i) { for (int q = 0; q < MAXLAG; q++) if (lag[q] == i) return 1; return 0; }
+// pattern entry u = one long (3-frame) update on update u; u+1000 = one short (1-frame) update on update u
+static HD inline int lag_fr(const int *lag, int i) { for (int q = 0; q < MAXLAG; q++) { if (lag[q] == i) return 3; if (lag[q] == i + 1000) return 1; } return 2; }
 
 // returns number of hits written (0..MAXUPD), one per arrival that holds or clips
 static HD int pc_case(const Room &RR, const Room &FR, const unsigned short *ACOS, const Job &J, double X, double Y, double Z, float yaw, int c, int h, const int *lag,
@@ -58,23 +59,23 @@ static HD int pc_case(const Room &RR, const Room &FR, const unsigned short *ACOS
     // 2. x/z steps up to the arrival with this lag pattern, walked back from the crack
     float ix[MAXUPD], iz[MAXUPD];
     { Player P; pl_init(FR, ACOS, P, 0, 0.0f, ty, 0.0f, yaw);
-      for (int i = 0; i <= k; i++) { pl_step(FR, ACOS, P, pc_inp(i, c, h), has_lag(lag, i) ? 3 : 2); ix[i] = P.lastD[0]; iz[i] = P.lastD[2]; } if (P.bad) *bad = 1; }
+      for (int i = 0; i <= k; i++) { pl_step(FR, ACOS, P, pc_inp(i, c, h), lag_fr(lag, i)); ix[i] = P.lastD[0]; iz[i] = P.lastD[2]; } if (P.bad) *bad = 1; }
     float X0[16], Z0[16]; int nx = invertChain(tx, ix, k + 1, 3, X0), nz = invertChain(tz, iz, k + 1, 3, Z0);
     if (!nx || !nz) continue;
-    if (J.standCheck) { Player Q; pl_init(RR, ACOS, Q, 0x71, X0[0], ty, Z0[0], yaw); int ok = 1;
+    if (J.standCheck) { Player Q; pl_init(RR, ACOS, Q, RR.GR[0], X0[0], ty, Z0[0], yaw); int ok = 1;
       for (int q = 0; q < 6; q++) { Inp none = { 0, 0, 0 }; pl_step(RR, ACOS, Q, none, 2); if ((double)Q.pos[1] < (double)ty - 0.5 || Q.pos[0] != X0[0] || Q.pos[2] != Z0[0]) { ok = 0; break; } }
       if (!ok) continue; }
     // 3. the real room
-    Player P; pl_init(RR, ACOS, P, 0x71, X0[0], ty, Z0[0], yaw);
+    Player P; pl_init(RR, ACOS, P, RR.GR[0], X0[0], ty, Z0[0], yaw);
     int fh = -1, clipAt = -1, holds = 0, popped = 0; float endY = 0;
-    for (int i = 0; i <= k; i++) { pl_step(RR, ACOS, P, pc_inp(i, c, h), has_lag(lag, i) ? 3 : 2);
+    for (int i = 0; i <= k; i++) { pl_step(RR, ACOS, P, pc_inp(i, c, h), lag_fr(lag, i));
       double dd = hypot((double)P.pos[0] - X, (double)P.pos[2] - Z);
       if (P.held && dd < 3) { holds++; if (fh < 0) fh = i; } }
     if (P.tgt[0] != tx || P.tgt[2] != tz) continue;
     { double dd = hypot((double)P.pos[0] - X, (double)P.pos[2] - Z); if ((double)P.pos[1] < Y - 115 && dd < 60) clipAt = k; }
     endY = P.pos[1];
     for (int i = k + 1; i < maxUpd; i++) {
-      pl_step(RR, ACOS, P, pc_inp(i, c, h), has_lag(lag, i) ? 3 : 2); endY = P.pos[1];
+      pl_step(RR, ACOS, P, pc_inp(i, c, h), lag_fr(lag, i)); endY = P.pos[1];
       double dd = hypot((double)P.pos[0] - X, (double)P.pos[2] - Z);
       if (P.held && dd < 3) { holds++; if (fh < 0) fh = i; }
       if (clipAt >= 0 && i > clipAt && (double)P.pos[1] >= Y - 60) popped = 1;
