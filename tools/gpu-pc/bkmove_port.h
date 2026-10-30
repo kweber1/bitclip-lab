@@ -307,7 +307,11 @@ static HD void pl_slope(Player &P) {
 static HD inline void key_upd(int h, int &c0, int &c1) { c0 = h ? c0 + 1 : 0; c1 = c0 ? 0 : c1 + 1; }
 // one update. frames 2 or 3 (PAL: dt = min(frames/50, 0.06))
 static HD void pl_step(const Room &R_, const unsigned short *ACOS, Player &P, Inp in, int frames) {
-  P.acos = ACOS; P.dt = (float)fmin(frames * (1.0 / 50), 0.06);
+#ifndef BK_RATE
+#define BK_RATE 50
+#define BK_CAP 0.06
+#endif
+  P.acos = ACOS; P.dt = (float)fmin(frames * (1.0 / BK_RATE), BK_CAP);   // PAL 50/0.06, NTSC (-DBK_RATE=60 -DBK_CAP=0.05) 60/0.05
   float old[3] = { P.pos[0], P.pos[1], P.pos[2] };
   key_upd(in.A, P.keyA0, P.keyA1); key_upd(in.B, P.keyB0, P.keyB1); key_upd(in.Z, P.keyZ0, P.keyZ1);
   pl_readStick(P, in.sx, in.sy);
