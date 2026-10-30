@@ -37,7 +37,7 @@ for (const l of lines) { const t = l.split(' '); const s = +t[0]; const c = sp[s
     for (const p of pads.filter(p => p.kind === 'shock')) { const top = p.pos[1];
       const ok = hl.map(k => HMIN + k * HSTEP).filter(h => { const y = c[1] + h; if (y < top + 290 || y > top + 668) return false;
         const fall = y - c[1]; const air = 1250 / 1200 + Math.sqrt(2 * Math.max(0, y - top) / 1350) + Math.sqrt(2 * fall / 2700); return Math.hypot(c[0] - p.pos[0], c[2] - p.pos[2]) <= air * 500; });
-      const real = ok.filter(h => run([c[0], F(c[1] + F(h)), c[2]], [0, 0, 0], 80, c[1], F(-2700)).clip);
+      const real = ok; // the GPU already applies the under-floor check
       if (real.length) { res.dropReach.push({ spot: s, pos: c, pad: p.pos, heights: real.slice(0, 8), nHeights: real.length, dist: Math.round(Math.hypot(c[0] - p.pos[0], c[2] - p.pos[2])) }); break; } } }
   if (nb) { res.bombSpots++; if (nv < maxV) { nv++; res.bombChecked++;
       for (const cc of bl.slice(0, 4)) { const d = Math.floor(cc / NP), k = cc % NP; const dirv = dd[d]; const v = dirv.map(x => F(x * 4200)); const step = v.map(x => F(x * dt)); const back = F(12 + k / NP);
