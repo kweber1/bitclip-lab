@@ -118,7 +118,8 @@ class Player {
     this.update = 0; this.flags = { A: false, B: false, C: false }; this.hasFlapped = false; this.hasPecked = false;
     this.abil = Object.assign({ flap: true, peck: true, buster: true, wonderwing: true, shock: true, dive: true }, o.abilities || {});
     this.feathers = o.feathers ?? 0; this.onPad = false; this.colMode = 1; this.waterBelow = false; this.inWater = false; this.canJumpOut = false; this.accel = 0; this.tvel = [0, 0, 0];
-    this.pitch = 0; this.pitchIdeal = 0; this.pitchLim = F(500); this.pitchVel = F(0.8); this.diveCd = 0; this.wallHits = 0; this.wallN = [0, 0, 0]; // pitch.c, bainput_diveCooldown, D_8037C27D/D_8037C258
+    this.pitch = 0; this.pitchIdeal = 0; this.pitchLim = F(500); this.pitchVel = F(0.8); this.diveCd = 0; this.wallHits = 0; this.wallN = [0, 0, 0];
+    this.colHT = F(80); this.colRT = F(35); this.colH = F(80); this.colR = F(35); // D_8037C1F0 (target) / D_8037C1F8 (eased 1 unit per update): func_80293D48(height, radius) // pitch.c, bainput_diveCooldown, D_8037C27D/D_8037C258
     this.rate = (o.version || 'PAL') === 'NTSC' ? 60 : 50; this.cap = this.rate === 60 ? 0.05 : 0.06;
     // one collision probe so the tracker knows the floor under the start position
     const r = BK.predict(world, this.pos, this.pos, { grounded: this.grounded, tracker: this.tracker });
@@ -245,15 +246,18 @@ class Player {
     const tgt = this.physics();
     this.canJumpOut = false; // D_8037C27E
     if (this.colMode === 3 && this.tracker.unk59 && tgt[1] > fsub(this.tracker.posY, 70)) { tgt[1] = fsub(this.tracker.posY, 70); this.canJumpOut = true; this.vel[1] = F(1); }
+    if (this.preCollide) this.preCollide(tgt); // module hook (e.g. climbing, collision mode 5: func_80293440)
     // bafalldamage_update: runs after physics, before collision (uses the stable flag from the previous update and the uncollided position)
     if (this.isStable()) { this.fallStart = tgt.map(F); }
     this.fallHeight = Math.trunc(F(this.fallStart[1] - F(tgt[1])));
     // collision (func_80293F0C)
     // ghost mode (route search pre-pass): no collision at all, Banjo flies through everything
     // ghost 'flat': the floor is taken as flat at the current floor height and nothing else is solid (fast run-ups)
+    const ease = (t, c) => (c < t ? ml_min_f(t, fadd(c, 1)) : t < c ? ml_max_f(t, fsub(c, 1)) : c); // func_80293EAC
+    this.colH = ease(this.colHT, this.colH); this.colR = ease(this.colRT, this.colR);
     const r = this.ghost === 'flat' ? { result: [tgt[0], this.floorY(), tgt[2]], grounded: true, hold_counter_after: 0, held: false, hits: 0, result_bits: null }
       : this.ghost ? { result: tgt, grounded: false, hold_counter_after: 0, held: false, hits: 0, result_bits: null }
-      : BK.predict(this.world, old, tgt, { grounded: this.grounded, tracker: this.tracker, hold_counter: this.holdCounter });
+      : BK.predict(this.world, old, tgt, { grounded: this.grounded, tracker: this.tracker, hold_counter: this.holdCounter, height: this.colH, radius: this.colR });
     const res = r.result.map(F); this.pos = res; this.grounded = !!r.grounded; this.holdCounter = r.hold_counter_after;
     this.wallHits = r.hits | 0; if (r.last_n) this.wallN = r.last_n.map(F); else if (!r.hits) this.wallN = [0, 0, 0];
     const fy = this.floorY(); const wy = this.tracker.posY; if (this.tracker.unk59) this.waterBelow = res[1] < wy; // D_8037C278 (water surface, not the floor)
@@ -776,6 +780,11 @@ P.launchTo = function (target, vy, grav) {
 UPDATE[S.REBOUND] = function () { let n = 0; if (this.decTimer(6)) { this.vel[0] = 0; this.vel[2] = 0; this.thv = 0; } if (this.isStable()) n = S.LANDING; this.setState(n); };
 END[S.REBOUND] = function () { this.vel = [0, 0, 0]; this.grav = F(-2700); };
 
-const api = { Player, S, SNAME, run, mlNormalizeAngle, rot_yaw, surface_type, ml_acosf_deg, FRICTION };
+// internals for the state modules (bkmove_*.js): they add states with lib.addState(name, id) and fill lib.INIT/UPDATE/END
+const lib = { BK, F, fadd, fsub, fmul, fdiv, fsqrt, absf, sinf, cosf, ml_acosf, BAD_DTOR, mlNormalizeAngle, mlDiffDegF, ml_map_f, ml_mapRange_f, ml_interpolate_f,
+  ml_clamp_f, ml_max_f, ml_min_f, rot_yaw, rot_pitch_yaw, yaw_of, yaw_pitch_of, ml_acosf_deg, surface_type, FRICTION, ONCE, LOOP, STOPPED, PHYS, S, SNAME,
+  INIT, UPDATE, END, WATER_TO, REBOUND, DIVE_SET, SWIM_SET, toSwim, toLand, standNext, P,
+  addState(name, id) { if (S[name] !== undefined && S[name] !== id) throw new Error('state ' + name + ' already 0x' + S[name].toString(16)); S[name] = id; SNAME[id] = name; return id; } };
+const api = { Player, S, SNAME, run, mlNormalizeAngle, rot_yaw, surface_type, ml_acosf_deg, FRICTION, lib };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.BKMOVE = api;
 })(typeof self !== 'undefined' ? self : this);
