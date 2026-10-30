@@ -76,7 +76,9 @@ __global__ void k_x(Room R, const unsigned short *A, const float *orig, const un
     int d; float p3;
     { const float T2[8] = { 0.85f, 0.13f, 0.39f, 0.78f, 0.99f, 1.0f, 1.0f, 0.26f }, T3[8] = { 0.03f, 0.20f, 0.05f, 0.05f, 0.28f, 0.26f, 0.78f, 0.0f };
       int b = prevy > -1 ? 0 : prevy > -20 ? 1 : prevy > -40 ? 2 : prevy > -60 ? 3 : prevy > -80 ? 4 : prevy > -95 ? 5 : prevy > -110 ? 6 : 7;
-      p3 = prevd == 2 ? T2[b] : T3[b]; if (G_THR == 0) p3 = prevd == 2 ? G_P23 : G_P33; }
+      p3 = prevd == 2 ? T2[b] : T3[b];
+      if (G_THR == 1) { const float L2[8] = { 0.11f, 0.015f, 0.05f, 0.14f, 0.94f, 1.0f, 1.0f, 0.26f }, L3[8] = { 0.014f, 0.0f, 0.0f, 0.05f, 0.1f, 0.0f, 0.0f, 0.0f }; p3 = prevd == 2 ? L2[b] : L3[b]; }
+      if (G_THR == 0) p3 = prevd == 2 ? G_P23 : G_P33; }
     if (i == 0 && G_MOVE != 1) d = 2;
 #ifdef MC
     else { rng = rng * 1664525u + 1013904223u; unsigned h = rng ^ (rng >> 15); h *= 0x2c1b3c6du; h ^= h >> 12; d = ((float)(h >> 8) * (1.0f / 16777216.0f)) < p3 ? 3 : 2; }
