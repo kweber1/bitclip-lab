@@ -129,12 +129,12 @@ static HD inline int an_isAt(const Anim &a, float x) { float f0 = a.anim; if (f0
   return f0 < a.timer ? (x <= a.timer && f0 < x) : (x <= a.timer || f0 < x); }
 static HD inline int an_stopped(const Anim &a) { return a.type == A_STOPPED; }
 
-struct Inp { int A, B, Z; };
+struct Inp { int A, B, Z, sx, sy; };   // sx, sy: raw stick (0 = neutral); only used for crouch face turns (yaw mode 7)
 struct Player {
   int map; float cam; float pos[3], vel[3]; float yaw, ideal; int yawState; float yawB0, yawB1, yawU; int yawMode; float yawThresh;
   int ptype; float thv, tyaw, grav, term; float zones[5];
   int keyA0, keyA1, keyB0, keyB1, keyZ0, keyZ1;  // [held count, released count]
-  float sdist, szp; int szone;                   // stick (always neutral here)
+  float sdist, szp; int szone; float sangle;     // stick (neutral except in crouch face turns)
   Anim anim; int grounded, stable, floorType, holdCounter; Tracker tr; World w;
   float slopeTimer, st5, st6; float fallStart[3]; int fallHeight;
   int state; int v_ph, v_rot; float lastD[3]; float dt; int bad;
@@ -272,9 +272,26 @@ static HD void pl_limited(Player &P, float lim, float pct) {
   float v = (d * pct) * dt; v = v < 0 ? ml_clamp_f(v, -mx, -0.1f) : ml_clamp_f(v, 0.1f, mx);
   P.yaw = absf(v) <= absf(d) ? P.yaw + v : P.ideal; pl_wrapYaw(P);
 }
+static HD float pl_diffDeg(float a, float b) { float d = a - b; while (d > 180) d = d - 360.0f; while (d <= -180) d = d + 360.0f; return d; }
+static HD float pl_stickRel(const Player &P) { return mlNormalizeAngle((float)((double)(P.cam + P.sangle) + 90.0)); } // viewport_adjustAngleToRight
+static HD float stick_norm(int v, int mn, int mx) {
+  if (v > 0) { v = v > mx ? mx : v < mn ? mn : v; v = ((v - mn) * 80) / (mx - mn); }
+  else if (v < 0) { v = v < -mx ? -mx : v > -mn ? -mn : v; v = ((v + mn) * 80) / (mx - mn); }
+  return (1.0f / 80) * (float)v;
+}
+static HD void pl_readStick(Player &P, int sx, int sy) { // bastick_update (bkmove.js readInput)
+  float x = stick_norm(sx, 7, 59), y = stick_norm(sy, 7, 61);
+  P.sdist = sqrtf((x * x) + (y * y));
+  if (P.sdist != 0) { P.sangle = ml_acosf(P.acos, y / P.sdist); if (x < 0) P.sangle = 180.0f - P.sangle; if (y < 0) P.sangle = 360.0f - P.sangle; }
+  if (P.sdist > 1.0) P.sdist = 1.0f;
+  const float *z = P.zones; float d = P.sdist;
+  if (d <= z[0]) { P.szone = 0; P.szp = 0; } else if (d <= z[1]) { P.szone = 1; P.szp = (d - z[0]) / (z[1] - z[0]); } else if (d <= z[2]) { P.szone = 2; P.szp = (d - z[1]) / (z[2] - z[1]); }
+  else if (d <= z[3]) { P.szone = 3; P.szp = (d - z[2]) / (z[3] - z[2]); } else if (d <= z[4]) { P.szone = 4; P.szp = (d - z[3]) / (z[4] - z[3]); }
+}
 static HD void pl_yawStep(Player &P) {
   int m = P.yawMode;
-  if (m == 1) { if (P.sdist != 0) P.bad = 1; } else if (m == 5 || m == 4 || m == 7) { if (P.sdist != 0) P.bad = 1; }
+  if (m == 1) { if (P.sdist != 0) P.bad = 1; } else if (m == 5 || m == 4) { if (P.sdist != 0) P.bad = 1; }
+  else if (m == 7) { if (P.sdist != 0) { float a = pl_stickRel(P); if (P.yawThresh <= absf(pl_diffDeg(P.ideal, a))) P.ideal = mlNormalizeAngle(pl_stickRel(P)); } }
   else if (m == 0 || m == 2) return;
   if (P.yawState == 1) pl_limited(P, 700.0f, 7.5f); else if (P.yawState == 3) pl_limited(P, P.yawB0, P.yawB1);
   else if (P.yawState == 2) { float a = P.yawU * P.dt; float d = P.ideal - P.yaw; if (absf(d) > 180) d = (float)((double)d + (d < 0 ? 360.0 : -360.0));
@@ -293,7 +310,7 @@ static HD void pl_step(const Room &R_, const unsigned short *ACOS, Player &P, In
   P.acos = ACOS; P.dt = (float)fmin(frames * (1.0 / 50), 0.06);
   float old[3] = { P.pos[0], P.pos[1], P.pos[2] };
   key_upd(in.A, P.keyA0, P.keyA1); key_upd(in.B, P.keyB0, P.keyB1); key_upd(in.Z, P.keyZ0, P.keyZ1);
-  P.sdist = 0; P.szone = 0; P.szp = 0;
+  pl_readStick(P, in.sx, in.sy);
   st_update(P);
   float tgt[3]; pl_physics(P, tgt);
   if (pl_isStable(P)) { P.fallStart[0] = tgt[0]; P.fallStart[1] = tgt[1]; P.fallStart[2] = tgt[2]; }
@@ -322,7 +339,7 @@ static HD void pl_init(const Room &R_, const unsigned short *ACOS, Player &P, in
   P.yaw = yaw; P.ideal = yaw; P.yawState = 1; P.yawB0 = 700.0f; P.yawB1 = 7.5f; P.yawU = 360.0f; P.yawMode = 1; P.yawThresh = 0;
   P.ptype = PH_NORMAL; P.thv = 0; P.tyaw = P.ideal; P.grav = -2700.0f; P.term = -4000.0f;
   P.zones[0] = 0.12f; P.zones[1] = 0.2f; P.zones[2] = 0.5f; P.zones[3] = 0.75f; P.zones[4] = 1.0f;
-  P.keyA0 = 0; P.keyA1 = 1; P.keyB0 = 0; P.keyB1 = 1; P.keyZ0 = 0; P.keyZ1 = 1; P.sdist = 0; P.szp = 0; P.szone = 0;
+  P.keyA0 = 0; P.keyA1 = 1; P.keyB0 = 0; P.keyB1 = 1; P.keyZ0 = 0; P.keyZ1 = 1; P.sdist = 0; P.szp = 0; P.szone = 0; P.sangle = 0;
   an_reset(P.anim); P.anim.anim = 0; P.anim.id = 0; an_play(P.anim, 0x6F, 5.5f, A_ONCE);
   P.grounded = 1; P.stable = 1; P.floorType = 2; P.holdCounter = 0;
   tracker_init(&P.tr, P.pos); P.w.has_stored = 0; P.slopeTimer = 0; P.st5 = 0; P.st6 = 0;

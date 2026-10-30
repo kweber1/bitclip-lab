@@ -52,7 +52,7 @@ function packWorld(opa, xlu, props, margin, map) {
   GR[7] = GR.length; GR.push(...gidx); glob.sort(byOrder); GR[8] = GR.length; GR.push(...glob);
   return { TF, TI, CLI, CLF, CELLS, PF, PI, PC, GR, RF: [margin] };
 }
-const opa = BK.load_model(room.opa, 'opa'), xlu = room.xlu ? BK.load_model(room.xlu, 'xlu') : null; const props = BK.load_props(room.props || []);
+const opa = BK.load_model(room.opa, 'opa'), xlu = room.xlu ? BK.load_model(room.xlu, 'xlu') : null; const props = BK.load_props((room.props || []).filter(p => !args.includes('--modelprops') || p.kind === 'model_prop'));
 const worldMargin = new BK.World(opa, xlu, props, MAP).margin;
 const real = packWorld(opa, xlu, props, worldMargin, MAP);
 // flat test floors (bkclipsetup flatWorldAt): one per integer floor height among the spots
