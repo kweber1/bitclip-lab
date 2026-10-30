@@ -20,7 +20,6 @@ struct St { Player P; Cam C; };
 
 #define CK(x) do { cudaError_t e_ = (x); if (e_ != cudaSuccess) { fprintf(stderr, "CUDA %s at %s:%d\n", cudaGetErrorString(e_), __FILE__, __LINE__); exit(1); } } while (0)
 #define NK 101
-#define NM 11
 #define NFACE 8
 #define NCHILD (NK * NM + NFACE)
 #define NFIN (NK * 2 * 4 * 6)
@@ -65,9 +64,10 @@ static HD int settle(const Room &R, const unsigned short *A, St &S) {
 }
 // travel moves (twirl first, then):
 //  0 punch | 1-4 punch cancel (A on update 1/2, A held 3/12 updates)
-//  5 barge tap, Z held 10 | 6 barge tap, Z held 40 | 7 barge holding Z and B down a long time (B 40 updates)
-//  8-10 punch, then hold Z (from update 1 / 4 / 10)
-static HD void moveInp(int m, int i, Inp &in) {
+//  5 barge tap (Z, tap B) | 6 barge holding B a long time (B 40 updates) | 7-9 punch, then Z (from update 1 / 4 / 10)
+// Z, once pressed, is held until Banjo has completely stopped (then let go).
+#define NM 10
+static HD void moveInp(int m, int i, Inp &in) { // the scripted part (70 updates); returns Z state for i (Z stays held after)
   in.A = 0; in.B = 0; in.Z = 0;
   switch (m) {
     case 0: in.B = i < 1; break;
@@ -75,12 +75,11 @@ static HD void moveInp(int m, int i, Inp &in) {
     case 2: in.B = i == 0; in.A = i >= 1 && i < 13; break;
     case 3: in.B = i == 0; in.A = i >= 2 && i < 5; break;
     case 4: in.B = i == 0; in.A = i >= 2 && i < 14; break;
-    case 5: in.Z = i < 10; in.B = i >= 5 && i < 7; break;
-    case 6: in.Z = i < 40; in.B = i >= 5 && i < 7; break;
-    case 7: in.Z = i < 50; in.B = i >= 5 && i < 45; break;
-    case 8: in.B = i == 0; in.Z = i >= 1 && i < 40; break;
-    case 9: in.B = i == 0; in.Z = i >= 4 && i < 40; break;
-    case 10: in.B = i == 0; in.Z = i >= 10 && i < 40; break;
+    case 5: in.Z = 1; in.B = i >= 5 && i < 7; break;
+    case 6: in.Z = 1; in.B = i >= 5 && i < 45; break;
+    case 7: in.B = i == 0; in.Z = i >= 1; break;
+    case 8: in.B = i == 0; in.Z = i >= 4; break;
+    case 9: in.B = i == 0; in.Z = i >= 10; break;
   }
 }
 // face turn d (0..7 = up, up-right, right, down-right, down, down-left, left, up-left; full stick): Z 2 updates, Z + stick 10, Z 3, let go
@@ -98,6 +97,11 @@ static HD int travel(const Room &R, const unsigned short *A, St &S, int j) {
     return settle(R, A, S); }
   int k = j / NM - 50, m = j % NM; if (k) pl_fpTwirl(S.P, k);
   for (int i = 0; i < 70; i++) { Inp in; in.sx = 0; in.sy = 0; moveInp(m, i, in); stepS(R, A, S, in); if (S.P.bad) return 0; }
+  if (m >= 5) { // keep Z held until Banjo has stopped completely
+    int still = 0; Inp zin = { 0, 0, 1, 0, 0 };
+    for (int i = 0; i < 1500 && still < 5; i++) { float p0 = S.P.pos[0], p1 = S.P.pos[1], p2 = S.P.pos[2]; stepS(R, A, S, zin); if (S.P.bad) return 0;
+      if (p0 == S.P.pos[0] && p1 == S.P.pos[1] && p2 == S.P.pos[2]) still++; else still = 0; }
+    if (still < 5) return 0; }
   return settle(R, A, S);
 }
 static HD void finParams(int f, int &k, int &c, int &h, int &z) {
