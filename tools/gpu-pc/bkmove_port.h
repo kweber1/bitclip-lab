@@ -329,6 +329,7 @@ static HD void pl_step(const Room &R_, const unsigned short *ACOS, Player &P, In
   P.tgt[0] = tgt[0]; P.tgt[1] = tgt[1]; P.tgt[2] = tgt[2]; P.held = r.held; P.hits = r.hits;
 }
 static HD void pl_fpTwirl(Player &P, int m) { // bkmove.js fpTwirl
+  P.vel[0] = 0; P.vel[2] = 0;   // entering first person (badrone look, state 0x98) clears the horizontal velocity (BizHawk)
   float sg = m < 0 ? -3.6f : 3.6f; int n = m < 0 ? -m : m;
   float e = P.yaw + 180.0f; if (e >= 360) e = e - 360.0f; if (e < 0) e = e + 360.0f;
   for (int i = 0; i < n; i++) { e = e + sg; if (e >= 360) e = e - 360.0f; if (e < 0) e = e + 360.0f; }

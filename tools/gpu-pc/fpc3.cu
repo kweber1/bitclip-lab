@@ -50,13 +50,13 @@ static HD void stepS(const Room &R, const unsigned short *A, St &S, Inp in) { S.
 // wait until Banjo has stopped (position, IDLE, facing reached) and then the camera has stopped too
 static HD int settle(const Room &R, const unsigned short *A, St &S) {
   int still = 0; Inp none = { 0, 0, 0, 0, 0 }; int i = 0;
-  for (; i < 1200; i++) { float p0 = S.P.pos[0], p1 = S.P.pos[1], p2 = S.P.pos[2]; stepS(R, A, S, none);
+  for (; i < 3000; i++) { float p0 = S.P.pos[0], p1 = S.P.pos[1], p2 = S.P.pos[2]; stepS(R, A, S, none);
     if (S.P.bad) return 0;
-    if (p0 == S.P.pos[0] && p1 == S.P.pos[1] && p2 == S.P.pos[2] && S.P.state == S_IDLE && S.P.yaw == S.P.ideal) still++; else still = 0;
+    if (p0 == S.P.pos[0] && p1 == S.P.pos[1] && p2 == S.P.pos[2] && S.P.state == S_IDLE && S.P.yaw == S.P.ideal && S.P.vel[0] == 0 && S.P.vel[2] == 0) still++; else still = 0;
     if (still >= 5) break; }
   if (still < 5 || !(S.P.pos[1] > 800)) return 0;
   still = 0;
-  for (; i < 2400; i++) { float c0 = S.C.pos[0], c1 = S.C.pos[1], c2 = S.C.pos[2], r0 = S.C.rot[0], r1 = S.C.rot[1]; stepS(R, A, S, none);
+  for (; i < 5000; i++) { float c0 = S.C.pos[0], c1 = S.C.pos[1], c2 = S.C.pos[2], r0 = S.C.rot[0], r1 = S.C.rot[1]; stepS(R, A, S, none);
     if (S.P.bad) return 0;
     if (c0 == S.C.pos[0] && c1 == S.C.pos[1] && c2 == S.C.pos[2] && r0 == S.C.rot[0] && r1 == S.C.rot[1]) still++; else still = 0;
     if (still >= 10) return 1; }
