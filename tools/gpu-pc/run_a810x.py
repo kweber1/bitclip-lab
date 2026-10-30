@@ -6,6 +6,7 @@ exe = 'a810x_nb%s%s.exe' % (nb, 'mc' if mc else '')
 if not os.path.exists(exe) or os.path.getmtime('a810x.cu') > os.path.getmtime(exe):
     open('build_x.cmd', 'w').write('@echo off\ncd /d %~dp0\ncall "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat" >nul\n"C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v11.8\\bin\\nvcc.exe" -O3 -arch=sm_89 -fmad=false -prec-div=true -prec-sqrt=true -ftz=false -allow-unsupported-compiler -D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH -DBK_RATE=60 -DBK_CAP=0.05 -DNB=' + nb + (' -DMC' if mc else '') + ' -o ' + exe + ' a810x.cu > buildx.log 2>&1\necho exit %errorlevel% >> buildx.log\n')
     subprocess.run(['cmd', '/c', os.path.join(D, 'build_x.cmd')]); print(open('buildx.log').read()[-600:], flush=True)
+if len(sys.argv) > 7: os.environ['A810_MOVE'] = sys.argv[7]
 for y in yaws:
     t = 'x-%s-y%s' % (tag, y)
     subprocess.run([os.path.join(D, exe), 'room93.bin', spots, 'hits-%s.txt' % t, 'progress-%s.txt' % t, y, thr], cwd=D)

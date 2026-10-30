@@ -61,22 +61,23 @@ __global__ void k_origin(Room R, const unsigned short *A, const float *spots, in
 #define NKX 8
 __constant__ float G_P23, G_P33;
 __device__ unsigned g_nd; __device__ unsigned g_dp[1 << 20]; __device__ float g_dw[1 << 20];
-__global__ void k_x(Room R, const unsigned short *A, const float *orig, const unsigned char *ok, int ns, float yaw, float *prob, unsigned *cnt) {
+__global__ void k_x(Room R, const unsigned short *A, const float *orig, const unsigned char *ok, int ns, float yaw, float *prob, unsigned *cnt, const float *SPX) {
   long long t = (long long)blockIdx.x * blockDim.x + threadIdx.x; long long np = 1LL << NB; if (t >= (long long)ns * NKX * np) return;
   unsigned pat = (unsigned)(t % np); long long r = t / np; int K = (int)(r % NKX) + KMIN; int s = (int)(r / NKX);
-  if (!ok[2 * s + 1]) return;
-  Player Q; stand(R, A, Q, orig[2 * (2 * s + 1)], orig[2 * (2 * s + 1) + 1], yaw);
+  Player Q;
+  if (G_MOVE == 1) { stand(R, A, Q, SPX[2 * s], SPX[2 * s + 1], yaw); if (Q.pos[0] != SPX[2 * s] || Q.pos[2] != SPX[2 * s + 1]) return; }
+  else { if (!ok[2 * s + 1]) return; stand(R, A, Q, orig[2 * (2 * s + 1)], orig[2 * (2 * s + 1) + 1], yaw); }
   float prevy = 0, w = 1, m = 0; int prevd = 2;
 #ifdef MC
   w = 1.0f / (float)np; unsigned rng = pat * 2654435761u + 12345u + (unsigned)K * 97u;
 #endif
   for (int i = 0; i < NU; i++) {
-    Inp in = { i >= 1 && i <= K, i == 0, 0, 0, 0 };
+    Inp in = { i >= 1 && i <= K, i == 0, 0, 0, 0 }; if (G_MOVE == 1) { in.A = i < K; in.B = 0; }
     int d; float p3;
     { const float T2[8] = { 0.85f, 0.13f, 0.39f, 0.78f, 0.99f, 1.0f, 1.0f, 0.26f }, T3[8] = { 0.03f, 0.20f, 0.05f, 0.05f, 0.28f, 0.26f, 0.78f, 0.0f };
       int b = prevy > -1 ? 0 : prevy > -20 ? 1 : prevy > -40 ? 2 : prevy > -60 ? 3 : prevy > -80 ? 4 : prevy > -95 ? 5 : prevy > -110 ? 6 : 7;
       p3 = prevd == 2 ? T2[b] : T3[b]; if (G_THR == 0) p3 = prevd == 2 ? G_P23 : G_P33; }
-    if (i == 0) d = 2;
+    if (i == 0 && G_MOVE != 1) d = 2;
 #ifdef MC
     else { rng = rng * 1664525u + 1013904223u; unsigned h = rng ^ (rng >> 15); h *= 0x2c1b3c6du; h ^= h >> 12; d = ((float)(h >> 8) * (1.0f / 16777216.0f)) < p3 ? 3 : 2; }
 #else
@@ -94,7 +95,7 @@ __global__ void k_x(Room R, const unsigned short *A, const float *orig, const un
 }
 int main(int argc, char **argv) {
   if (argc < 5) { fprintf(stderr, "usage: a810x room.bin spots.txt out.txt progress.txt [yaw] [thr]\n"); return 1; }
-  float yaw = argc > 5 ? (float)atof(argv[5]) : 45.0f; int thr = argc > 6 ? atoi(argv[6]) : 95; int mode = 0, move = 0;
+  float yaw = argc > 5 ? (float)atof(argv[5]) : 45.0f; int thr = argc > 6 ? atoi(argv[6]) : 95; int mode = 0, move = getenv("A810_MOVE") ? atoi(getenv("A810_MOVE")) : 0;
   float p23 = getenv("P23") ? (float)atof(getenv("P23")) : 0.8824f, p33 = getenv("P33") ? (float)atof(getenv("P33")) : 0.0382f;
   fin = fopen(argv[1], "rb"); if (!fin || rdi() != 0x42504331) { fprintf(stderr, "bad room.bin\n"); return 1; }
   std::vector<unsigned short> acos = rdv<unsigned short>(); HostRoom hr = read_room(); fclose(fin);
@@ -112,7 +113,7 @@ int main(int argc, char **argv) {
   float *dP; unsigned *dC; CK(cudaMalloc(&dP, ns * NKX * 4)); CK(cudaMalloc(&dC, ns * NKX * 4)); CK(cudaMemset(dP, 0, ns * NKX * 4)); CK(cudaMemset(dC, 0, ns * NKX * 4));
   const int CH = 16; float best = 0;
   for (int s0 = 0; s0 < ns; s0 += CH) { int n = ns - s0 < CH ? ns - s0 : CH; long long nt = (long long)n * NKX * (1LL << NB);
-    k_x<<<(unsigned)((nt + 127) / 128), 128>>>(R, dA, dO + s0 * 4, dOk + s0 * 2, n, yaw, dP + s0 * NKX, dC + s0 * NKX); CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
+    k_x<<<(unsigned)((nt + 127) / 128), 128>>>(R, dA, dO + s0 * 4, dOk + s0 * 2, n, yaw, dP + s0 * NKX, dC + s0 * NKX, dS + s0 * 2); CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
     std::vector<float> P(n * NKX); std::vector<unsigned> C(n * NKX); CK(cudaMemcpy(P.data(), dP + s0 * NKX, n * NKX * 4, cudaMemcpyDeviceToHost)); CK(cudaMemcpy(C.data(), dC + s0 * NKX, n * NKX * 4, cudaMemcpyDeviceToHost));
     for (int s = 0; s < n; s++) { int si = s0 + s; for (int k = 0; k < NKX; k++) if (C[s * NKX + k]) { if (P[s * NKX + k] > best) best = P[s * NKX + k];
       fprintf(fo, "%08x %08x x %.7f z %.7f K %d p %.5f n %u standB %.7f %.7f\n", sb[2 * si], sb[2 * si + 1], sp[2 * si], sp[2 * si + 1], k + KMIN, P[s * NKX + k], C[s * NKX + k], O[4 * si + 2], O[4 * si + 3]); } }
