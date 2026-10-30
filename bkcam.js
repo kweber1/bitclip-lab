@@ -191,11 +191,57 @@ class Camera {
     return this.rot[1];
   }
 }
+// ---- flight camera (dynamic camera state 4: nc/ba/fly.c ncbafly_init/update, then func_802BCE94). pl = { pos, yaw, pitch, floorY }.
+// It starts from wherever the normal camera was (pos/rot/D948/D9B8... carried over) and swings behind Banjo along his pitch/yaw.
+// bomb(true) = ncbafly_func_802BFE74(1) (faster yaw follow while beak bombing). lookVector() = viewport_getLookVector (from rot).
+class FlyCam extends Camera {
+  constructor(world, s, o = {}) { super(world, s); this.D984 = F(10); this.D988 = F(20); this.D98C = F(120); this.D990 = F(200);
+    if (o.battlements) { this.DB10 = F(10); this.DB14 = F(800); this.DB18 = F(1350); } else { this.DB10 = F(2); this.DB14 = F(800); this.DB18 = F(350); }
+    this.bomb(false); this.D974 = this.D974 ?? F(130); this.D9B8 = this.D9B8 || [0, 0, 0]; this.D9A8 = this.D9A8 || [0, 0, 0]; this.D9C8 = this.D9C8 || [0, 0, 0];
+    this.D97C = this.D97C ?? F(110); this.D980 = this.D980 ?? F(180); this.D9F6 = this.D9F6 ?? 0; this.rate = o.rate || 50; }
+  bomb(on) { if (on) { this.DB1C = F(6); this.DB20 = F(270); } else { this.DB1C = F(2); this.DB20 = F(90); } }
+  update(pl, frames) {
+    const dt = F(Math.min(frames * (1.0 / this.rate), this.rate === 60 ? 0.05 : 0.06));
+    this._floorCam(); this.D948 = vcopy(this.pos); this._lead(pl);
+    // ncbafly_update
+    const s6c = vcopy(this.pos); const s84 = this._target(pl); s84[1] = fadd(s84[1], 40.0);
+    let p = F(pl.pitch), s3c;
+    if (p > 180.0) { s3c = ml_map_f(p, 300, 360, 900, this.DB18); s84[1] = fadd(s84[1], ml_map_f(p, 300, 360, -140, 70)); }
+    else { s3c = this.DB18; s84[1] = fadd(s84[1], 70.0); }
+    const s48 = vsub(s6c, s84); let s44 = fsqrt(fadd(fadd(fmul(s48[0], s48[0]), fmul(s48[1], s48[1])), fmul(s48[2], s48[2])));
+    const t10 = fmul(fsub(s3c, s44), dt); s44 = fadd(s44, clampAbs(fmul(t10, this.DB10), fmul(dt, this.DB14)));
+    const a = hv_angles(s84, s6c);
+    if (p > 180.0 && p < 360.0) p = ml_min_f(100.0, F((360.0 - p) * 1.4));
+    let d0 = mlDiffDegF(mlNormalizeAngle(p), a[0]), d1 = mlDiffDegF(mlNormalizeAngle(F(pl.yaw + 180.0)), a[1]);
+    d0 = F(d0 * (dt * 0.8)); d1 = fmul(d1, fmul(dt, this.DB1C));
+    d0 = clampAbs(d0, fmul(dt, 40.0)); d1 = clampAbs(d1, fmul(dt, this.DB20));
+    const a0 = mlNormalizeAngle(fadd(a[0], d0)), a1 = mlNormalizeAngle(fadd(a[1], d1));
+    const s60 = func_80256E24(F(-a0), a1, 0, 0, s44); this.pos = vadd(s84, s60);
+    const b = hv_angles(s84, this.pos); const tr = [F(-b[0]), b[1], 0];
+    // func_802BD720 -> func_802BD780: time_getDeltaReal_frames()*5 steps of func_802BD610
+    const n = frames * (this.rate === 60 ? 5 : 6); const r = vcopy(this.rot); // PAL build: 6 per VI (as LOOP above)
+    for (let i = 0; i < n; i++) { let e0 = mlDiffDegF(tr[0], r[0]), e1 = mlDiffDegF(tr[1], r[1]);
+      e0 = F(e0 * (0.003333 * this.D984)); e1 = F(e1 * (0.003333 * this.D988)); e0 = clampAbs(e0, F(this.D98C * 0.003333)); e1 = clampAbs(e1, F(this.D990 * 0.003333));
+      r[0] = mlNormalizeAngle(fadd(r[0], e0)); r[1] = mlNormalizeAngle(fadd(r[1], e1)); }
+    this.rot = r;
+    if (this._collide()) this._sightCheck(pl, 0); // func_802BCE94
+    return this.rot[1];
+  }
+  lookVector() { // viewport: mlMtxIdent, RotYaw(rot[1]), RotPitch(rot[0]), apply (0,0,-1)
+    const m = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]; let y = F(this.rot[1]);
+    if (y !== 0) { y = F(y * BAD_DTOR); const s = sinf(y), c = cosf(y); for (let i = 0; i < 3; i++) { const a = m[0][i], b = m[2][i]; m[0][i] = fsub(fmul(a, c), fmul(b, s)); m[2][i] = fadd(fmul(a, s), fmul(b, c)); } }
+    let pp = F(this.rot[0]);
+    if (pp !== 0) { pp = F(pp * BAD_DTOR); const s = sinf(pp), c = cosf(pp); for (let i = 0; i < 3; i++) { const a = m[1][i], b = m[2][i]; m[1][i] = fadd(fmul(a, c), fmul(b, s)); m[2][i] = fadd(fmul(a, -s), fmul(b, c)); } }
+    return [0, 1, 2].map(i => fadd(fadd(fmul(0, m[0][i]), fmul(0, m[1][i])), fmul(-1, m[2][i])));
+  }
+}
+function clampAbs(v, m) { m = absf(m); return v > m ? m : v < -m ? F(-m) : v; } // ml_clamp_abs_f
+const ml_min_f = (a, b) => (a < b ? a : b);
 // RAM layout (PAL = US decomp name + 0x9D0) for reading the state out of a savestate
 const RAM_PAL = { D948: 0x8037E318, pos: 0x8037E328, rot: 0x8037E338, D974: 0x8037E344, D978: 0x8037E348, D97C: 0x8037E34C, D980: 0x8037E350,
   D984: 0x8037E354, D988: 0x8037E358, D98C: 0x8037E35C, D990: 0x8037E360, D994: 0x8037E364, D998: 0x8037E368, D99C: 0x8037E36C, D9A0: 0x8037E370,
   D9A8: 0x8037E378, D9B8: 0x8037E388, D9C8: 0x8037E398, D9D4: 0x8037E3A4, D9D8: 0x8037E3A8, D9E0: 0x8037E3B0, D9EC: 0x8037E3BC, D9F0: 0x8037E3C0,
   D9F6: 0x8037E3C6, state: 0x8037E3C4, DB40: 0x8037E510, DB70: 0x8037E540, DB78: 0x8037E548, DB84: 0x8037E554, DB90: 0x8037E560, DB9C: 0x8037E56C };
-const api = { Camera, RAM_PAL, hv_angles, func_80256E24, func_8025801C };
+const api = { Camera, FlyCam, RAM_PAL, hv_angles, func_80256E24, func_8025801C };
 if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.BKCAM = api;
 })(typeof self !== 'undefined' ? self : this);

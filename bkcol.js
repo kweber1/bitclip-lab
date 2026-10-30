@@ -89,12 +89,22 @@ class CollisionList {
     this.name = name; this.V = vertices.map(v => v.map(a => a | 0)); this.global_norm = F(global_norm);
     if (!header) { this.min = [0, 0, 0]; this.max = [0, 0, 0]; this.y_stride = this.z_stride = 0; this.scale = 0; this.cells = [[0, triangles.length]]; }
     else { this.min = header.slice(0, 3); this.max = header.slice(3, 6); this.y_stride = header[6]; this.z_stride = header[7]; this.scale = header[9]; this.cells = cells.map(c => [c[0], c[1]]); }
-    this.tris = triangles.map((t, i) => { const vi = [this.V[t[0]], this.V[t[1]], this.V[t[2]]];
+    this.raw = triangles; this.tris = triangles.map((t, i) => this._tri(t, i)); this.V0 = this.V.map(v => v.slice()); this._vt = null;
+  }
+  _tri(t, i) { const vi = [this.V[t[0]], this.V[t[1]], this.V[t[2]]];
       const v = vi.map(p => [F(p[0]), F(p[1]), F(p[2])]);
       const ab = vsub(v[1], v[0]), ac = vsub(v[2], v[0]); const cr = cross(ab, ac); const L = F(100000.0);
       const lineN = (L < cr[0] || L < cr[1] || L < cr[2] || cr[0] < -L || cr[1] < -L || cr[2] < -L) ? [fdiv(cr[0], L), fdiv(cr[1], L), fdiv(cr[2], L)] : cr;
       const tmin = [0, 1, 2].map(j => Math.min(v[0][j], v[1][j], v[2][j])), tmax = [0, 1, 2].map(j => Math.max(v[0][j], v[1][j], v[2][j]));
-      return { lst: this, idx: i, v, vi, unk6: t[3], flags: _s32(t[4]), ab, ac, lineN, unitN: normalize(cr), tmin, tmax }; });
+      return { lst: this, idx: i, v, vi, unk6: t[3], flags: _s32(t[4]), ab, ac, lineN, unitN: normalize(cr), tmin, tmax }; }
+  // animated vertices (mesh transforms, code_C5440.c: water waves etc. write the model bin's vertex list, which collision reads):
+  // set vertex k to [x, y, z] (s16) and rebuild the triangles that use it
+  setVerts(list) {
+    if (!this._vt) { this._vt = this.V.map(() => []); this.raw.forEach((t, i) => { for (let j = 0; j < 3; j++) this._vt[t[j]].push(i); }); }
+    const dirty = new Set();
+    for (const [k, p] of list) { const v = this.V[k]; if (v[0] === p[0] && v[1] === p[1] && v[2] === p[2]) continue; v[0] = p[0]; v[1] = p[1]; v[2] = p[2]; for (const i of this._vt[k]) dirty.add(i); }
+    for (const i of dirty) this.tris[i] = this._tri(this.raw[i], i);
+    return dirty.size;
   }
   cells_for(mn, mx, is_float) {
     if (this.scale === 0) return [0];
@@ -453,7 +463,7 @@ function predict(world, old, target, o = {}) {
     if (t2 && (!(n2[1] < 0) || (t2.flags & 0x10000)) && old[1] < b[1]) old[1] = b[1];
     log.push(['fallback-pushed', vcopy(sp390), vcopy(old)]);
   }
-  const P = []; let last204 = null; let count = 0; let i = 0;
+  const P = []; let last204 = null; let last_n = null; let count = 0; let i = 0;
   while (i < 5) {
     const cur = {}; P.push(cur); const prev = i ? P[i - 1] : null;
     if (i) { cur.u0 = vcopy(prev.u0); cur.uC = vcopy(prev.uC); } else { cur.u0 = vcopy(tgt); cur.uC = vcopy(old); }
@@ -473,7 +483,7 @@ function predict(world, old, target, o = {}) {
     const n1c = [0, 0, 0]; const hit = world.moving_sphere(cur.u34, cur.u28, r, n1c, 3, filt);
     cur.u18 = hit; cur.u1C = n1c; log.push([i, 'sphere', vcopy(u0), hit ? hit.idx : null, vcopy(n1c)]);
     if (!hit) break;
-    count++; last204 = hit;
+    count++; last204 = hit; last_n = vcopy(n1c); // D_8037C27D, D_8037C258
     if (i === 2) {
       if (hit === P[0].u18 && hit !== prev.u18) cur.u1C = normalize(vadd(cur.u1C, prev.u1C));
       if (cur.u18 === P[0].u18) {
@@ -510,7 +520,7 @@ function predict(world, old, target, o = {}) {
   let grounded_out = st.grounded; const forced = (hold_counter === 3); if (forced) grounded_out = 1;
   const new_counter = falling_hold ? Math.min(hold_counter + 1, 3) : 0;
   return { hits: count, held, result, result_bits: result.map(x => bits(x).toString(16).toUpperCase().padStart(8, '0')), grounded: grounded_out,
-    grounded_from_floor: st.grounded, forced_grounded: forced, falling_hold, hold_counter_after: new_counter, last_hit: last204 ? last204.idx : null, trace: log };
+    grounded_from_floor: st.grounded, forced_grounded: forced, falling_hold, hold_counter_after: new_counter, last_hit: last204 ? last204.idx : null, last_flags: last204 ? last204.flags : 0, last_n, trace: log };
 }
 
 // ---- several updates

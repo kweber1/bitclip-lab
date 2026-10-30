@@ -307,7 +307,11 @@ static HD void pl_slope(Player &P) {
 static HD inline void key_upd(int h, int &c0, int &c1) { c0 = h ? c0 + 1 : 0; c1 = c0 ? 0 : c1 + 1; }
 // one update. frames 2 or 3 (PAL: dt = min(frames/50, 0.06))
 static HD void pl_step(const Room &R_, const unsigned short *ACOS, Player &P, Inp in, int frames) {
-  P.acos = ACOS; P.dt = (float)fmin(frames * (1.0 / 50), 0.06);
+#ifndef BK_RATE
+#define BK_RATE 50
+#define BK_CAP 0.06
+#endif
+  P.acos = ACOS; P.dt = (float)fmin(frames * (1.0 / BK_RATE), BK_CAP);   // PAL 50/0.06, NTSC (-DBK_RATE=60 -DBK_CAP=0.05) 60/0.05
   float old[3] = { P.pos[0], P.pos[1], P.pos[2] };
   key_upd(in.A, P.keyA0, P.keyA1); key_upd(in.B, P.keyB0, P.keyB1); key_upd(in.Z, P.keyZ0, P.keyZ1);
   pl_readStick(P, in.sx, in.sy);
@@ -329,6 +333,7 @@ static HD void pl_step(const Room &R_, const unsigned short *ACOS, Player &P, In
   P.tgt[0] = tgt[0]; P.tgt[1] = tgt[1]; P.tgt[2] = tgt[2]; P.held = r.held; P.hits = r.hits;
 }
 static HD void pl_fpTwirl(Player &P, int m) { // bkmove.js fpTwirl
+  P.vel[0] = 0; P.vel[2] = 0;   // entering first person (badrone look, state 0x98) clears the horizontal velocity (BizHawk)
   float sg = m < 0 ? -3.6f : 3.6f; int n = m < 0 ? -m : m;
   float e = P.yaw + 180.0f; if (e >= 360) e = e - 360.0f; if (e < 0) e = e + 360.0f;
   for (int i = 0; i < n; i++) { e = e + sg; if (e >= 360) e = e - 360.0f; if (e < 0) e = e + 360.0f; }
