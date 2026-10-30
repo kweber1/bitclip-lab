@@ -35,6 +35,10 @@ function rot_yaw(yaw, mag) { // func_80256D0C(0, yaw, 0, 0, mag): x = mag*sin(ya
   const v2 = F(F(yaw) * BAD_DTOR); const tmp = fadd(fmul(0, sinf(0)), fmul(cosf(0), F(mag)));
   return [fadd(fmul(tmp, sinf(v2)), fmul(cosf(v2), 0)), fsub(fmul(0, cosf(0)), fmul(sinf(0), F(mag))), fsub(fmul(tmp, cosf(v2)), fmul(sinf(v2), 0))];
 }
+function rot_pitch_yaw(pitch, yaw, mag) { // func_80256E24(dst, pitch, yaw, 0, 0, mag)
+  const t = F(F(pitch) * BAD_DTOR), p = F(F(yaw) * BAD_DTOR); const tmp = fadd(fmul(0, sinf(t)), fmul(cosf(t), F(mag)));
+  return [fadd(fmul(tmp, sinf(p)), fmul(cosf(p), 0)), fsub(fmul(0, cosf(t)), fmul(sinf(t), F(mag))), fsub(fmul(tmp, cosf(p)), fmul(sinf(p), 0))];
+}
 function yaw_of(v) { // func_8025801C: yaw of a horizontal direction, or null when shorter than 0.01
   const h = fsqrt(fadd(fmul(v[2], v[2]), fmul(v[0], v[0]))); if (h < 0.01) return null;
   let y = ml_acosf(fdiv(v[0], h)); if (v[2] < 0) y = fsub(180, y); if (v[0] < 0) y = fsub(360, y); return y;
@@ -66,7 +70,7 @@ const FRICTION = [0.0, 0.07, 0.29, 0.15, 0.05].map(F); // commonParticle.c D_803
 // ---- states (enums.h bs_e)
 const S = { IDLE: 0x1, WALK_SLOW: 0x2, WALK: 0x3, WALK_FAST: 0x4, JUMP: 0x5, CLAW: 0x6, CROUCH: 0x7, SKID: 0xC, BBUSTER: 0xF, BFLIP: 0x12, BBARGE: 0x13,
   WALK_CREEP: 0x1F, LANDING: 0x20, FALL: 0x2F, ROLL: 0x31, SLIDE: 0x32, TUMBLE: 0x3D, SPLAT: 0x72,
-  BFLAP: 0x10, BPECK: 0x11, OW: 0xE, WW_ENTER: 0x1A, WW_IDLE: 0x1B, WW_WALK: 0x1C, WW_JUMP: 0x1D, WW_EXIT: 0x1E, SHOCK_CHARGE: 0x21, SHOCK_JUMP: 0x22, DIVE_IDLE: 0x2B, DIVE_B: 0x2C, SWIM_IDLE: 0x2D, SWIM: 0x2E, DIVE_ENTER: 0x30, DIVE_A: 0x39, LAND_WATER: 0x4C, TROT_ENTER: 0x14, TROT_IDLE: 0x15, TROT_WALK: 0x16, TROT_EXIT: 0x17, TROT_JUMP: 0x08, TROT_FALL: 0x71, TROT_SLIDE: 0x45 };
+  BFLAP: 0x10, BPECK: 0x11, OW: 0xE, WW_ENTER: 0x1A, WW_IDLE: 0x1B, WW_WALK: 0x1C, WW_JUMP: 0x1D, WW_EXIT: 0x1E, SHOCK_CHARGE: 0x21, SHOCK_JUMP: 0x22, DIVE_IDLE: 0x2B, DIVE_B: 0x2C, SWIM_IDLE: 0x2D, SWIM: 0x2E, DIVE_ENTER: 0x30, DIVE_A: 0x39, LAND_WATER: 0x4C, DIVE_OW: 0x7F, TROT_ENTER: 0x14, TROT_IDLE: 0x15, TROT_WALK: 0x16, TROT_EXIT: 0x17, TROT_JUMP: 0x08, TROT_FALL: 0x71, TROT_SLIDE: 0x45 };
 const SNAME = {}; for (const k in S) SNAME[S[k]] = k;
 const PHYS = { NONE: 0, UNK1: 1, NORMAL: 2, LOCKED: 4, AIRBORN: 6, NOGRAV: 9, MOVECLEAR: 5 }; // LOCKED = BA_PHYSICS_LOCKED_ROTATION; MOVECLEAR = BA_PHYSICS_UNK4; NOGRAV = BA_PHYSICS_NO_GRAVITY // physics types used here
 const ONCE = 1, LOOP = 2, STOPPED = 4;
@@ -104,7 +108,7 @@ class Player {
     this.yawMode = 1; this.yawThresh = 0;
     this.ptype = PHYS.NORMAL; this.thv = 0; this.tyaw = this.ideal; this.grav = F(-2700); this.term = F(-4000);
     this.zones = [0.12, 0.2, 0.5, 0.75, 1.0].map(F); this.stick = { x: 0, y: 0, dist: 0, angle: 0, zone: 0, zp: 0 };
-    this.keys = { A: [0, 1], B: [0, 1], Z: [0, 1], Cl: [0, 1], Cr: [0, 1] }; // [held count, released count]; Cl = C-Left
+    this.keys = { A: [0, 1], B: [0, 1], Z: [0, 1], Cl: [0, 1], Cr: [0, 1], R: [0, 1] }; // [held count, released count]; Cl = C-Left
     this.timers = new Float32Array(8); this.timersLast = new Float32Array(8);
     this.anim = new AnimCtrl(); this.anim.play(0x6F, 5.5, ONCE);
     this.grounded = o.grounded ?? true; this.stable = this.grounded; this.floorType = this.grounded ? 2 : 1; this.holdCounter = 0;
@@ -112,8 +116,9 @@ class Player {
     this.fallStart = this.pos.slice(); this.fallState = 0; this.dpos = [0, 0, 0];
     this.state = 0; this.prevState = 0; this.nextState = 0; this.v = {}; // per-state locals
     this.update = 0; this.flags = { A: false, B: false, C: false }; this.hasFlapped = false; this.hasPecked = false;
-    this.abil = Object.assign({ flap: true, peck: true, buster: true, wonderwing: true, shock: true }, o.abilities || {});
+    this.abil = Object.assign({ flap: true, peck: true, buster: true, wonderwing: true, shock: true, dive: true }, o.abilities || {});
     this.feathers = o.feathers ?? 0; this.onPad = false; this.colMode = 1; this.waterBelow = false; this.inWater = false; this.canJumpOut = false; this.accel = 0; this.tvel = [0, 0, 0];
+    this.pitch = 0; this.pitchIdeal = 0; this.pitchLim = F(500); this.pitchVel = F(0.8); this.diveCd = 0; this.wallHits = 0; this.wallN = [0, 0, 0]; // pitch.c, bainput_diveCooldown, D_8037C27D/D_8037C258
     this.rate = (o.version || 'PAL') === 'NTSC' ? 60 : 50; this.cap = this.rate === 60 ? 0.05 : 0.06;
     // one collision probe so the tracker knows the floor under the start position
     const r = BK.predict(world, this.pos, this.pos, { grounded: this.grounded, tracker: this.tracker });
@@ -149,7 +154,7 @@ class Player {
   _groundType() { const t = surface_type(this.map, this.tracker.unk4C | 0); return t === 3 ? 4 : 2; }
   // ---- input (bakey_update, bastick_update)
   readInput(inp) {
-    for (const k of ['A', 'B', 'Z', 'Cl', 'Cr']) { const h = !!inp[k]; const c = this.keys[k]; c[0] = h ? c[0] + 1 : 0; c[1] = c[0] ? 0 : c[1] + 1; }
+    for (const k of ['A', 'B', 'Z', 'Cl', 'Cr', 'R']) { const h = !!inp[k]; const c = this.keys[k]; c[0] = h ? c[0] + 1 : 0; c[1] = c[0] ? 0 : c[1] + 1; }
     const norm = (v, mn, mx) => { v = Math.trunc(v || 0); if (v > 0) { v = v > mx ? mx : v < mn ? mn : v; v = Math.trunc(((v - mn) * 80) / (mx - mn)); }
       else if (v < 0) { v = v < -mx ? -mx : v > -mn ? -mn : v; v = Math.trunc(((v + mn) * 80) / (mx - mn)); } return fmul(F(1 / 80), v); };
     const s = this.stick; s.x = norm(inp.sx, 7, 59); s.y = norm(inp.sy, 7, 61);
@@ -217,6 +222,12 @@ class Player {
   fpTwirl(m) { const nrm = a => { if (a >= 360) a = F(a - 360); if (a < 0) a = F(a + 360); return a; }; const sg = m < 0 ? -1 : 1;
     let e = nrm(F(this.yaw + 180)); for (let i = 0; i < Math.abs(m); i++) e = nrm(F(e + F(sg * 3.6))); const y = nrm(F(e + 180));
     this.yaw = y; this.ideal = y; this.tyaw = y; }
+  pitchStep() { // __pitch_update
+    const dt = this.dt, mx = fmul(this.pitchLim, dt); let d = fsub(this.pitchIdeal, this.pitch); if (180.0 < absf(d)) d = F(d + (d < 0 ? 360.0 : -360.0));
+    let v = fmul(fmul(d, this.pitchVel), dt); v = v < 0 ? ml_clamp_f(v, -mx, F(-0.1)) : ml_clamp_f(v, F(0.1), mx);
+    this.pitch = absf(v) <= absf(d) ? fadd(this.pitch, v) : this.pitchIdeal;
+    if (this.pitch < 360.0) { if (this.pitch < 0.0) this.pitch = F(this.pitch + 360.0); } else this.pitch = F(this.pitch - 360.0);
+  }
   wrapYaw() { if (this.yaw < 360.0) { if (this.yaw < 0.0) this.yaw = F(this.yaw + 360.0); } else this.yaw = F(this.yaw - 360.0); }
   // ---- one update
   step(inp = {}, frames = 2) {
@@ -229,6 +240,7 @@ class Player {
     if (inp.face != null) { const y = mlNormalizeAngle(F(inp.face)); this.yaw = y; this.ideal = y; this.tyaw = y; inp = {}; }
     this.dt = this.dtOf(frames); this.update++; const old = this.pos.slice();
     this.readInput(inp);
+    if (this.diveCd !== 0) this.diveCd = ml_max_f(fsub(this.diveCd, this.dt), 0); // bainput_update
     const u = this.UPDATE[this.state]; if (u) { this._wt = WATER_TO[this.state] || null; u.call(this); this._wt = null; }
     const tgt = this.physics();
     this.canJumpOut = false; // D_8037C27E
@@ -243,11 +255,13 @@ class Player {
       : this.ghost ? { result: tgt, grounded: false, hold_counter_after: 0, held: false, hits: 0, result_bits: null }
       : BK.predict(this.world, old, tgt, { grounded: this.grounded, tracker: this.tracker, hold_counter: this.holdCounter });
     const res = r.result.map(F); this.pos = res; this.grounded = !!r.grounded; this.holdCounter = r.hold_counter_after;
+    this.wallHits = r.hits | 0; if (r.last_n) this.wallN = r.last_n.map(F); else if (!r.hits) this.wallN = [0, 0, 0];
     const fy = this.floorY(); const wy = this.tracker.posY; if (this.tracker.unk59) this.waterBelow = res[1] < wy; // D_8037C278 (water surface, not the floor)
     if (this.waterBelow && res[1] < fsub(wy, 70)) { this.floorType = 3; if (this.grounded && this.vel[1] < 0) this.vel[1] = F(-1); }
     else if (this.grounded) { this.floorType = this._groundType(); if (this.vel[1] < 0) this.vel[1] = F(-1); }
     else this.floorType = 1;
     this.dpos = [fsub(res[0], old[0]), fsub(res[1], old[1]), fsub(res[2], old[2])];
+    this.pitchStep(); // pitch_update (roll is cosmetic)
     this.yawStep();
     this.anim.update(this.dt);
     this.inWater = this.waterBelow && res[1] < (this.inWater ? fadd(fsub(wy, 50), 2) : fsub(fsub(wy, 50), 2)); // func_8028B59C
@@ -326,7 +340,7 @@ END[S.BPECK] = function () { this.grav = F(-2700); };
 const REBOUND = { 1: [1, 510, -1200, 200], 2: [1, 600, -1500, 300], 3: [1, 510, -1200, 100], 4: [1, 510, -1200, 200], 5: [1, 510, -1200, 300], 6: [1, 510, -1200, 400],
   7: [1, 510, -1200, 500], 8: [1, 600, -1500, 100], 9: [1, 600, -1500, 200], 0xA: [1, 600, -1500, 300], 0xB: [1, 600, -1500, 400], 0xC: [1, 600, -1500, 500],
   0xD: [2, 300, -1200, 0], 0xF: [1, 300, -1200, 0] }; // code_117D0.c s_rebound_list: [unk1, vy, gravity, horizontal speed]
-P.hit = function (src, type) { this.hitSrc = src.map(F); this.hitType = type; this.setState(S.OW); };
+P.hit = function (src, type) { this.hitSrc = src.map(F); this.hitType = type; this.setState(DIVE_SET.has(this.state) ? S.DIVE_OW : S.OW); };
 P._knockback = function () { // func_802B360C (non-launch types)
   const rb = REBOUND[this.hitType] || REBOUND[1]; this.v.rb = rb; const yw = yaw_of([fsub(this.pos[0], this.hitSrc[0]), 0, fsub(this.pos[2], this.hitSrc[2])]) ?? 0;
   this.setIdeal(F(yw + 180.0)); this.thv = F(rb[3]); this.tyaw = yw; this.setHVel(yw, this.thv); this.vel[1] = F(rb[1]); this.grav = F(rb[2]);
@@ -428,14 +442,15 @@ UPDATE[S.LAND_WATER] = function () {
   let n = 0; if (this.v.vy < 0) { this.v.vy = F(this.v.vy + ml_max_f(absf(this.v.vy) * 0.1, 50.0)); this.vel[1] = this.v.vy; }
   if (this.isStable()) n = S.SWIM_IDLE; if (!this.inWater) n = S.IDLE; if (this.vel[1] >= 0) n = S.SWIM_IDLE; this.setState(n);
 };
-END[S.LAND_WATER] = function () { if (!SWIM_SET.has(this.nextState)) { this.term = F(-4000); this.grav = F(-2700); this.zones = [0.12, 0.2, 0.5, 0.75, 1.0].map(F); this.colMode = 1; } }; // func_802A75B0
+END[S.LAND_WATER] = function () { this.diveEnd(); }; // func_802A75B0
 INIT[S.SWIM_IDLE] = function () {
+  if (DIVE_SET.has(this.prevState)) this.diveCd = F(0.7); // bainput_setDiveCooldown(4, 0.7)
   if (this.anim.id === 0x57 && this.prevState !== S.LAND_WATER) { this.anim.id = 0x57; this.anim.type = LOOP; this.anim.dur = F(1.2); }
   else { this.anim.reset(); this.anim.id = 0x57; this.anim.type = LOOP; this.anim.setStart(0.3); this.anim.dur = F(1.2); this.anim.go(); }
   this.setUpdateTypes(3, 3, PHYS.NORMAL); this.yawB = [F(500), F(5)]; this.thv = 0; this.enteredWater();
 };
 UPDATE[S.SWIM_IDLE] = function () {
-  let n = 0; if (this.stick.zone === 1) n = S.SWIM; if (!this.inWater) n = S.IDLE; if (this.canJumpOut && this.pressed('A')) n = S.JUMP; this.setState(n);
+  let n = 0; if (this.stick.zone === 1) n = S.SWIM; if (!this.inWater) n = S.IDLE; if (this.shouldDive()) n = S.DIVE_ENTER; if (this.canJumpOut && this.pressed('A')) n = S.JUMP; this.setState(n);
 };
 END[S.SWIM_IDLE] = P.swimEnd;
 INIT[S.SWIM] = function () {
@@ -444,9 +459,65 @@ INIT[S.SWIM] = function () {
 };
 UPDATE[S.SWIM] = function () {
   let n = 0; this.thv = this.stick.zone ? ml_interpolate_f(this.stick.zp, 30, 300) : 0; // __bsswim_updateVelocity
-  if (this.stick.zone === 0) n = S.SWIM_IDLE; if (!this.inWater) n = S.IDLE; if (this.canJumpOut && this.pressed('A')) n = S.JUMP; this.setState(n);
+  if (this.stick.zone === 0) n = S.SWIM_IDLE; if (!this.inWater) n = S.IDLE;
+  if (this.wallHits && this.abil.dive && this.wallN[1] < -0.7 && fsub(this.tracker.posY, this.pos[1]) > 90.0) n = S.DIVE_ENTER; // swim into a ceiling-facing surface
+  if (this.shouldDive()) n = S.DIVE_ENTER; if (this.canJumpOut && this.pressed('A')) n = S.JUMP; this.setState(n);
 };
 END[S.SWIM] = P.swimEnd;
+// ---- underwater (bs/bSwim.c): NO_GRAVITY physics, velocity eases to a 3D target at `accel`; pitch from stick Y, yaw from stick X
+const DIVE_SET = new Set([S.DIVE_IDLE, S.DIVE_B, S.DIVE_A, S.DIVE_ENTER, S.DIVE_OW]); // bsbswim_inSet (+ drone/die states)
+P.shouldDive = function () { return this.pressed('B') && this.diveCd === 0 && this.abil.dive; }; // bainput_should_dive
+P.diveSetup = function () { // func_802A744C
+  this.grav = 0; this.term = F(-399.99); this.zones[0] = F(0.03); this.zones[1] = F(1.0); this.colMode = 3; this.accel = F(2); };
+P.diveEnd = function () { // func_802A75B0
+  if (!DIVE_SET.has(this.nextState)) { this.pitchIdeal = 0; this.term = F(-4000); this.grav = F(-2700); this.zones = [0.12, 0.2, 0.5, 0.75, 1.0].map(F); this.colMode = 1; } };
+P.speed3 = function () { const v = this.vel; return ml_map_f(fsqrt(fadd(fadd(fmul(v[0], v[0]), fmul(v[1], v[1])), fmul(v[2], v[2]))), 50, 200, 0, 1); }; // func_802A716C
+P.diveYaw = function () { // func_802A71D8 (per update, not scaled by dt)
+  const sx = this.stick.x, k = this.speed3(); let yr;
+  if (this.held('R')) { yr = 4.3; this.yawB = [F(250), F(20)]; } else { yr = ml_interpolate_f(k, 3.1, 2.4); this.yawB = [F(90), ml_interpolate_f(k, 3.8, 2.2)]; }
+  this.setIdeal(fadd(this.ideal, ml_map_f(sx, -1, 1, yr, F(-yr)))); };
+P.divePitch = function () { // func_802A7304
+  this.pitchLim = ml_interpolate_f(this.speed3(), 70, 30); this.pitchVel = F(0.9); const sy = this.stick.y;
+  this.pitchIdeal = mlNormalizeAngle(sy < 0 ? ml_map_f(sy, -1, 0, 275, 360) : ml_map_f(sy, 0, 1, 0, 85)); };
+P.diveSurfacing = function () { return this.tracker.unk59 && this.pos[1] > fsub(this.tracker.posY, 130); }; // bsbdive_surfacing (CCW winter uses 90)
+P.diveDrive = function () { const v = rot_pitch_yaw(this.pitch, this.yaw, this.v.spd); this.tvel = v.slice(); this.vel = v.slice(); }; // func_802A77D8
+P.diveCommon = function (n) { if (this.diveSurfacing()) n = S.SWIM_IDLE; if (!this.inWater) n = S.IDLE; return n; };
+INIT[S.DIVE_ENTER] = function () { // bsSwim_dive_init
+  this.anim.play(0x3C, 1.0, ONCE); this.setUpdateTypes(3, 3, PHYS.NOGRAV); this.yawB = [F(500), F(5)]; this.tvel = [0, 0, 0]; this.diveSetup();
+  this.pitchLim = F(200); this.pitchVel = F(2.5); this.v.ph = 0; };
+UPDATE[S.DIVE_ENTER] = function () {
+  let n = 0;
+  if (this.v.ph === 0) { this.pitchIdeal = F(50); if (this.anim.isAt(0.7247)) { this.vel = rot_pitch_yaw(this.pitch, this.yaw, 800); this.setTimer(1, 0.8); this.v.ph = 1; } }
+  else if (this.decTimer(1)) n = S.DIVE_IDLE;
+  if (!this.inWater) n = S.IDLE; this.setState(n); };
+END[S.DIVE_ENTER] = P.diveEnd;
+INIT[S.DIVE_IDLE] = function () { this.anim.play(0x70, 2.0, LOOP); this.setUpdateTypes(3, 3, PHYS.NOGRAV); this.tvel = [0, 0, 0]; this.diveSetup(); this.accel = F(0.4); };
+UPDATE[S.DIVE_IDLE] = function () {
+  let n = 0; this.diveYaw(); this.divePitch(); if (this.held('A')) n = S.DIVE_A; if (this.held('B')) n = S.DIVE_B; this.setState(this.diveCommon(n)); };
+END[S.DIVE_IDLE] = P.diveEnd;
+INIT[S.DIVE_B] = function () { // bsbdiveb_init: one big stroke per loop (600, -10 per update)
+  this.anim.reset(); this.anim.id = 0x3F; this.anim.setStart(0.4626); this.anim.dur = F(1.0); this.anim.go();
+  this.setUpdateTypes(3, 3, PHYS.NOGRAV); this.diveSetup(); this.v.spd = 0; this.accel = F(1); };
+UPDATE[S.DIVE_B] = function () {
+  let n = 0; const a = this.anim; this.diveYaw(); this.divePitch();
+  if (this.v.spd > 0) { this.diveDrive(); this.v.spd = ml_max_f(fsub(this.v.spd, 10), 0); }
+  if (a.isAt(0.1)) this.v.spd = F(600); if (a.isAt(0.4626)) a.dur = F(1.0); if (a.isAt(0.2766)) a.dur = F(3.0);
+  if (!this.held('B')) { if (this.held('A')) { if (a.anim <= 0.4625 && 0.1 < a.anim) n = S.DIVE_A; } else if (a.isAt(0.4625)) n = S.DIVE_IDLE; }
+  if (a.isAt(0.4625) && !this.held('B')) n = this.held('A') ? S.DIVE_A : S.DIVE_IDLE;
+  this.setState(this.diveCommon(n)); };
+END[S.DIVE_B] = P.diveEnd;
+INIT[S.DIVE_A] = function () { this.anim.play(0x71, 0.75, LOOP); this.setUpdateTypes(3, 3, PHYS.NOGRAV); this.diveSetup(); this.v.spd = F(120); this.accel = F(2); };
+UPDATE[S.DIVE_A] = function () { // steady paddle at 120
+  let n = 0; this.diveYaw(); this.divePitch(); this.diveDrive();
+  if (this.anim.isAt(0.99)) { if (!this.held('A')) n = S.DIVE_IDLE; if (this.held('B')) n = S.DIVE_B; }
+  this.setState(this.diveCommon(n)); };
+END[S.DIVE_A] = P.diveEnd;
+INIT[S.DIVE_OW] = function () { // bsbswim_ow_init
+  const rb = REBOUND[this.hitType] || REBOUND[1]; this.anim.play(0x1A0, 1.4, ONCE);
+  const yw = yaw_of([fsub(this.pos[0], this.hitSrc[0]), 0, fsub(this.pos[2], this.hitSrc[2])]) ?? 0;
+  this.setIdeal(yw); this.yaw = this.ideal; this.thv = F(rb[3]); this.tyaw = yw; this.setHVel(yw, this.thv); this.setUpdateTypes(1, 2, PHYS.LOCKED); this.diveSetup(); };
+UPDATE[S.DIVE_OW] = function () { this.setState(this.anim.stopped() ? S.DIVE_IDLE : 0); };
+END[S.DIVE_OW] = P.diveEnd;
 function standNext(r) { // func_802B488C
   switch (this.stick.zone) { case 1: r = S.WALK_CREEP; break; case 2: r = S.WALK_SLOW; break; case 3: r = S.WALK; break; case 4: r = S.WALK_FAST; break; }
   if (this.held('Z')) r = S.CROUCH; if (this.pressed('B')) r = S.CLAW; if (this.pressed('A')) r = this.jumpType(); if (this.isSliding()) r = S.SLIDE; return r;

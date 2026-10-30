@@ -453,7 +453,7 @@ function predict(world, old, target, o = {}) {
     if (t2 && (!(n2[1] < 0) || (t2.flags & 0x10000)) && old[1] < b[1]) old[1] = b[1];
     log.push(['fallback-pushed', vcopy(sp390), vcopy(old)]);
   }
-  const P = []; let last204 = null; let count = 0; let i = 0;
+  const P = []; let last204 = null; let last_n = null; let count = 0; let i = 0;
   while (i < 5) {
     const cur = {}; P.push(cur); const prev = i ? P[i - 1] : null;
     if (i) { cur.u0 = vcopy(prev.u0); cur.uC = vcopy(prev.uC); } else { cur.u0 = vcopy(tgt); cur.uC = vcopy(old); }
@@ -473,7 +473,7 @@ function predict(world, old, target, o = {}) {
     const n1c = [0, 0, 0]; const hit = world.moving_sphere(cur.u34, cur.u28, r, n1c, 3, filt);
     cur.u18 = hit; cur.u1C = n1c; log.push([i, 'sphere', vcopy(u0), hit ? hit.idx : null, vcopy(n1c)]);
     if (!hit) break;
-    count++; last204 = hit;
+    count++; last204 = hit; last_n = vcopy(n1c); // D_8037C27D, D_8037C258
     if (i === 2) {
       if (hit === P[0].u18 && hit !== prev.u18) cur.u1C = normalize(vadd(cur.u1C, prev.u1C));
       if (cur.u18 === P[0].u18) {
@@ -510,7 +510,7 @@ function predict(world, old, target, o = {}) {
   let grounded_out = st.grounded; const forced = (hold_counter === 3); if (forced) grounded_out = 1;
   const new_counter = falling_hold ? Math.min(hold_counter + 1, 3) : 0;
   return { hits: count, held, result, result_bits: result.map(x => bits(x).toString(16).toUpperCase().padStart(8, '0')), grounded: grounded_out,
-    grounded_from_floor: st.grounded, forced_grounded: forced, falling_hold, hold_counter_after: new_counter, last_hit: last204 ? last204.idx : null, trace: log };
+    grounded_from_floor: st.grounded, forced_grounded: forced, falling_hold, hold_counter_after: new_counter, last_hit: last204 ? last204.idx : null, last_n, trace: log };
 }
 
 // ---- several updates
