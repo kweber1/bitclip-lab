@@ -45,7 +45,12 @@ HD static int clip(const Room &R, const unsigned short *A, const float *p, int m
   float pos[3] = { p[0], (p[1] - s) - h, p[2] }; Tracker tr; tracker_init(&tr, pos); World w; w.has_stored = 0; int g = 0, hold = 0;
   for (int u = 0; u < 7; u++) { float dt = u == 0 ? dt0 : dtN; float tgt[3] = { pos[0], pos[1] + v * dt, pos[2] }; Pred o; predict_hr(R, A, &w, pos, tgt, g, hold, &tr, &o, h, r);
     pos[0] = o.result[0]; pos[1] = o.result[1]; pos[2] = o.result[2]; g = o.grounded; hold = o.hold_counter_after; }
-  return pos[1] > p[1] + 10.0f ? 1 : 0; }
+  if (!(pos[1] > p[1] + 10.0f)) return 0;
+  // through the roof, not slid up a sloped ceiling: 2+ of 4 rays 10 to the sides, from 50 under the crack up to 1 under the feet, hit a ceiling triangle
+  int hits = 0; const float dx[4] = { 10, -10, 0, 0 }, dz[4] = { 0, 0, 10, -10 };
+  for (int i = 0; i < 4; i++) { float x = pos[0] + dx[i], z = pos[2] + dz[i]; float a[3] = { x, p[1] - 50.0f, z }, b[3] = { x, pos[1] - 1.0f, z }, n[3] = { 0, 0, 0 };
+    w.has_stored = 0; if (bk_line(R, &w, a, b, n, FILT) >= 0 && n[1] < -0.3f) hits++; }
+  return hits >= 2 ? 1 : 0; }
 #ifdef __CUDACC__
 __global__ void k_census(Room R, const Seam *SS, int ns, int steps, long long base, long long n, int *out, float *pts) {
   long long t = (long long)blockIdx.x * blockDim.x + threadIdx.x; if (t >= n) return; long long g = base + t; int s = (int)(g / (steps + 1)), k = (int)(g % (steps + 1));

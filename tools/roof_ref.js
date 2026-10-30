@@ -5,7 +5,7 @@
 // (x, y + r/|ny| + 1, z) with r = 35 (Banjo) / 25 (bee, forms) / 45 (Banjo flying).
 // Roof clip test (a long move straight up through the crack, the way the bee R282/R308 clips work: the move is longer than 2r-4,
 // so func_80293668 tests the centre line, which slips through the seam): the centre starts s under the crack, s = (k+0.5)/NP of the
-// first update's move, velocity v up held (flight flaps keep it), then 6 more normal updates. Clip = the feet end 10+ above the crack.
+// first update's move, velocity v up held (flight flaps keep it), then 6 more normal updates. Clip = the feet end 10+ above the crack with roof under them (rays from below hit a ceiling).
 //   bee:   height 50, r 25, v 1600 (4 flaps), every update normal (PAL 64/update, NTSC 53.3; the long-move test needs > 46)
 //   fly:   Banjo flying, height 60, r 45, v 1600, the first update long (PAL 0.06 -> 96, NTSC 0.05 -> 80; needs > 86)
 'use strict';
@@ -36,7 +36,12 @@ function mk(BK) {
     let pos = [p[0], F(F(p[1] - s) - F(m.h)), p[2]]; w.stored = null; const tr = new BK.Tracker({ unk28: pos }); let g = false, hold = 0;
     for (let u = 0; u < 7; u++) { const dt = u === 0 ? dt0 : dtN; const tgt = [pos[0], F(pos[1] + F(F(m.v) * dt)), pos[2]];
       const r = BK.predict(w, pos, tgt, { grounded: g, tracker: tr, hold_counter: hold, height: m.h, radius: m.r }); pos = r.result.map(F); g = !!r.grounded; hold = r.hold_counter_after; }
-    return pos[1] > F(p[1] + 10) ? 1 : 0; }
+    if (!(pos[1] > F(p[1] + 10))) return 0;
+    // through the roof, not slid up along a sloped ceiling: of 4 rays 10 to the sides of Banjo's final x/z, from 50 under the crack up to
+    // 1 under his feet, at least 2 hit a ceiling (down-facing) triangle -- there is roof between the room and his feet
+    let hits = 0; for (const [dx, dz] of [[10, 0], [-10, 0], [0, 10], [0, -10]]) { const x = F(pos[0] + dx), z = F(pos[2] + dz); const a = [x, F(p[1] - 50), z], b = [x, F(pos[1] - 1), z], n = [0, 0, 0];
+      w.stored = null; const t = w.line(a, b, n, FILT); if (t && n[1] < -0.3) hits++; }
+    return hits >= 2 ? 1 : 0; }
   return { ceilingSeams, census, clip, MODES, FILT };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = mk; else if (typeof self !== 'undefined' && self.BK) self.BKROOF = mk(self.BK);
