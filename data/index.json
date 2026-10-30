@@ -1376,7 +1376,9 @@
 "ntsc_holds": 66282,
 "ntsc_clips": 3263,
 "ntsc_slopeclips": 69332,
-"pose": 8
+"pose": 8,
+"lower": 47683,
+"lower_through": 22964
 },
 {
 "map": "0x70",
