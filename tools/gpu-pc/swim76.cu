@@ -8,8 +8,9 @@
 // usage: swim76 room.bin arrivals.txt sticks.txt out.bin progress.txt [creep_sx creep_sy NK]
 //   arrivals.txt: "x0 z0 parity vt" per line (start at rest at feet -445, VY 133.33; charge with stick neutral until VY >= vt,
 //                 then creep with the creep stick until the slide (z grows > 1 per update past z -1340))
+//   creep 999 999 = hold mode: no creep; state k = k neutral updates after the push, then the stick is held (SW_MAXS updates)
 //   sticks.txt:   "sx sy" per line (the pull-back stick; 0 0 = neutral)
-//   out.bin:      per arrival: int32 slide flag, float slide VY, int32 parity at the slide, then NK x nsticks bytes (1 = launch),
+//   out:          GPU build: text summary (counts of launches per parity, k, stick over all slid arrivals); CPU build: per arrival: int32 slide flag, float slide VY, int32 parity at the slide, then NK x nsticks bytes (1 = launch),
 //                 byte [k*nsticks + j] = switch to stick j k updates after the slide.
 // CPU build (g++ -x c++): runs the first arrival list entries on the CPU (same output), for checks against the exact model.
 #include <stdio.h>
@@ -105,13 +106,14 @@ static HD int x_step(RA, const unsigned short *A, SW *x, int sx, int sy) {
   x_camupdate(A, x);
   return x->S[1] > -98.0f;
 }
-static HD int launched(RA, const unsigned short *A, SW *x, int sx, int sy) {
-  for (int s = 0; s < 150; s++) { if (x_step(RP, A, x, sx, sy)) return x->vel[1] > 2000; if (x->vel[1] < 2.0f) return 0; } return 0; }
+static HD int launched(RA, const unsigned short *A, SW *x, int sx, int sy, int maxs) {
+  for (int s = 0; s < maxs; s++) { if (x_step(RP, A, x, sx, sy)) return x->vel[1] > 2000; if (x->vel[1] < 2.0f) return 0; } return 0; }
 // arrival: charge neutral to vt, creep to the slide; saves NK states (slide + k)
 static HD int arrive(RA, const unsigned short *A, const float *AR, int i, int cx, int cy, int NK, SW *ks, float *slvy, int *slpar) {
   SW x; x_start(&x, AR[4 * i], -445.0f, AR[4 * i + 1], 133.33f, (int)AR[4 * i + 2]); float vt = AR[4 * i + 3];
   for (int n = 0; x.vel[1] < vt && n < 6000; n++) if (x_step(RP, A, &x, 0, 0)) return 0;
   if (x.S[2] > -1300) return 0;
+  if (cx == 999) { *slvy = x.vel[1]; *slpar = x.tick & 1; for (int k = 0; k < NK; k++) { ks[k] = x; x_step(RP, A, &x, 0, 0); } return 1; } // hold mode: states at the push (+k neutral updates)
   int sl = 0; for (int s = 0; s < 3000; s++) { float zp = x.S[2]; if (x_step(RP, A, &x, cx, cy)) return 0; if (x.S[2] - zp > 1.0f && x.S[2] > -1340) { sl = 1; break; } }
   if (!sl) return 0; *slvy = x.vel[1]; *slpar = x.tick & 1;
   for (int k = 0; k < NK; k++) { ks[k] = x; x_step(RP, A, &x, cx, cy); }
@@ -121,13 +123,14 @@ static HD int arrive(RA, const unsigned short *A, const float *AR, int i, int cx
 __global__ void k_arrive(Room R_, const unsigned short *A, const float *AR, int na, int cx, int cy, int NK, SW *KS, int *FL, float *VY, int *PAR) {
   int i = blockIdx.x * blockDim.x + threadIdx.x; if (i >= na) return;
   FL[i] = arrive(R_, A, AR, i, cx, cy, NK, KS + (size_t)i * NK, VY + i, PAR + i); }
-__global__ void k_branch(Room R_, const unsigned short *A, const SW *KS, const int *FL, int na, int NK, const int *ST, int ns, unsigned char *O) {
+__global__ void k_branch(Room R_, const unsigned short *A, const SW *KS, const int *FL, int na, int NK, const int *ST, int ns, unsigned char *O, int maxs) {
   long long t = (long long)blockIdx.x * blockDim.x + threadIdx.x; if (t >= (long long)na * NK * ns) return;
   int i = (int)(t / ((long long)NK * ns)); int rem = (int)(t % ((long long)NK * ns)); int k = rem / ns, j = rem % ns;
-  if (!FL[i]) { O[t] = 0; return; } SW x = KS[(size_t)i * NK + k]; O[t] = (unsigned char)launched(R_, A, &x, ST[2 * j], ST[2 * j + 1]); }
+  if (!FL[i]) { O[t] = 0; return; } SW x = KS[(size_t)i * NK + k]; O[t] = (unsigned char)launched(R_, A, &x, ST[2 * j], ST[2 * j + 1], maxs); }
 #endif
 int main(int argc, char **argv) {
   if (argc < 6) { fprintf(stderr, "usage: swim76 room.bin arrivals.txt sticks.txt out.bin progress.txt [cx cy NK] [cpuN]\n"); return 1; }
+  int maxs = getenv("SW_MAXS") ? atoi(getenv("SW_MAXS")) : 150; // update limit per branch (hold mode: creep + exit, ~1500)
   int cx = argc > 6 ? atoi(argv[6]) : -70, cy = argc > 7 ? atoi(argv[7]) : -70, NK = argc > 8 ? atoi(argv[8]) : 20;
   fin = fopen(argv[1], "rb"); if (!fin || rdi() != 0x42504331) { fprintf(stderr, "bad room.bin\n"); return 1; }
   std::vector<unsigned short> acos = rdv<unsigned short>(); HostRoom hr = read_room(); fclose(fin);
@@ -140,17 +143,20 @@ int main(int argc, char **argv) {
   CK(cudaDeviceSetLimit(cudaLimitStackSize, 32768));
   Room R; R.TF = up(hr.TF); R.TI = up(hr.TI); R.CLI = up(hr.CLI); R.CLF = up(hr.CLF); R.CELLS = up(hr.CELLS); R.PF = up(hr.PF); R.PI = up(hr.PI); R.PC = up(hr.PC); R.GR = up(hr.GR); R.RF = up(hr.RF);
   unsigned short *dA = up(acos); int *dST = up(ST);
-  const int CH = 8192;
+  const int CH = 8192; std::vector<long long> agg[2] = { std::vector<long long>((size_t)NK * ns, 0), std::vector<long long>((size_t)NK * ns, 0) }; long long nsl = 0, nany = 0, npar[2] = { 0, 0 };
   for (int a0 = 0; a0 < na; a0 += CH) { int n = na - a0 < CH ? na - a0 : CH; std::vector<float> sub(AR.begin() + 4 * a0, AR.begin() + 4 * (a0 + n)); float *dAR = up(sub);
     SW *dKS; CK(cudaMalloc(&dKS, sizeof(SW) * (size_t)n * NK)); int *dFL, *dPAR; float *dVY; CK(cudaMalloc(&dFL, 4 * n)); CK(cudaMalloc(&dPAR, 4 * n)); CK(cudaMalloc(&dVY, 4 * n));
     k_arrive<<<(n + 63) / 64, 64>>>(R, dA, dAR, n, cx, cy, NK, dKS, dFL, dVY, dPAR); CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
     long long nt = (long long)n * NK * ns; unsigned char *dO; CK(cudaMalloc(&dO, nt));
-    k_branch<<<(unsigned)((nt + 127) / 128), 128>>>(R, dA, dKS, dFL, n, NK, dST, ns, dO); CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
+    k_branch<<<(unsigned)((nt + 127) / 128), 128>>>(R, dA, dKS, dFL, n, NK, dST, ns, dO, maxs); CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
     std::vector<int> fl(n), par(n); std::vector<float> vy(n); std::vector<unsigned char> o(nt);
     CK(cudaMemcpy(fl.data(), dFL, 4 * n, cudaMemcpyDeviceToHost)); CK(cudaMemcpy(par.data(), dPAR, 4 * n, cudaMemcpyDeviceToHost)); CK(cudaMemcpy(vy.data(), dVY, 4 * n, cudaMemcpyDeviceToHost)); CK(cudaMemcpy(o.data(), dO, nt, cudaMemcpyDeviceToHost));
-    for (int i = 0; i < n; i++) { fwrite(&fl[i], 4, 1, fo); fwrite(&vy[i], 4, 1, fo); fwrite(&par[i], 4, 1, fo); fwrite(o.data() + (size_t)i * NK * ns, 1, (size_t)NK * ns, fo); }
+    for (int i = 0; i < n; i++) { if (!fl[i]) continue; nsl++; int any = 0; for (size_t c = 0; c < (size_t)NK * ns; c++) if (o[(size_t)i * NK * ns + c]) { agg[par[i]][c]++; any = 1; } nany += any; npar[par[i]]++; }
     cudaFree(dAR); cudaFree(dKS); cudaFree(dFL); cudaFree(dPAR); cudaFree(dVY); cudaFree(dO); fflush(fo);
-    fprintf(fp, "%d/%d arrivals | %.0f s\n", a0 + n, na, std::chrono::duration<double>(std::chrono::steady_clock::now() - T0).count()); fflush(fp); }
+    fprintf(fp, "%d/%d arrivals | slides %lld | with a win %lld | %.0f s\n", a0 + n, na, nsl, nany, std::chrono::duration<double>(std::chrono::steady_clock::now() - T0).count()); fflush(fp); }
+  // out (GPU build): text summary. line 1: arrivals slides any par0 par1 NK ns; then per parity p, per k: ns counts
+  fprintf(fo, "%d %lld %lld %lld %lld %d %d\n", na, nsl, nany, npar[0], npar[1], NK, ns);
+  for (int p = 0; p < 2; p++) for (int k = 0; k < NK; k++) { for (int j = 0; j < ns; j++) fprintf(fo, "%lld ", agg[p][(size_t)k * ns + j]); fprintf(fo, "\n"); }
 #else
   Room R; R.TF = hr.TF.data(); R.TI = hr.TI.data(); R.CLI = hr.CLI.data(); R.CLF = hr.CLF.data(); R.CELLS = hr.CELLS.data(); R.PF = hr.PF.data(); R.PI = hr.PI.data(); R.PC = hr.PC.data(); R.GR = hr.GR.data(); R.RF = hr.RF.data();
   int N = argc > 9 ? atoi(argv[9]) : na; if (N > na) N = na; std::vector<SW> ks(NK);
@@ -161,7 +167,7 @@ int main(int argc, char **argv) {
     fclose(fo); fclose(fp); return 0; }
   for (int i = 0; i < N; i++) { float vy = 0; int par = 0; int fl = arrive(R, acos.data(), AR.data(), i, cx, cy, NK, ks.data(), &vy, &par);
     fwrite(&fl, 4, 1, fo); fwrite(&vy, 4, 1, fo); fwrite(&par, 4, 1, fo);
-    for (int k = 0; k < NK; k++) for (int j = 0; j < ns; j++) { unsigned char c = 0; if (fl) { SW x = ks[k]; c = (unsigned char)launched(R, acos.data(), &x, ST[2 * j], ST[2 * j + 1]); } fwrite(&c, 1, 1, fo); } }
+    for (int k = 0; k < NK; k++) for (int j = 0; j < ns; j++) { unsigned char c = 0; if (fl) { SW x = ks[k]; c = (unsigned char)launched(R, acos.data(), &x, ST[2 * j], ST[2 * j + 1], maxs); } fwrite(&c, 1, 1, fo); } }
 #endif
   fprintf(fp, "DONE\n"); fclose(fp); fclose(fo); return 0;
 }
