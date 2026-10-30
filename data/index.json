@@ -278,7 +278,9 @@
 "ntsc_holds": 65812,
 "ntsc_clips": 262,
 "ntsc_slopeclips": 0,
-"pose": 15
+"pose": 15,
+"lower": 54079,
+"lower_through": 6348
 },
 {
 "map": "0x10",
@@ -1374,7 +1376,9 @@
 "ntsc_holds": 66282,
 "ntsc_clips": 3263,
 "ntsc_slopeclips": 69332,
-"pose": 8
+"pose": 8,
+"lower": 10092,
+"lower_through": 6922
 },
 {
 "map": "0x70",
@@ -1412,7 +1416,9 @@
 "ntsc_holds": 133695,
 "ntsc_clips": 6199,
 "ntsc_slopeclips": 17418,
-"pose": 1
+"pose": 1,
+"lower": 7912,
+"lower_through": 6054
 },
 {
 "map": "0x72",
@@ -1431,7 +1437,9 @@
 "ntsc_holds": 69668,
 "ntsc_clips": 268,
 "ntsc_slopeclips": 18842,
-"pose": 2
+"pose": 2,
+"lower": 12224,
+"lower_through": 9115
 },
 {
 "map": "0x74",
@@ -1469,7 +1477,9 @@
 "ntsc_holds": 70030,
 "ntsc_clips": 10153,
 "ntsc_slopeclips": 208551,
-"pose": 1
+"pose": 1,
+"lower": 108140,
+"lower_through": 75456
 },
 {
 "map": "0x76",
@@ -1638,6 +1648,8 @@
 "ntsc_holds": 135570,
 "ntsc_clips": 165,
 "ntsc_slopeclips": 107,
-"pose": 8
+"pose": 8,
+"lower": 5280,
+"lower_through": 2761
 }
 ]

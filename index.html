@@ -14,7 +14,7 @@
 :root{
   --bg:#e9edeb; --panel:#fbfcfb; --sunk:#f1f4f2; --ink:#16201c; --muted:#5a6863; --line:#d3dbd7; --line-soft:#e3e8e5;
   --accent:#0f6f63; --accent-soft:#d7ebe6; --accent-ink:#ffffff;
-  --hold:#cf3f2b; --clip:#7a35c2; --crack:#1d67b0; --roof:#b97d0c; --slope:#0d8a5a; --hit5:#d4357a; --prop:#b5651d; --free:#3b80c0; --land:#2f8a49; --pop:#d47c15;
+  --hold:#cf3f2b; --clip:#7a35c2; --crack:#1d67b0; --roof:#b97d0c; --slope:#0d8a5a; --lower:#0b7f92; --hit5:#d4357a; --prop:#b5651d; --free:#3b80c0; --land:#2f8a49; --pop:#d47c15;
   --view:#d9dfdc; --mesh-floor:#b4bfb6; --mesh-wall:#97a39b; --mesh-ceil:#8b8f9c;
   --shadow:0 6px 24px rgba(20,32,28,.14);
   --f-ui:"Chivo",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; --f-mono:"Chivo Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
@@ -22,12 +22,12 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0e1312; --panel:#151b19; --sunk:#111715; --ink:#e3eae6; --muted:#8d9b95; --line:#26302c; --line-soft:#1e2724;
   --accent:#43c3a5; --accent-soft:#16352e; --accent-ink:#06120f;
-  --hold:#ff6a52; --clip:#bd8bff; --crack:#5aaeff; --roof:#ffc04d; --slope:#4fe0a0; --hit5:#ff6fae; --prop:#e8954d; --free:#6db6ff; --land:#6fd486; --pop:#ffad4d;
+  --hold:#ff6a52; --clip:#bd8bff; --crack:#5aaeff; --roof:#ffc04d; --slope:#4fe0a0; --lower:#47d3ea; --hit5:#ff6fae; --prop:#e8954d; --free:#6db6ff; --land:#6fd486; --pop:#ffad4d;
   --view:#0a0e0d; --mesh-floor:#4a5650; --mesh-wall:#36413c; --mesh-ceil:#3b3d4b; --shadow:0 8px 28px rgba(0,0,0,.45); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0e1312; --panel:#151b19; --sunk:#111715; --ink:#e3eae6; --muted:#8d9b95; --line:#26302c; --line-soft:#1e2724;
   --accent:#43c3a5; --accent-soft:#16352e; --accent-ink:#06120f;
-  --hold:#ff6a52; --clip:#bd8bff; --crack:#5aaeff; --roof:#ffc04d; --slope:#4fe0a0; --hit5:#ff6fae; --prop:#e8954d; --free:#6db6ff; --land:#6fd486; --pop:#ffad4d;
+  --hold:#ff6a52; --clip:#bd8bff; --crack:#5aaeff; --roof:#ffc04d; --slope:#4fe0a0; --lower:#47d3ea; --hit5:#ff6fae; --prop:#e8954d; --free:#6db6ff; --land:#6fd486; --pop:#ffad4d;
   --view:#0a0e0d; --mesh-floor:#4a5650; --mesh-wall:#36413c; --mesh-ceil:#3b3d4b; --shadow:0 8px 28px rgba(0,0,0,.45); color-scheme:dark}
 html,body{height:100%}
 [hidden]{display:none!important}
@@ -245,6 +245,7 @@ td.tag{text-align:left;font-weight:600}
           <div class="grp">Spots</div>
           <label><input type="checkbox" id="showCracks" checked> <span class="sw" style="background:var(--crack)"></span> Floor cracks <span class="n" id="nCracks"></span></label>
           <label><input type="checkbox" id="showSCracks" checked> <span class="sw" style="background:var(--crack);opacity:.6"></span> Slope cracks <span class="n" id="nSCracks"></span></label>
+          <label title="Cracks where the floor ray misses the seam but hits something lower down (a roof over a room, a stair top, a ledge over a floor): Banjo can fall through onto or into what is below. Ringed: a test fell through."><input type="checkbox" id="showLower" checked> <span class="sw" style="background:var(--lower)"></span> Cracks over lower floors &amp; rims <span class="n" id="nLower"></span></label>
           <label><input type="checkbox" id="showHolds" checked> <span class="sw" style="background:var(--hold)"></span> 5-hit holds (<span id="holdsVer">PAL</span>) <span class="n" id="nHolds"></span></label>
           <label><input type="checkbox" id="showHit5" checked> <span class="sw" style="background:var(--hit5)"></span> 5 collisions (one update) <span class="n" id="nHit5"></span></label>
           <label><input type="checkbox" id="showSlope" checked> <span class="sw" style="background:var(--slope)"></span> Slope clips (buster) <span class="n" id="nSlope"></span></label>
@@ -710,7 +711,7 @@ let shiftDown=false; addEventListener('keydown',e=>{ if(e.key==='Shift') shiftDo
 (function loop(){requestAnimationFrame(loop); stepFly(); stepKeys(shiftDown); controls.update(); updateNearFar(); renderer.render(scene,camera);})();
 
 // ---- data
-let index=[], room=null, world=null, crackPts=null, slopePts=null, hit5Pts=null, scrackPts=null, holdPts=null, roofPts=null, selMarker=null;
+let index=[], room=null, world=null, crackPts=null, slopePts=null, hit5Pts=null, scrackPts=null, lowerPts=null, holdPts=null, roofPts=null, selMarker=null;
 let spot=null; // {x,y,z,kind,info}
 function disposeGroup(g){g.traverse(o=>{if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose();}); g.clear();}
 function buildRoomMeshes(){
@@ -757,8 +758,11 @@ function relOKw(R,o,nolagKnown){ if(R==='any') return true; if(R==='nolag'&&nola
 function holdRel(h){ if(!(h.clip||h.clip_dY!=null)) return false; return relOK(holdOdds(h),h.clip?h.clip.lag==null:h.clip_lag==null); }
 function busterRel(c){ return relOK({runs:70,clips:c[4],nolag:busterNolag(c[5]),voids:c[4]}); }
 // "only spots with a clip found": positions where a clip is known (a hold that clips, a beak-buster clip), at the chosen reliability
+// cracks over lower floors: [x, y, z, seam, drop, stand (0 / 1 onto / 2 under), stand end y, drops held, max holds, fall result (0/1/2),
+//   fall kind (1 = 810-style, 2 = straight fall, 3 = from rest), from +h, vy, lag update (-1 none), end y, buster cases under, buster cases onto]
+function lowerThrough(d){ return d[5]===2||d[9]===2||(d[15]||0)>0; }
 function clipKeys(){ const k=new Set(); const key=(x,z)=>Math.round(x*1000)+','+Math.round(z*1000);
-  for(const h of room.holds) if(holdRel(h)) k.add(key(h.x,h.z)); for(const c of room.slopeclips||[]) if(busterRel(c)) k.add(key(c[0],c[2])); return {k,key}; }
+  for(const h of room.holds) if(holdRel(h)) k.add(key(h.x,h.z)); for(const c of room.slopeclips||[]) if(busterRel(c)) k.add(key(c[0],c[2])); for(const d of room.lowercracks||[]) if(lowerThrough(d)) k.add(key(d[0],d[2])); return {k,key}; }
 // build a point layer from arr (filtered when clip-only), remembering each drawn point's index in arr for picking
 function layer(arr,xyz,color,size,keep){ const idx=[]; const pts=[]; arr.forEach((d,i)=>{ if(keep&&!keep(d)) return; idx.push(i); pts.push(xyz(d)); });
   if(!pts.length) return null; const o=pointsObj(pts,color,size); o.userData.idx=idx; return o; }
@@ -772,6 +776,9 @@ function buildPoints(){
   roofPts=SF!=='all'?null:(room.roofcracks.length?pointsObj(room.roofcracks,css('--roof'),4):null);
   const scr=room.slopecracks||[]; scrackPts=layer(scr,d=>d,css('--crack'),4,SF==='all'?null:SF==='clip'?atClip:none);
   if(scrackPts){scrackPts.userData.kind='scrack'; scrackPts.material.transparent=true; scrackPts.material.opacity=.7; scrackPts.visible=$('showSCracks').checked; pointsGroup.add(scrackPts);}
+  const lw=room.lowercracks||[]; lowerPts=layer(lw,d=>d,css('--lower'),5,SF==='all'?null:SF==='clip'?lowerThrough:SF==='hold'?(d=>d[7]>0):SF==='holdclip'?(d=>d[7]>0&&d[9]===2):none);
+  if(lowerPts){lowerPts.userData.kind='lower'; lowerPts.visible=$('showLower').checked; pointsGroup.add(lowerPts);
+    const thr=lw.filter(lowerThrough); if(thr.length){ const r=pointsObj(thr.map(d=>[d[0],d[1]+1,d[2]]),css('--clip'),13); r.material.transparent=true; r.material.opacity=.5; r.userData.kind='lower'; r.userData.ring=true; r.visible=$('showLower').checked; pointsGroup.add(r);} }
   const h5=room.hit5||[]; hit5Pts=layer(h5,d=>d,css('--hit5'),7,SF==='all'||SF==='hold'?null:SF==='clip'?atClip:none);
   if(hit5Pts){hit5Pts.userData.kind='hit5'; hit5Pts.visible=$('showHit5').checked; pointsGroup.add(hit5Pts);}
   const sc=room.slopeclips||[]; slopePts=layer(sc,d=>d,css('--slope'),6,SF==='hold'||SF==='holdclip'?none:co&&sfRel!=='any'?busterRel:null);
@@ -782,14 +789,14 @@ function buildPoints(){
     const clipH=room.holds.filter(h=>co?holdRel(h):(h.clip_dY!=null||h.clip)); if(clipH.length){const r=pointsObj(clipH.map(h=>[h.x,h.y+1,h.z]),css('--clip'),16); r.material.transparent=true; r.material.opacity=.55; r.userData.ring=true; r.visible=$('showHolds').checked; pointsGroup.add(r);} }
   if(roofPts){roofPts.userData.kind='roof'; roofPts.visible=$('showRoof').checked; pointsGroup.add(roofPts);}
   if(roofPts&&room.roofs){ const N=(version==='NTSC'); const cl=room.roofs.rows.filter(r=>(N?r[7]+r[8]:r[5]+r[6])>0); if(cl.length){ const o=pointsObj(cl,css('--clip'),12); o.material.transparent=true; o.material.opacity=.6; o.userData.kind='roof'; o.userData.ringRoof=true; o.visible=$('showRoof').checked; pointsGroup.add(o);} }
-  $('nCracks').textContent=room.cracks.length.toLocaleString(); $('nHolds').textContent=room.holds.length.toLocaleString(); $('nRoof').textContent=room.roofcracks.length.toLocaleString()+(room.roofs?` (${room.roofs.rows.filter(r=>((version==='NTSC')?r[7]+r[8]:r[5]+r[6])>0).length.toLocaleString()} clip)`:''); $('nSCracks').textContent=(room.slopecracks_total||(room.slopecracks||[]).length).toLocaleString()+((room.slopecracks_total||0)>(room.slopecracks||[]).length?` (${room.slopecracks.length.toLocaleString()} shown)`:''); $('nHit5').textContent=(room.hit5_total||(room.hit5||[]).length).toLocaleString()+((room.hit5_total||0)>(room.hit5||[]).length?` (${room.hit5.length.toLocaleString()} shown)`:''); $('nSlope').textContent=(room.slopeclips_total||(room.slopeclips||[]).length).toLocaleString()+((room.slopeclips_total||0)>(room.slopeclips||[]).length?` (${room.slopeclips.length.toLocaleString()} shown)`:'');
+  $('nLower').textContent=room.lowercracks?(room.lowercracks_total||room.lowercracks.length).toLocaleString()+((room.lowercracks_total||0)>room.lowercracks.length?` (${room.lowercracks.length.toLocaleString()} shown)`:''):'not scanned yet'; $('nCracks').textContent=room.cracks.length.toLocaleString(); $('nHolds').textContent=room.holds.length.toLocaleString(); $('nRoof').textContent=room.roofcracks.length.toLocaleString()+(room.roofs?` (${room.roofs.rows.filter(r=>((version==='NTSC')?r[7]+r[8]:r[5]+r[6])>0).length.toLocaleString()} clip)`:''); $('nSCracks').textContent=(room.slopecracks_total||(room.slopecracks||[]).length).toLocaleString()+((room.slopecracks_total||0)>(room.slopecracks||[]).length?` (${room.slopecracks.length.toLocaleString()} shown)`:''); $('nHit5').textContent=(room.hit5_total||(room.hit5||[]).length).toLocaleString()+((room.hit5_total||0)>(room.hit5||[]).length?` (${room.hit5.length.toLocaleString()} shown)`:''); $('nSlope').textContent=(room.slopeclips_total||(room.slopeclips||[]).length).toLocaleString()+((room.slopeclips_total||0)>(room.slopeclips||[]).length?` (${room.slopeclips.length.toLocaleString()} shown)`:'');
   $('layerSum').textContent=`${room.cracks.length.toLocaleString()} cracks · ${room.holds.length} holds`+((room.slopeclips||[]).length?` · ${room.slopeclips.length.toLocaleString()} slope clips`:'');
-  if(SF!=='all'){ const n=o=>o?o.userData.idx.length.toLocaleString():'0'; const w=SF==='hold'?'':' with clip'; $('nCracks').textContent=n(crackPts)+w; $('nHolds').textContent=n(holdPts)+w; $('nSCracks').textContent=n(scrackPts)+w; $('nHit5').textContent=n(hit5Pts)+w; $('nSlope').textContent=n(slopePts); $('nRoof').textContent='–';
+  if(SF!=='all'){ const n=o=>o?o.userData.idx.length.toLocaleString():'0'; const w=SF==='hold'?'':' with clip'; $('nCracks').textContent=n(crackPts)+w; $('nHolds').textContent=n(holdPts)+w; $('nSCracks').textContent=n(scrackPts)+w; $('nLower').textContent=n(lowerPts)+(SF==='hold'?'':' falling through'); $('nHit5').textContent=n(hit5Pts)+w; $('nSlope').textContent=n(slopePts); $('nRoof').textContent='–';
     $('layerSum').textContent=SF==='hold'?`holds only · ${n(holdPts)} holds · ${n(hit5Pts)} 5-collision`:SF==='holdclip'?`hold + clip only · ${n(holdPts)} holds that clip`:`clip spots only · ${n(holdPts)} holds that clip · ${n(slopePts)} buster clips`;
     if(co&&sfRel!=='any'){ $('layerSum').textContent+=` · ${$('sfRel').selectedOptions[0].textContent.toLowerCase()}`; if(room.holds.some(h=>h.clip)&&!room.holds.some(h=>h.odds)) $('layerSum').textContent+=' (hold odds not counted for this room yet)'; } }
   if(spot) markSpot();
 }
-['showCracks','showHolds','showRoof','showSlope','showHit5','showSCracks'].forEach(id=>$(id).onchange=()=>{pointsGroup.children.forEach(o=>{const k=o.userData.kind||(o.userData.ring?'hold':''); if(k==='crack')o.visible=$('showCracks').checked; if(k==='scrack')o.visible=$('showSCracks').checked; if(k==='slope')o.visible=$('showSlope').checked; if(k==='hit5')o.visible=$('showHit5').checked; if(k==='hold')o.visible=$('showHolds').checked; if(k==='roof')o.visible=$('showRoof').checked;});});
+['showCracks','showHolds','showRoof','showSlope','showHit5','showSCracks','showLower'].forEach(id=>$(id).onchange=()=>{pointsGroup.children.forEach(o=>{const k=o.userData.kind||(o.userData.ring?'hold':''); if(k==='lower')o.visible=$('showLower').checked; if(k==='crack')o.visible=$('showCracks').checked; if(k==='scrack')o.visible=$('showSCracks').checked; if(k==='slope')o.visible=$('showSlope').checked; if(k==='hit5')o.visible=$('showHit5').checked; if(k==='hold')o.visible=$('showHolds').checked; if(k==='roof')o.visible=$('showRoof').checked;});});
 function applyRoomVis(){ roomGroup.children.forEach(o=>{ let v=true; if(o.userData.xlu&&!$('showXlu').checked) v=false; if(o.userData.prop&&!$('showProps').checked) v=false; if(o.userData.ceil&&$('hideCeil').checked) v=false; o.visible=v; }); }
 let spotFilter='all', sfRel='any'; try{ spotFilter=localStorage.getItem('bcl-sf')||'all'; sfRel=localStorage.getItem('bcl-sfr')||'any'; }catch(e){}
 $('sfRel').value=sfRel; $('sfRel').hidden=!(spotFilter==='clip'||spotFilter==='holdclip');
@@ -857,7 +864,7 @@ async function loadMap(m){
   const box=new THREE.Box3().setFromObject(roomGroup); const c=box.getCenter(new THREE.Vector3()), s=box.getSize(new THREE.Vector3());
   setupSlicer(box);
   const R=Math.max(s.x,s.z,s.y)||1000; fly=null; controls.target.copy(c); camera.position.set(c.x+R*0.55,c.y+R*0.7,c.z+R*0.75); camera.far=R*20; controls.maxDistance=R*6; lastNear=0; camera.updateProjectionMatrix();
-  $('aboutNote').textContent=room.about||$('aboutNote').textContent;
+  $('aboutNote').textContent=(room.about||$('aboutNote').textContent)+(room.lower_note?' '+room.lower_note:'');
   $('loading').hidden=true;
 }
 
@@ -875,6 +882,7 @@ renderer.domElement.addEventListener('pointerup',e=>{ if(!downAt||Math.hypot(e.c
   if(k==='spawn'){ const s=spawnList()[i]; if(!s) return; const sp=spawnStand(s); $('spawnSel').value=String(i); $('spawnSel').dispatchEvent(new Event('change')); selectSpot({x:sp[0],y:sp[1],z:sp[2],kind:'spawn',info:{label:spawnLabel(s),yaw:spawnYaw(s)}}); return; }
   if(k==='exit'){const e=exitList()[i]; selectSpot({x:e[0],y:e[1],z:e[2],kind:'exit',info:{r:e[3],toMap:e[4],toExit:e[5],name:e[6]}});}
   else if(k==='hold'){const d=room.holds[i]; selectSpot({x:d.x,y:d.y,z:d.z,kind:'hold',info:d});}
+  else if(k==='lower'){const d=room.lowercracks[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'crack',info:{seam:d[3],lower:d}});}
   else if(k==='scrack'){const d=room.slopecracks[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'crack',info:{seam:d[3],slope:1}});}
   else if(k==='hit5'){const d=room.hit5[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'hit5',info:{seam:d[3],first:d[4],slope:d[5]}});}
   else if(k==='slope'){const d=room.slopeclips[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'slope',info:{seam:d[3],n:d[4],mask:d[5]}});}
@@ -896,7 +904,7 @@ function exitBoxPick(px,py,rc){ if(!$('showExits').checked) return null; let bes
 // pick the drawn spot nearest the click on screen (within tol pixels), checking every visible point layer; ties go to
 // the spot nearer the camera, then to the rarer layers (holds, 5 collisions, slope clips) over plain cracks
 const _pv=new THREE.Vector3();
-function pickPoint(px,py,rc,tol){ const layers=[exitPts,holdPts,hit5Pts,slopePts,roofPts,crackPts,scrackPts]; let best=null;
+function pickPoint(px,py,rc,tol){ const layers=[exitPts,holdPts,hit5Pts,slopePts,lowerPts,roofPts,crackPts,scrackPts]; let best=null;
   camera.updateMatrixWorld(); const vp=new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse); const m=vp.elements; const W=rc.width, H=rc.height;
   layers.forEach((o,li)=>{ if(!o||!o.visible) return; const a=o.geometry.attributes.position.array; const n=a.length/3;
     for(let j=0;j<n;j++){ const x=a[j*3],y=a[j*3+1],z=a[j*3+2]; if(y>cutY+0.6) continue;
@@ -922,9 +930,14 @@ function oddsText(o,what){ const p=o.runs?100*o.clips/o.runs:0; const tag=p>=25?
   return `<b>${tag}</b> · ${o.clips} of ${o.runs} ${what} clip (${p<1&&p>0?p.toFixed(1):Math.round(p)}%) · ${o.nolag?`${o.nolag} without lag`:'only with a lag frame'} · ${o.voids===o.clips?'all fall out of the map':o.voids?`${o.voids} fall out of the map, ${o.clips-o.voids} land on ground below`:'all land on ground below'}`; }
 function renderSpot(){ const el=$('spotInfo'); if(!spot){ $('spotCard').hidden=true; el.innerHTML=''; return;}
   $('spotCard').hidden=false; const VL=(room&&room._shown==='NTSC')?'NTSC':'PAL'; const kinds={crack:'Floor crack',hold:`5-hit hold (${VL} census)`,roof:'Roof crack',slope:`Slope clip: beak buster (${VL})`,hit5:'5 collisions on one update',point:'Picked point',exit:'Exit (loading zone)',spawn:'Load-in point'};
-  $('spotTitle').textContent=kinds[spot.kind]+(spot.kind==='crack'&&spot.info&&spot.info.slope?' (sloped seam)':''); $('spotDot').style.background=css('--'+({crack:'crack',hold:'hold',roof:'roof',slope:'slope',hit5:'hit5',point:'accent',exit:'accent',spawn:'pop'}[spot.kind]));
+  $('spotTitle').textContent=(spot.kind==='crack'&&spot.info&&spot.info.lower?(String(spot.info.lower[3]).endsWith('/edge')?'Rim crack':'Crack over a lower floor'):kinds[spot.kind])+(spot.kind==='crack'&&spot.info&&spot.info.slope?' (sloped seam)':''); $('spotDot').style.background=css('--'+({crack:'crack',hold:'hold',roof:'roof',slope:'slope',hit5:'hit5',point:'accent',exit:'accent',spawn:'pop'}[spot.kind]));
   let rows=`<dt>Position</dt><dd>${fmt(spot.x,4)}, ${fmt(spot.y,3)}, ${fmt(spot.z,4)}</dd>`;
   if(spot.info&&spot.info.seam) rows+=`<dt>Seam (tris)</dt><dd>${spot.info.seam}</dd>`;
+  if(spot.kind==='crack'&&spot.info&&spot.info.lower){ const d=spot.info.lower; const V=['did not go through','dropped onto what is below','went under (115+ below the floor)'];
+    rows+=(String(d[3]).endsWith('/edge')?`<dt>Where</dt><dd>on the rim of a floor triangle (no other floor triangle shares this edge): inside the triangle, but the game's float floor ray misses it</dd>`:'')+`<dt>Below the crack</dt><dd>${(+d[4])<0?'the floor ray hits nothing below':`the floor ray misses the floor and hits a triangle ${(+d[4]).toFixed(2)} lower`}</dd>`;
+    if(d.length>5){ rows+=`<dt>Standing on it</dt><dd>${d[5]?`${V[d[5]]}: feet at y ${d[6]} after 30 updates`:V[0]}</dd><dt>Hold drops</dt><dd>${d[7]?`held in ${d[7]} test drops (max ${d[8]} in a row)`:'no hold'}</dd>`;
+      rows+=`<dt>Falls</dt><dd>${d[9]?`${V[d[9]]}: ${d[10]===1?`810-style drop from +${d[11]}`:d[10]===3?`fall from rest from +${d[11]}`:`fall at vy ${d[12]} from +${d[11]}`}${d[13]>=0?`, lag on update ${d[13]}`:', no lag'} → y ${d[14]}`:'none went through'}</dd><dt>Beak buster</dt><dd>${(d[15]||d[16])?`${d[15]} of 70 dives went under, ${d[16]} dropped onto what is below`:'none went through'}</dd>`; }
+    else rows+=`<dt>Tests</dt><dd>not run on this spot (an even sample of the room's spots is shown; the tested ones that fall through are ringed)</dd>`; }
   if(spot.kind==='spawn'){ rows+=`<dt>Load-in</dt><dd>${spot.info.label}</dd><dt>Facing</dt><dd>${(+spot.info.yaw).toFixed(3)}°</dd><dt>Start</dt><dd>set as the start (same as picking it in Load-in)</dd>`; }
   if(spot.kind==='exit'){ const e=spot.info, r=e.r; rows+=`<dt>Goes to</dt><dd>${e.toMap?`${roomName(e.toMap)}, exit ${e.toExit}${e.name?` (${e.name})`:''}`:`${e.name} (not a plain room warp)`}</dd><dt>Trigger box</dt><dd>x ${spot.x-r} … ${spot.x+r}, y ${spot.y-r} … ${spot.y+r}, z ${spot.z-r} … ${spot.z+r} (half-size ${r})</dd><dt>Fires when</dt><dd>Banjo's position, cut to whole numbers, is strictly inside the box on all three axes</dd>`; }
   if(spot.kind==='hold'&&spot.info.room_census){const d=spot.info; const c=d.clip;
@@ -1139,7 +1152,7 @@ $('setTarget').onclick=()=>{ if(!spot) return; target={x:spot.x,y:spot.y,z:spot.
 function fillTgt(){ $('btx').value=target?target.x:''; $('bty').value=target?target.y:''; $('btz').value=target?target.z:''; }
 // a typed target: takes the seam of the nearest census crack within 0.5 (the typed floats are kept), otherwise a plain point
 function readTgt(){ const v=['btx','bty','btz'].map(k=>$(k).value.trim()); if(v.some(t=>t==='')||v.map(Number).some(n=>!isFinite(n))){ if(v.every(t=>t==='')){ target=null; drawMarks(); } return; }
-  const [x,y,z]=v.map(Number); let best=null, bd=0.5; const pts=room?(room.cracks||[]).concat(room.slopecracks||[]):[];
+  const [x,y,z]=v.map(Number); let best=null, bd=0.5; const pts=room?(room.cracks||[]).concat(room.slopecracks||[],room.lowercracks||[]):[];
   for(const c of pts){ const d=Math.hypot(c[0]-x,c[2]-z); if(d<=bd&&Math.abs(c[1]-y)<2){ bd=d; best=c; } }
   target=best?{x,y,z,seam:best[3]??null,kind:'crack'}:{x,y,z,seam:null,kind:'point'}; drawMarks(); try{ cRefresh(); }catch(e){} }
 ['btx','bty','btz'].forEach(id=>$(id).addEventListener('change',readTgt));
@@ -1332,7 +1345,7 @@ function loadResult(r){ // put the route into the Move lab as per-update rows an
 $('sRun').onclick=()=>sSearch(false);
 async function sSearch(keep,secs){ if(searching) return; const st=readStart(); if(!st||!target){ $('sStat').textContent='Set a start and a target first.'; return; }
   if(FINAL!=='auto'&&!BKSEARCH.MOVES[FINAL]&&!($('sMode').value==='chain'&&(FINAL==='punch'||$('chGoal').value==='reach'))){ $('sStat').textContent=`Route search has no run-up ending in a plain ${FINAL_LABEL[FINAL].toLowerCase()}; use Clip setup for it, or pick another final move.`; return; }
-  let seamPts=target.seam?room.cracks.concat(room.slopecracks||[]).filter(c=>c[3]===target.seam):null; if(seamPts&&!seamPts.length) seamPts=[[target.x,target.y,target.z,target.seam]]; const mode=$('sMode').value==='chain'?'chain':$('sMode').value==='exact'?'exact':(FINAL!=='auto'&&FINAL!=='jump')?'quick':$('sMode').value;
+  let seamPts=target.seam?room.cracks.concat(room.slopecracks||[],room.lowercracks||[]).filter(c=>c[3]===target.seam):null; if(seamPts&&!seamPts.length) seamPts=[[target.x,target.y,target.z,target.seam]]; const mode=$('sMode').value==='chain'?'chain':$('sMode').value==='exact'?'exact':(FINAL!=='auto'&&FINAL!=='jump')?'quick':$('sMode').value;
   if(mode==='exact'){ exPreset(); const bad=t=>{ $('sStat').textContent=t; return true; };
     if(version!=='PAL'&&bad('The exact search has PAL move models only. Switch the version to PAL.')) return;
     if((!isFinite(parseFloat($('exCamX').value))||!isFinite(parseFloat($('exCamZ').value)))&&bad('Enter the static camera position (x and z) for the exact search.')) return;
