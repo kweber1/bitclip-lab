@@ -1,0 +1,290 @@
+[
+ {
+  "map": "0x07",
+  "name": "Treasure Trove Cove",
+  "PAL": {
+   "shockReach": 7857,
+   "shockAll": 49340,
+   "bombClean": 1790,
+   "bombChecked": 2000,
+   "bombAll": 87335
+  },
+  "NTSC": {
+   "shockReach": 101,
+   "shockAll": 2066,
+   "bombClean": 1789,
+   "bombChecked": 2000,
+   "bombAll": 78399
+  }
+ },
+ {
+  "map": "0x12",
+  "name": "Gobis Valley",
+  "PAL": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 1445,
+   "bombChecked": 2000,
+   "bombAll": 56657
+  },
+  "NTSC": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 1814,
+   "bombChecked": 2000,
+   "bombAll": 47129
+  }
+ },
+ {
+  "map": "0x1C",
+  "name": "Church",
+  "PAL": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 1556,
+   "bombChecked": 2000,
+   "bombAll": 60311
+  },
+  "NTSC": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 1295,
+   "bombChecked": 2000,
+   "bombAll": 32993
+  }
+ },
+ {
+  "map": "0x22",
+  "name": "Inside Clanker",
+  "PAL": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 2000,
+   "bombChecked": 2000,
+   "bombAll": 6240
+  },
+  "NTSC": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 2000,
+   "bombChecked": 2000,
+   "bombAll": 3883
+  }
+ },
+ {
+  "map": "0x26",
+  "name": "Nappers Room",
+  "PAL": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 945,
+   "bombChecked": 2000,
+   "bombAll": 21230
+  },
+  "NTSC": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 812,
+   "bombChecked": 2000,
+   "bombAll": 12162
+  }
+ },
+ {
+  "map": "0x27",
+  "name": "Freezeezy Peak",
+  "PAL": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 1003,
+   "bombChecked": 2000,
+   "bombAll": 30106
+  },
+  "NTSC": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 1141,
+   "bombChecked": 2000,
+   "bombAll": 23740
+  }
+ },
+ {
+  "map": "0x36",
+  "name": "Boathouse",
+  "PAL": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 1310,
+   "bombChecked": 2000,
+   "bombAll": 10969
+  },
+  "NTSC": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 718,
+   "bombChecked": 2000,
+   "bombAll": 4716
+  }
+ },
+ {
+  "map": "0x43",
+  "name": "Spring",
+  "PAL": {
+   "shockReach": 181,
+   "shockAll": 9960,
+   "bombClean": 0,
+   "bombChecked": 0,
+   "bombAll": 0
+  },
+  "NTSC": {
+   "shockReach": 4,
+   "shockAll": 1937,
+   "bombClean": 0,
+   "bombChecked": 0,
+   "bombAll": 0
+  }
+ },
+ {
+  "map": "0x44",
+  "name": "Summer",
+  "PAL": {
+   "shockReach": 6646,
+   "shockAll": 11056,
+   "bombClean": 1451,
+   "bombChecked": 2000,
+   "bombAll": 59114
+  },
+  "NTSC": {
+   "shockReach": 20,
+   "shockAll": 281,
+   "bombClean": 1347,
+   "bombChecked": 2000,
+   "bombAll": 50519
+  }
+ },
+ {
+  "map": "0x45",
+  "name": "Autumn",
+  "PAL": {
+   "shockReach": 7,
+   "shockAll": 7659,
+   "bombClean": 1621,
+   "bombChecked": 2000,
+   "bombAll": 67080
+  },
+  "NTSC": {
+   "shockReach": 0,
+   "shockAll": 1615,
+   "bombClean": 1632,
+   "bombChecked": 2000,
+   "bombAll": 53862
+  }
+ },
+ {
+  "map": "0x46",
+  "name": "Winter",
+  "PAL": {
+   "shockReach": 10,
+   "shockAll": 3188,
+   "bombClean": 1449,
+   "bombChecked": 2000,
+   "bombAll": 67237
+  },
+  "NTSC": {
+   "shockReach": 0,
+   "shockAll": 865,
+   "bombClean": 1206,
+   "bombChecked": 2000,
+   "bombAll": 56069
+  }
+ },
+ {
+  "map": "0x6A",
+  "name": "Ttc And Cc Puzzle",
+  "PAL": {
+   "shockReach": 30689,
+   "shockAll": 35963,
+   "bombClean": 0,
+   "bombChecked": 0,
+   "bombAll": 0
+  },
+  "NTSC": {
+   "shockReach": 0,
+   "shockAll": 1,
+   "bombClean": 0,
+   "bombChecked": 0,
+   "bombAll": 0
+  }
+ },
+ {
+  "map": "0x6E",
+  "name": "Gv Lobby",
+  "PAL": {
+   "shockReach": 0,
+   "shockAll": 44923,
+   "bombClean": 0,
+   "bombChecked": 0,
+   "bombAll": 0
+  },
+  "NTSC": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 0,
+   "bombChecked": 0,
+   "bombAll": 0
+  }
+ },
+ {
+  "map": "0x6F",
+  "name": "Fp Lobby",
+  "PAL": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 1895,
+   "bombChecked": 2000,
+   "bombAll": 30164
+  },
+  "NTSC": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 1952,
+   "bombChecked": 2000,
+   "bombAll": 19383
+  }
+ },
+ {
+  "map": "0x71",
+  "name": "Statue Room",
+  "PAL": {
+   "shockReach": 15122,
+   "shockAll": 33660,
+   "bombClean": 0,
+   "bombChecked": 0,
+   "bombAll": 0
+  },
+  "NTSC": {
+   "shockReach": 1,
+   "shockAll": 1,
+   "bombClean": 0,
+   "bombChecked": 0,
+   "bombAll": 0
+  }
+ },
+ {
+  "map": "0x8F",
+  "name": "Sharkfood Island",
+  "PAL": {
+   "shockReach": 19544,
+   "shockAll": 19562,
+   "bombClean": 0,
+   "bombChecked": 0,
+   "bombAll": 0
+  },
+  "NTSC": {
+   "shockReach": 0,
+   "shockAll": 0,
+   "bombClean": 0,
+   "bombChecked": 0,
+   "bombAll": 0
+  }
+ }
+]

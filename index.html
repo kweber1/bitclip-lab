@@ -250,6 +250,7 @@ td.tag{text-align:left;font-weight:600}
           <label><input type="checkbox" id="showHit5" checked> <span class="sw" style="background:var(--hit5)"></span> 5 collisions (one update) <span class="n" id="nHit5"></span></label>
           <label><input type="checkbox" id="showSlope" checked> <span class="sw" style="background:var(--slope)"></span> Slope clips (buster) <span class="n" id="nSlope"></span></label>
           <label title="Ceiling seams where the upward ray slips through. A ringed spot clips straight up in the full model: the bee flying up (4 flaps) or Banjo flying up with one lag update (the ring follows the PAL / NTSC switch)."><input type="checkbox" id="showRoof" checked> <span class="sw" style="background:var(--roof)"></span> Roof cracks <span class="n" id="nRoof"></span></label>
+          <label title="No-lag clips from pads in the full model (GPU scan): orange = falling from a shock-pad jump (heights the jump reaches from a pad in range), purple = beak bomb from a flight pad (straight line at 4200, approach checked clear). Follows the PAL / NTSC switch."><input type="checkbox" id="showPad" checked> <span class="sw" style="background:var(--pop)"></span> Pad clips (shock / bomb) <span class="n" id="nPad"></span></label>
           <div class="grp">Room</div>
           <label><input type="checkbox" id="showSpawns" checked> <span class="sw" style="background:var(--pop)"></span> Load-in points <span class="n" id="nSpawns"></span></label>
           <label title="Loading zones: the boxes that send Banjo to another room when his position is inside them. Click the dot in the middle to select one."><input type="checkbox" id="showExits" checked> <span class="sw" style="background:var(--accent)"></span> Exits (loading zones) <span class="n" id="nExits"></span></label>
@@ -622,7 +623,7 @@ async function applyVersionData(){ if(!room) return; const r=room; const ent=(in
     else shown='PAL (NTSC not computed for this room yet)'; }
   const changed=r.holds!==src.holds; r.holds=src.holds; r.slopeclips=src.slopeclips; r.slopeclips_total=src.slopeclips_total; r._shown=shown;
   if($('holdsVer')) $('holdsVer').textContent=shown.startsWith('NTSC')?'NTSC':'PAL';
-  if(changed){ spot=null; renderSpot(); buildPoints(); renderBest('c'); renderBest('s'); } else if(r.roofs) buildPoints();
+  if(changed){ spot=null; renderSpot(); buildPoints(); renderBest('c'); renderBest('s'); } else if(r.roofs||r.padclips) buildPoints();
   if(shown!=='PAL'&&shown!=='NTSC') $('layerSum').textContent+=` · ${shown}`; else if(shown==='NTSC') $('layerSum').textContent+=' · NTSC dots'; }
 $('vPAL').onclick=()=>setVersion('PAL'); $('vNTSC').onclick=()=>setVersion('NTSC');
 
@@ -711,6 +712,7 @@ let shiftDown=false; addEventListener('keydown',e=>{ if(e.key==='Shift') shiftDo
 (function loop(){requestAnimationFrame(loop); stepFly(); stepKeys(shiftDown); controls.update(); updateNearFar(); renderer.render(scene,camera);})();
 
 // ---- data
+let padSPts=null, padBPts=null;
 let index=[], room=null, world=null, crackPts=null, slopePts=null, hit5Pts=null, scrackPts=null, lowerPts=null, holdPts=null, roofPts=null, selMarker=null;
 let spot=null; // {x,y,z,kind,info}
 function disposeGroup(g){g.traverse(o=>{if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose();}); g.clear();}
@@ -789,6 +791,10 @@ function buildPoints(){
     const clipH=room.holds.filter(h=>co?holdRel(h):(h.clip_dY!=null||h.clip)); if(clipH.length){const r=pointsObj(clipH.map(h=>[h.x,h.y+1,h.z]),css('--clip'),16); r.material.transparent=true; r.material.opacity=.55; r.userData.ring=true; r.visible=$('showHolds').checked; pointsGroup.add(r);} }
   if(roofPts){roofPts.userData.kind='roof'; roofPts.visible=$('showRoof').checked; pointsGroup.add(roofPts);}
   if(roofPts&&room.roofs){ const N=(version==='NTSC'); const cl=room.roofs.rows.filter(r=>(N?r[7]+r[8]:r[5]+r[6])>0); if(cl.length){ const o=pointsObj(cl,css('--clip'),12); o.material.transparent=true; o.material.opacity=.6; o.userData.kind='roof'; o.userData.ringRoof=true; o.visible=$('showRoof').checked; pointsGroup.add(o);} }
+  padSPts=padBPts=null; { const P=room.padclips&&room.padclips[version==='NTSC'?'NTSC':'PAL'];
+    if(P&&SF!=='hold'&&SF!=='holdclip'){ if(P.shock.length){ padSPts=pointsObj(P.shock,css('--pop'),8); padSPts.userData.kind='padS'; padSPts.visible=$('showPad').checked; pointsGroup.add(padSPts); }
+      if(P.bomb.length){ padBPts=pointsObj(P.bomb,css('--clip'),8); padBPts.userData.kind='padB'; padBPts.visible=$('showPad').checked; pointsGroup.add(padBPts); } }
+    $('nPad').textContent=P?`${P.shock.length.toLocaleString()} shock · ${P.bomb.length.toLocaleString()} bomb`:(room.padclips?'none':'no pads'); }
   $('nLower').textContent=room.lowercracks?(room.lowercracks_total||room.lowercracks.length).toLocaleString()+((room.lowercracks_total||0)>room.lowercracks.length?` (${room.lowercracks.length.toLocaleString()} shown)`:''):'not scanned yet'; $('nCracks').textContent=room.cracks.length.toLocaleString(); $('nHolds').textContent=room.holds.length.toLocaleString(); $('nRoof').textContent=room.roofcracks.length.toLocaleString()+(room.roofs?` (${room.roofs.rows.filter(r=>((version==='NTSC')?r[7]+r[8]:r[5]+r[6])>0).length.toLocaleString()} clip)`:''); $('nSCracks').textContent=(room.slopecracks_total||(room.slopecracks||[]).length).toLocaleString()+((room.slopecracks_total||0)>(room.slopecracks||[]).length?` (${room.slopecracks.length.toLocaleString()} shown)`:''); $('nHit5').textContent=(room.hit5_total||(room.hit5||[]).length).toLocaleString()+((room.hit5_total||0)>(room.hit5||[]).length?` (${room.hit5.length.toLocaleString()} shown)`:''); $('nSlope').textContent=(room.slopeclips_total||(room.slopeclips||[]).length).toLocaleString()+((room.slopeclips_total||0)>(room.slopeclips||[]).length?` (${room.slopeclips.length.toLocaleString()} shown)`:'');
   $('layerSum').textContent=`${room.cracks.length.toLocaleString()} cracks · ${room.holds.length} holds`+((room.slopeclips||[]).length?` · ${room.slopeclips.length.toLocaleString()} slope clips`:'');
   if(SF!=='all'){ const n=o=>o?o.userData.idx.length.toLocaleString():'0'; const w=SF==='hold'?'':' with clip'; $('nCracks').textContent=n(crackPts)+w; $('nHolds').textContent=n(holdPts)+w; $('nSCracks').textContent=n(scrackPts)+w; $('nLower').textContent=n(lowerPts)+(SF==='hold'?'':' falling through'); $('nHit5').textContent=n(hit5Pts)+w; $('nSlope').textContent=n(slopePts); $('nRoof').textContent='–';
@@ -796,7 +802,7 @@ function buildPoints(){
     if(co&&sfRel!=='any'){ $('layerSum').textContent+=` · ${$('sfRel').selectedOptions[0].textContent.toLowerCase()}`; if(room.holds.some(h=>h.clip)&&!room.holds.some(h=>h.odds)) $('layerSum').textContent+=' (hold odds not counted for this room yet)'; } }
   if(spot) markSpot();
 }
-['showCracks','showHolds','showRoof','showSlope','showHit5','showSCracks','showLower'].forEach(id=>$(id).onchange=()=>{pointsGroup.children.forEach(o=>{const k=o.userData.kind||(o.userData.ring?'hold':''); if(k==='lower')o.visible=$('showLower').checked; if(k==='crack')o.visible=$('showCracks').checked; if(k==='scrack')o.visible=$('showSCracks').checked; if(k==='slope')o.visible=$('showSlope').checked; if(k==='hit5')o.visible=$('showHit5').checked; if(k==='hold')o.visible=$('showHolds').checked; if(k==='roof')o.visible=$('showRoof').checked;});});
+['showCracks','showHolds','showRoof','showSlope','showHit5','showSCracks','showLower','showPad'].forEach(id=>$(id).onchange=()=>{pointsGroup.children.forEach(o=>{const k=o.userData.kind||(o.userData.ring?'hold':''); if(k==='padS'||k==='padB')o.visible=$('showPad').checked; if(k==='lower')o.visible=$('showLower').checked; if(k==='crack')o.visible=$('showCracks').checked; if(k==='scrack')o.visible=$('showSCracks').checked; if(k==='slope')o.visible=$('showSlope').checked; if(k==='hit5')o.visible=$('showHit5').checked; if(k==='hold')o.visible=$('showHolds').checked; if(k==='roof')o.visible=$('showRoof').checked;});});
 function applyRoomVis(){ roomGroup.children.forEach(o=>{ let v=true; if(o.userData.xlu&&!$('showXlu').checked) v=false; if(o.userData.prop&&!$('showProps').checked) v=false; if(o.userData.ceil&&$('hideCeil').checked) v=false; o.visible=v; }); }
 let spotFilter='all', sfRel='any'; try{ spotFilter=localStorage.getItem('bcl-sf')||'all'; sfRel=localStorage.getItem('bcl-sfr')||'any'; }catch(e){}
 $('sfRel').value=sfRel; $('sfRel').hidden=!(spotFilter==='clip'||spotFilter==='holdclip');
@@ -858,6 +864,7 @@ async function loadMap(m){
   // roof cracks + roof clips for every map (data/roof/map0xNN.json from tools/gpu-pc/roofscan.cu): rows [x,y,z,seam,clear,beePAL,flyPAL,beeNTSC,flyNTSC]
   room.roofs=null; try{ const q=await fetch(`data/roof/map${m}.json`); if(q.ok){ const j=await q.json(); room.roofs=j; if(!room.roofcracks||!room.roofcracks.length||j.rows.length) room.roofcracks=j.rows.map(r=>[r[0],r[1],r[2],'R'+r[3]]); } }catch(e){}
   room.roofcracks=room.roofcracks||[];
+  room.padclips=null; try{ const q=await fetch(`data/padclips/map${m}.json`); if(q.ok) room.padclips=await q.json(); }catch(e){}
   world=new BK.World(BK.load_model(room.opa,'opa'),room.xlu?BK.load_model(room.xlu,'xlu'):null,BK.load_props(activeProps()),parseInt(m,16));
   buildRoomMeshes(); buildPoints(); $('spawnSel').value=''; Promise.all([spawnP,exitsP]).then(()=>{ fillSpawns(); drawSpawns(); }); setTimeout(()=>{ renderBest('c'); renderBest('s'); if(version!=='PAL') applyVersionData(); },0); spot=null; lastRun=null; renderSpot(); clearSim(); target=null; fillTgt(); ['bx','by','bz'].forEach(k=>$(k).value=''); if(typeof drawMarks==='function'){ disposeGroup(searchGroup); segObjs={}; drawMarks(); }
   // frame camera
@@ -886,6 +893,7 @@ renderer.domElement.addEventListener('pointerup',e=>{ if(!downAt||Math.hypot(e.c
   else if(k==='scrack'){const d=room.slopecracks[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'crack',info:{seam:d[3],slope:1}});}
   else if(k==='hit5'){const d=room.hit5[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'hit5',info:{seam:d[3],first:d[4],slope:d[5]}});}
   else if(k==='slope'){const d=room.slopeclips[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'slope',info:{seam:d[3],n:d[4],mask:d[5]}});}
+  else if(k==='padS'||k==='padB'){const P=room.padclips[version==='NTSC'?'NTSC':'PAL']; const d=(k==='padS'?P.shock:P.bomb)[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:k==='padS'?'padshock':'padbomb',info:{row:d}});}
   else if(k==='roof'){const d=room.roofcracks[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'roof',info:{seam:d[3],row:room.roofs?room.roofs.rows[i]:null}});}
   else {const d=room.cracks[i]; selectSpot({x:d[0],y:d[1],z:d[2],kind:'crack',info:{seam:d[3]}});}
 });
@@ -904,7 +912,7 @@ function exitBoxPick(px,py,rc){ if(!$('showExits').checked) return null; let bes
 // pick the drawn spot nearest the click on screen (within tol pixels), checking every visible point layer; ties go to
 // the spot nearer the camera, then to the rarer layers (holds, 5 collisions, slope clips) over plain cracks
 const _pv=new THREE.Vector3();
-function pickPoint(px,py,rc,tol){ const layers=[exitPts,holdPts,hit5Pts,slopePts,lowerPts,roofPts,crackPts,scrackPts]; let best=null;
+function pickPoint(px,py,rc,tol){ const layers=[exitPts,holdPts,padSPts,padBPts,hit5Pts,slopePts,lowerPts,roofPts,crackPts,scrackPts]; let best=null;
   camera.updateMatrixWorld(); const vp=new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse); const m=vp.elements; const W=rc.width, H=rc.height;
   layers.forEach((o,li)=>{ if(!o||!o.visible) return; const a=o.geometry.attributes.position.array; const n=a.length/3;
     for(let j=0;j<n;j++){ const x=a[j*3],y=a[j*3+1],z=a[j*3+2]; if(y>cutY+0.6) continue;
@@ -929,7 +937,7 @@ function fmt(v,n=6){return (v==null||v==='')?'—':(+v).toFixed(n);}
 function oddsText(o,what){ const p=o.runs?100*o.clips/o.runs:0; const tag=p>=25?'reliable':p>=5?'sometimes':o.clips>=2?'rare':'one exact setup';
   return `<b>${tag}</b> · ${o.clips} of ${o.runs} ${what} clip (${p<1&&p>0?p.toFixed(1):Math.round(p)}%) · ${o.nolag?`${o.nolag} without lag`:'only with a lag frame'} · ${o.voids===o.clips?'all fall out of the map':o.voids?`${o.voids} fall out of the map, ${o.clips-o.voids} land on ground below`:'all land on ground below'}`; }
 function renderSpot(){ const el=$('spotInfo'); if(!spot){ $('spotCard').hidden=true; el.innerHTML=''; return;}
-  $('spotCard').hidden=false; const VL=(room&&room._shown==='NTSC')?'NTSC':'PAL'; const kinds={crack:'Floor crack',hold:`5-hit hold (${VL} census)`,roof:'Roof crack',slope:`Slope clip: beak buster (${VL})`,hit5:'5 collisions on one update',point:'Picked point',exit:'Exit (loading zone)',spawn:'Load-in point'};
+  $('spotCard').hidden=false; const VL=(room&&room._shown==='NTSC')?'NTSC':'PAL'; const kinds={crack:'Floor crack',hold:`5-hit hold (${VL} census)`,roof:'Roof crack',padshock:`Shock-pad fall clip (${version})`,padbomb:`Beak bomb clip (${version})`,slope:`Slope clip: beak buster (${VL})`,hit5:'5 collisions on one update',point:'Picked point',exit:'Exit (loading zone)',spawn:'Load-in point'};
   $('spotTitle').textContent=(spot.kind==='crack'&&spot.info&&spot.info.lower?(String(spot.info.lower[3]).endsWith('/edge')?'Rim crack':'Crack over a lower floor'):kinds[spot.kind])+(spot.kind==='crack'&&spot.info&&spot.info.slope?' (sloped seam)':''); $('spotDot').style.background=css('--'+({crack:'crack',hold:'hold',roof:'roof',slope:'slope',hit5:'hit5',point:'accent',exit:'accent',spawn:'pop'}[spot.kind]));
   let rows=`<dt>Position</dt><dd>${fmt(spot.x,4)}, ${fmt(spot.y,3)}, ${fmt(spot.z,4)}</dd>`;
   if(spot.info&&spot.info.seam) rows+=`<dt>Seam (tris)</dt><dd>${spot.info.seam}</dd>`;
@@ -953,6 +961,12 @@ function renderSpot(){ const el=$('spotInfo'); if(!spot){ $('spotCard').hidden=t
   if(spot.kind==='slope'){ const cs=slopeCases(spot.info.mask); rows+=`<dt>Goes through</dt><dd>${spot.info.n} of ${SLOPE_COMBOS.length} crossing cases, no hold needed</dd><dt>Clip odds</dt><dd>${oddsText({runs:70,clips:spot.info.n,nolag:busterNolag(spot.info.mask),voids:spot.info.n},'dive cases')}</dd>`;
     extra=`<p class="note" style="margin:6px 0 4px">A beak buster dive whose crossing update passes this crack ends under the map. Each case: dive speed on the crossing update, its frame count (3 = one lag frame), feet height above the crack before it. Click one to load it in Drop test.</p><div class="slcases">${cs.map((c,j)=>`<button class="btn mini" data-sc="${j}" title="Start the dive about ${c.diveH.toFixed(0)} above the crack (dive update ${c.k+1})">vy ${c.vy} · ${c.dt===0.06?3:2}f · +${c.h.toFixed(1)}</button>`).join('')}</div>`;
     setTimeout(()=>el.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>loadSlopeCase(cs[+b.dataset.sc])),0); }
+  if(spot.kind==='padshock'){ const d=spot.info.row, pd=room.padclips.pads[d[3]]||[]; const hs=d.slice(5);
+    rows+=`<dt>From</dt><dd>shock pad at ${pd.slice(1).join(', ')} (${Math.round(Math.hypot(d[0]-pd[1],d[2]-pd[3]))} away)</dd><dt>Fall from</dt><dd>${d[4]} heights above the crack clip, e.g. +${hs.join(', +')}</dd>`;
+    extra=`<p class="note" style="margin:6px 0 4px">Banjo falls from rest straight onto the crack from that height (gravity −2700, no lag): what a shock-pad jump turns into past its apex. The heights listed are inside what the jump reaches from that pad (pad + 290 to pad + 668). Load one into Drop test to watch it.</p><button class="btn" id="padLoad">Load the first height in Drop test</button>`;
+    setTimeout(()=>{ const b=$('padLoad'); if(b) b.onclick=()=>{ $('preset').value='fall'; applyPreset(); $('vx').value=0; $('vz').value=0; $('vy').value=0; $('grav').value=-2700; $('term').value=-4000; $('gnd').value='0'; $('dy').value=hs[0]; $('nupd').value=30; putAbove(); showTab('drop'); runSim(); }; },0); }
+  if(spot.kind==='padbomb'){ const d=spot.info.row; rows+=`<dt>Bomb aim</dt><dd>${d[3]}° down, heading ${d[4]}° (direction of travel), crossing phase ${d[5]}</dd>`;
+    extra=`<p class="note" style="margin:6px 0 4px">A beak bomb (4200 u/s in a straight line, no gravity) along this line goes through the seam and ends under the floor with floor above it. The approach, about 2000 units back up the line, was checked clear. The aim comes from the flight camera, which looks 10–80° down depending on how long Banjo has been nosing down.</p>`; }
   if(spot.kind==='roof'){ const r=spot.info.row; const NP=(room.roofs&&room.roofs.np)||16;
     if(r){ const b=r[4], cl=(k)=>((b>>k)&1)?'clear':'blocked'; rows+=`<dt>Room under it</dt><dd>Banjo ${cl(0)} · bee/forms ${cl(1)} · flying Banjo ${cl(2)}</dd><dt>Room above it</dt><dd>Banjo ${cl(3)} · bee/forms ${cl(4)} · flying Banjo ${cl(5)}</dd>`;
       rows+=`<dt>Bee flies up (4 flaps)</dt><dd>PAL ${r[5]} of ${NP} · NTSC ${r[7]} of ${NP} crossing phases clip</dd><dt>Banjo flies up, 1 lag update</dt><dd>PAL ${r[6]} of ${NP} · NTSC ${r[8]} of ${NP} crossing phases clip</dd>`; }
