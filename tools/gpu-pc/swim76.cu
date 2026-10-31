@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
   CK(cudaDeviceSetLimit(cudaLimitStackSize, 32768));
   Room R; R.TF = up(hr.TF); R.TI = up(hr.TI); R.CLI = up(hr.CLI); R.CLF = up(hr.CLF); R.CELLS = up(hr.CELLS); R.PF = up(hr.PF); R.PI = up(hr.PI); R.PC = up(hr.PC); R.GR = up(hr.GR); R.RF = up(hr.RF);
   unsigned short *dA = up(acos); int *dST = up(ST);
-  const int CH = 8192; std::vector<long long> agg[2] = { std::vector<long long>((size_t)NK * ns, 0), std::vector<long long>((size_t)NK * ns, 0) }; long long nsl = 0, nany = 0, npar[2] = { 0, 0 };
+  const int CH = 8192; std::vector<long long> agg[2] = { std::vector<long long>((size_t)NK * ns, 0), std::vector<long long>((size_t)NK * ns, 0) }; long long nsl = 0, nany = 0, npar[2] = { 0, 0 }; long long nhit = 0; char hn[512]; snprintf(hn, sizeof hn, "%s.hits", argv[4]); FILE *fh = fopen(hn, "w"); // every launch: arrival k stick parity
   for (int a0 = 0; a0 < na; a0 += CH) { int n = na - a0 < CH ? na - a0 : CH; std::vector<float> sub(AR.begin() + 4 * a0, AR.begin() + 4 * (a0 + n)); float *dAR = up(sub);
     SW *dKS; CK(cudaMalloc(&dKS, sizeof(SW) * (size_t)n * NK)); int *dFL, *dPAR; float *dVY; CK(cudaMalloc(&dFL, 4 * n)); CK(cudaMalloc(&dPAR, 4 * n)); CK(cudaMalloc(&dVY, 4 * n));
     k_arrive<<<(n + 63) / 64, 64>>>(R, dA, dAR, n, cx, cy, NK, dKS, dFL, dVY, dPAR); CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
@@ -151,9 +151,12 @@ int main(int argc, char **argv) {
     k_branch<<<(unsigned)((nt + 127) / 128), 128>>>(R, dA, dKS, dFL, n, NK, dST, ns, dO, maxs); CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
     std::vector<int> fl(n), par(n); std::vector<float> vy(n); std::vector<unsigned char> o(nt);
     CK(cudaMemcpy(fl.data(), dFL, 4 * n, cudaMemcpyDeviceToHost)); CK(cudaMemcpy(par.data(), dPAR, 4 * n, cudaMemcpyDeviceToHost)); CK(cudaMemcpy(vy.data(), dVY, 4 * n, cudaMemcpyDeviceToHost)); CK(cudaMemcpy(o.data(), dO, nt, cudaMemcpyDeviceToHost));
+    for (int i = 0; i < n; i++) for (size_t c = 0; c < (size_t)NK * ns; c++) if (o[(size_t)i * NK * ns + c] && nhit < 2000000) { fprintf(fh, "%d %d %d %d\n", a0 + i, (int)(c / ns), (int)(c % ns), par[i]); nhit++; }
+    fflush(fh);
     for (int i = 0; i < n; i++) { if (!fl[i]) continue; nsl++; int any = 0; for (size_t c = 0; c < (size_t)NK * ns; c++) if (o[(size_t)i * NK * ns + c]) { agg[par[i]][c]++; any = 1; } nany += any; npar[par[i]]++; }
     cudaFree(dAR); cudaFree(dKS); cudaFree(dFL); cudaFree(dPAR); cudaFree(dVY); cudaFree(dO); fflush(fo);
     fprintf(fp, "%d/%d arrivals | slides %lld | with a win %lld | %.0f s\n", a0 + n, na, nsl, nany, std::chrono::duration<double>(std::chrono::steady_clock::now() - T0).count()); fflush(fp); }
+  fclose(fh);
   // out (GPU build): text summary. line 1: arrivals slides any par0 par1 NK ns; then per parity p, per k: ns counts
   fprintf(fo, "%d %lld %lld %lld %lld %d %d\n", na, nsl, nany, npar[0], npar[1], NK, ns);
   for (int p = 0; p < 2; p++) for (int k = 0; k < NK; k++) { for (int j = 0; j < ns; j++) fprintf(fo, "%lld ", agg[p][(size_t)k * ns + j]); fprintf(fo, "\n"); }
