@@ -233,12 +233,12 @@ END[S.LONGLEG_LOCKED] = function () { this.llEnd(); };
 P._droneInit = function (anim, dur) {
   this.anim.play(anim, dur, LOOP); this.setUpdateTypes(1, 3, PHYS.NORMAL); this.thv = 0; this.vel = [0, 0, 0];
   this.fpEnter = F(1); this.v.eye = mlNormalizeAngle(F(this.yaw + 180.0)); };
-P._droneUpdate = function (exit) {
+P._droneUpdate = function (exit, swim) {
   let n = 0;
   if (this.fpEnter === 0) {
     const e = fsub(this.v.eye, fmul(fmul(this.stick.x, F(90)), this.dt)); this.v.eye = mlNormalizeAngle(e); this.setIdeal(F(e + 180.0));
     let x = this.pressed('B') || this.pressed('A') || this.pressed('Cu');
-    if (this.inWater) x = true; else if (!this.isAboveFloorBy(25)) x = true;
+    if (this.inWater) { if (!swim) x = true; } else if (!this.isAboveFloorBy(25)) x = true; // in water: only Banjo with no swim/dive state group exits
     if (x) n = exit;
   }
   return n; };
@@ -249,6 +249,16 @@ END[S.WALK_DRONE] = P._droneEnd;
 INIT[S.LONGLEG_DRONE] = function () { this.llSetup(); this._droneInit(0x41, 1.0); };
 UPDATE[S.LONGLEG_DRONE] = function () { let n = this._droneUpdate(S.LONGLEG_IDLE); if (this.stT[2] === 0) n = S.LONGLEG_EXIT; this.setState(n); };
 END[S.LONGLEG_DRONE] = function () { this._droneEnd(); this.llEnd(); };
+// underwater first person (bs/bSwim.c bsbswim_drone_*: func_802A744C, then the drone look; badrone_look from dive idle -> 0x97).
+// The A / B / C-Up press that ends it is used up here; dive idle then sees A or B still HELD and starts a stroke the next update.
+L.addState('DIVE_DRONE', 0x97); DIVE_SET.add(S.DIVE_DRONE);
+INIT[S.DIVE_DRONE] = function () { this.diveSetup(); this._droneInit(0x70, 2.0); };
+UPDATE[S.DIVE_DRONE] = function () { this.setState(this._droneUpdate(S.DIVE_IDLE, true)); };
+END[S.DIVE_DRONE] = function () { this._droneEnd(); this.diveEnd(); };
+const lookState0 = P.lookState;
+P.lookState = function () { return DIVE_SET.has(this.state) ? S.DIVE_DRONE : lookState0.call(this); };
+UPDATE[S.DIVE_IDLE] = function () { // bsbdive_idle_update, with the first-person check
+  let n = 0; this.diveYaw(); this.divePitch(); if (this.shouldLook()) n = this.lookState(); if (this.held('A')) n = S.DIVE_A; if (this.held('B')) n = S.DIVE_B; this.setState(this.diveCommon(n)); };
 
 // =====================================================================================================================
 // eggs (bs/bEggHead.c, bs/bEggAss.c): from crouch with C-Up (head) / C-Down (ass). Banjo stands (target speed 0, locked rotation:
