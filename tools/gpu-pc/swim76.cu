@@ -31,12 +31,20 @@ template <class T> static T *up(const std::vector<T> &v) { T *p; size_t n = v.si
 #endif
 
 #define BAD_DTOR_ (3.141592654 / 180.0)
+#ifdef SW_NTSC
+#define X_DT ((float)(2 * (1.0 / 60)))   // NTSC: 2 VI per update at 60 Hz, as bkmove dtOf(2)
+#else
 #define X_DT 0.04f
+#endif
 #define X_SDT ((float)(X_DT / 0.0333333))
 #define X_ACCEL 0.15f
 #define X_CAMX 0.0f
 #define X_CAMY -500.0f
+#ifdef SW_NTSC
+#define X_CAMZ0 0xc445db9cu   // NTSC: settled rail camera z under the flat roof (native US 1.0 dump 2026-11-01)
+#else
 #define X_CAMZ0 0xc42d8d94u
+#endif
 typedef struct { float S[3], vel[3], yawI, tspeed, cam, camr, pyaw, B[3], camz, camu4; int state, tick, grounded, hold; Tracker tr; World w; } SW;
 
 static HD float x_normax(int in, int mn, int mx) { float unit = 1 / 80.f; if (in > 0) { in = in > mx ? mx : in < mn ? mn : in; in = ((in - mn) * 80) / (mx - mn); } else if (in < 0) { in = in < -mx ? -mx : in > -mn ? -mn : in; in = ((in + mn) * 80) / (mx - mn); } return unit * in; }
