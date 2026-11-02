@@ -171,6 +171,12 @@ int main(int argc, char **argv) {
 #else
   Room R; R.TF = hr.TF.data(); R.TI = hr.TI.data(); R.CLI = hr.CLI.data(); R.CLF = hr.CLF.data(); R.CELLS = hr.CELLS.data(); R.PF = hr.PF.data(); R.PI = hr.PI.data(); R.PC = hr.PC.data(); R.GR = hr.GR.data(); R.RF = hr.RF.data();
   int N = argc > 9 ? atoi(argv[9]) : na; if (N > na) N = na; std::vector<SW> ks(NK);
+  if (getenv("SW_EXITPOS")) { // CPU: for each hit line "arrival k stick parity" print the launch update's position (exit spot)
+    FILE *f = fopen(getenv("SW_EXITPOS"), "r"); int ai, k, j, p; while (f && fscanf(f, "%d %d %d %d", &ai, &k, &j, &p) == 4) {
+      float vy = 0; int par = 0; if (!arrive(R, acos.data(), AR.data(), ai, cx, cy, NK, ks.data(), &vy, &par)) { fprintf(fo, "%d %d %d noarrive\n", ai, k, j); continue; }
+      SW x = ks[k]; int got = 0; for (int s = 0; s < maxs; s++) { if (x_step(R, acos.data(), &x, ST[2 * j], ST[2 * j + 1])) { got = x.vel[1] > 2000; break; } if (x.vel[1] < 2.0f) break; }
+      fprintf(fo, "%d %d %d %d %.4f %.4f %.4f %.2f %.2f\n", ai, k, j, got, x.S[0], x.S[1], x.S[2], x.vel[1], vy); }
+    if (f) fclose(f); fclose(fo); fclose(fp); return 0; }
   if (getenv("SW_TAS")) { // replay mode: argv[2] holds "x y z vx vy vz yawI cam tspeed pyaw B0 B2 camz camu4 camr state par" then "sx sy" per update
     FILE *f = fopen(getenv("SW_TAS"), "r"); SW x; float v[15]; int st, par; for (int i = 0; i < 15; i++) fscanf(f, "%f", &v[i]); fscanf(f, "%d %d", &st, &par);
     x_start(&x, v[0], v[1], v[2], v[4], par); x.vel[0] = v[3]; x.vel[2] = v[5]; x.yawI = v[6]; x.cam = v[7]; x.tspeed = v[8]; x.pyaw = v[9]; x.B[0] = v[10]; x.B[2] = v[11]; x.camz = v[12]; x.camu4 = v[13]; x.camr = v[14]; x.state = st;

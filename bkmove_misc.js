@@ -256,7 +256,16 @@ INIT[S.DIVE_DRONE] = function () { this.diveSetup(); this._droneInit(0x70, 2.0);
 UPDATE[S.DIVE_DRONE] = function () { this.setState(this._droneUpdate(S.DIVE_IDLE, true)); };
 END[S.DIVE_DRONE] = function () { this._droneEnd(); this.diveEnd(); };
 const lookState0 = P.lookState;
-P.lookState = function () { return DIVE_SET.has(this.state) ? S.DIVE_DRONE : lookState0.call(this); };
+P.lookState = function () { return DIVE_SET.has(this.state) ? S.DIVE_DRONE : SWIM_SET.has(this.state) ? S.SWIM_DRONE : lookState0.call(this); };
+// surface swim first person (bs/swim.c bsswim_drone_*: __bsswim_enteredWater + bsdrone look; C-Up only from SWIM_IDLE, swim.c bsswim_idle_update)
+L.addState('SWIM_DRONE', 0x96); SWIM_SET.add(S.SWIM_DRONE);
+INIT[S.SWIM_DRONE] = function () { this.enteredWater(); this._droneInit(0x57, 1.2); };
+UPDATE[S.SWIM_DRONE] = function () { this.setState(this._droneUpdate(S.SWIM_IDLE, true)); };
+END[S.SWIM_DRONE] = function () { this._droneEnd(); this.swimEnd(); };
+const swimIdleU = UPDATE[S.SWIM_IDLE];
+UPDATE[S.SWIM_IDLE] = function () { // same order as bsswim_idle_update: zone->swim, !water->idle, look, dive, jump
+  let n = 0; if (this.stick.zone === 1) n = S.SWIM; if (!this.inWater) n = S.IDLE; if (this.shouldLook()) n = this.lookState();
+  if (this.shouldDive()) n = S.DIVE_ENTER; if (this.canJumpOut && this.pressed('A')) n = S.JUMP; this.setState(n); };
 UPDATE[S.DIVE_IDLE] = function () { // bsbdive_idle_update, with the first-person check
   let n = 0; this.diveYaw(); this.divePitch(); if (this.shouldLook()) n = this.lookState(); if (this.held('A')) n = S.DIVE_A; if (this.held('B')) n = S.DIVE_B; this.setState(this.diveCommon(n)); };
 
