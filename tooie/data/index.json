@@ -536,10 +536,33 @@
    "map_names": [
     "Train Station"
    ],
-   "tris": 1510,
+   "tris": 602,
    "opa": "0x1D24",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 383,
+   "crack_samples": 43004652299,
+   "crack_floats": 46334976,
+   "spots": 132148,
+   "cats": {
+    "stuck": 37306,
+    "walk": 6231,
+    "eject": 80691,
+    "wall": 7482,
+    "lag": 82,
+    "jump": 356
+   },
+   "cats_flat": {
+    "stuck": 7,
+    "walk": 4857,
+    "eject": 54750,
+    "wall": 3784,
+    "lag": 82,
+    "jump": 326
+   },
+   "holds": 142,
+   "void": 4807,
+   "bytes": 3334809
   },
   {
    "map": "0xD8",
