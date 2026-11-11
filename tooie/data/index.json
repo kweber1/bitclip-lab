@@ -2068,10 +2068,27 @@
     "Balloons",
     "Hoops"
    ],
-   "tris": 140,
+   "tris": 40,
    "opa": "0x1D4B",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 1,
+   "crack_samples": 1319165120,
+   "crack_floats": 25618,
+   "spots": 2256,
+   "cats": {
+    "walk": 3,
+    "eject": 2239,
+    "wall": 14
+   },
+   "cats_flat": {
+    "walk": 3,
+    "eject": 2239,
+    "wall": 14
+   },
+   "holds": 0,
+   "void": 3,
+   "bytes": 30056
   },
   {
    "map": "0x19B",
