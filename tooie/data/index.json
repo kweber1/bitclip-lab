@@ -1029,29 +1029,31 @@
    "xlu": null,
    "done": true,
    "seams": 262,
-   "crack_samples": 32648538496,
-   "crack_floats": 244261010,
-   "spots": 549788,
+   "crack_samples": 32608638496,
+   "crack_floats": 243867334,
+   "spots": 243867334,
    "cats": {
-    "walk": 287178,
-    "jump": 1228,
-    "eject": 185936,
-    "stuck": 48451,
-    "lag": 286,
-    "wall": 26709
+    "walk": 7488321,
+    "jump": 112155,
+    "eject": 39302945,
+    "stuck": 103412877,
+    "lag": 22362,
+    "wall": 93528674
    },
    "cats_flat": {
-    "wall": 11491,
-    "eject": 175525,
-    "walk": 54362,
-    "lag": 221,
-    "jump": 954,
-    "stuck": 24
+    "wall": 63807285,
+    "walk": 2141606,
+    "eject": 26470118,
+    "lag": 13287,
+    "jump": 65802,
+    "stuck": 6419
    },
-   "holds": 133972,
-   "void": 52817,
-   "bytes": 2873362,
-   "shown": 343090
+   "holds": 6678668,
+   "void": 2034145,
+   "bytes": 2513304,
+   "shown": 156893,
+   "every": true,
+   "cells": 314867
   },
   {
    "map": "0xE2",
