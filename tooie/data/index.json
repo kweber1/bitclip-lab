@@ -42,10 +42,34 @@
    "map_names": [
     "Behind The Waterfall"
    ],
-   "tris": 1743,
+   "tris": 813,
    "opa": "0x1CFE",
    "xlu": "0x1CFF",
-   "done": false
+   "done": true,
+   "seams": 217,
+   "crack_samples": 23903295402,
+   "crack_floats": 22616342,
+   "spots": 77356,
+   "cats": {
+    "wall": 27450,
+    "eject": 35884,
+    "stuck": 3681,
+    "lag": 49,
+    "walk": 9267,
+    "water": 902,
+    "jump": 123
+   },
+   "cats_flat": {
+    "wall": 6073,
+    "eject": 15844,
+    "lag": 47,
+    "walk": 9267,
+    "water": 902,
+    "jump": 123
+   },
+   "holds": 66,
+   "void": 9267,
+   "bytes": 1645216
   },
   {
    "map": "0xB6",
