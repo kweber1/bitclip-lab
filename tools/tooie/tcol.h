@@ -17,13 +17,55 @@
 #include <math.h>
 #include <string.h>
 #endif
+// per triangle, ready to load in 16-byte pieces (read-only cache on the card): TB = box and flags { minx maxx miny maxy } { minz maxz
+// flags(bits) 0 }, TV4 = corners { v0x v0y v0z v1x } { v1y v1z v2x v2y } { v2z 0 0 0 }; exact copies of the shorts / flags
+#ifdef TCOL_CUDA
+typedef struct __align__(16) TF4_ { float x, y, z, w; } TF4;
+#else
+typedef struct alignas(16) TF4_ { float x, y, z, w; } TF4;
+#endif
+TD TF4 ldg4(const TF4 *p) {
+#ifdef __CUDA_ARCH__
+  float4 v = __ldg((const float4 *)p); TF4 r; r.x = v.x; r.y = v.y; r.z = v.z; r.w = v.w; return r;
+#else
+  return *p;
+#endif
+}
+TD unsigned f2u(float f) { unsigned u; memcpy(&u, &f, 4); return u; }
+typedef struct TBS_ { int c, st, n, pad; } TBS;   // finer-index segment: one cell's triangles in a bin (cell x | y << 8 | z << 16, relative)
+TD TBS ldgs(const TBS *p) {
+#ifdef __CUDA_ARCH__
+  int4 v = __ldg((const int4 *)p); TBS r; r.c = v.x; r.st = v.y; r.n = v.z; r.pad = 0; return r;
+#else
+  return *p;
+#endif
+}
+TD int ldgi(const int *p) {
+#ifdef __CUDA_ARCH__
+  return __ldg(p);
+#else
+  return *p;
+#endif
+}
 
 typedef struct {
-  int nv, nt, ncell; const short *V; const unsigned short *T; const unsigned *TF; const unsigned short *C; const short *BB;   // BB: per triangle min x, max x, min y, max y, min z, max z (precomputed, for the cell scans)
+  int nv, nt, ncell; const short *V; const unsigned short *T; const unsigned *TF; const unsigned short *C; const short *BB; const float *TV; const struct TF4_ *TB, *TV4;
+  int bix0[2], biz0[2], bnx[2], bnz[2]; float bgx0, bgx1, bgz0, bgz1; long bnseg[2], bnent[2]; const int *boff[2]; const struct TBS_ *bseg[2]; const int *bk[2];   // finer index (see FOR_QUERY_TRIS)   // BB: per triangle min x, max x, min y, max y, min z, max z (precomputed, for the cell scans)
   short h[11]; float gn;            // h = collision header (min xyz, max xyz, ystride, zstride, ncell, cell size, ntri); gn = vertex header [10]
 } TModel;
 typedef struct { const TModel *m[2]; } TWorld;   // m[0] opaque, m[1] transparent (either may be 0)
 typedef struct { int m, i; } TTri;               // hit triangle: model 0/1, index; m < 0 = none
+// timing build (-DTPROF, card only): cycles per thread spent in each part, summed per block in shared memory
+#if defined(TPROF) && !defined(TCPU)
+__shared__ unsigned long long tprof_s[64][8];
+#endif
+#if defined(TPROF) && defined(__CUDA_ARCH__)
+#define TP_BEGIN(v) long long v = clock64()
+#define TP_END(v, i) (tprof_s[threadIdx.x][i] += (unsigned long long)(clock64() - (v)))
+#else
+#define TP_BEGIN(v)
+#define TP_END(v, i)
+#endif
 TD TTri tnone(void) { TTri t; t.m = -1; t.i = -1; return t; }
 #define TNONE tnone()
 TD int tri_ok(TTri t) { return t.m >= 0; }
@@ -45,12 +87,18 @@ TD void vgetnorm(float *d, const float *s) { float l = s[0] * s[0] + s[1] * s[1]
 TD void vsetlen(float *v, float len) { float l = v[0] * v[0] + v[1] * v[1] + v[2] * v[2]; if (l != 0.0f) { float k = len / sqrtf(l); v[0] *= k; v[1] *= k; v[2] *= k; } }
 TD int vnz(const float *a) { return a[0] != 0.0f || a[1] != 0.0f || a[2] != 0.0f; }
 TD float fabsf_(float x) { return x < 0.0f ? -x : x; }
-TD void triverts(const TWorld *w, TTri t, float v[3][3]) { const TModel *M = w->m[t.m]; const unsigned short *T = M->T + 3 * t.i;
-  for (int k = 0; k < 3; k++) { const short *p = M->V + 3 * T[k]; v[k][0] = (float)p[0]; v[k][1] = (float)p[1]; v[k][2] = (float)p[2]; } }
+// TV: each triangle's corners as floats, precomputed (the exact short -> float conversions), one read instead of index + vertex reads
+TD void tv4(const TModel *M, int k, float v[3][3]) { TF4 a = ldg4(M->TV4 + 3 * k), b = ldg4(M->TV4 + 3 * k + 1), c = ldg4(M->TV4 + 3 * k + 2);
+  v[0][0] = a.x; v[0][1] = a.y; v[0][2] = a.z; v[1][0] = a.w; v[1][1] = b.x; v[1][2] = b.y; v[2][0] = b.z; v[2][1] = b.w; v[2][2] = c.x; }
+TD void triverts(const TWorld *w, TTri t, float v[3][3]) { tv4(w->m[t.m], t.i, v); }
 TD unsigned triflags(const TWorld *w, TTri t) { return w->m[t.m]->TF[t.i]; }
 
 // ---- cells (func_800AA7FC ints, func_800AA4D4 floats): fills [lo, hi] per axis; returns 0 when the model has no grid
-TD int cdiv(int a, int b) { return a / b; }   // C division truncates toward zero, like MIPS div
+TD int cdiv(int a, int b) {   // C division truncates toward zero, like MIPS div
+#ifdef TSIM_WASM
+  if (!b) return 0;   // a model without a cell grid (h[9] = 0): the range is never used (FOR_CELL_TRIS walks every triangle); WebAssembly would trap
+#endif
+  return a / b; }
 TD void cell_range(const TModel *M, const int *mn, const int *mx, int *a, int *b) {
   for (int i = 0; i < 3; i++) { int s = M->h[9];
     int lo = mn[i] >= 0 ? cdiv(mn[i], s) : cdiv(mn[i], s) - 1, hi = mx[i] >= 0 ? cdiv(mx[i], s) : cdiv(mx[i], s) - 1;
@@ -69,6 +117,28 @@ TD void cell_range_f(const TModel *M, const float *mn, const float *mx, int *a, 
     int ci_ = cz_ * (unsigned short)(M)->h[7] + cy_ * (unsigned short)(M)->h[6] + cx_; int st_ = (M)->C[2 * ci_], cn_ = (M)->C[2 * ci_ + 1]; \
     for (int IDX = st_; IDX < st_ + cn_; IDX++) { __VA_ARGS__ } } } while (0)
 
+// ---- finer index (exact; the same triangles in the same order as FOR_CELL_TRIS). Per model, two XZ grids of overlapping bins:
+// level 0 = 64-unit bins every 32 units (line tests), level 1 = 192-unit bins every 64 units (sphere tests). A bin lists, in the
+// game's order (cell by cell, then each cell's own order), every triangle of every cell whose box reaches the bin. A query whose XZ
+// box lies inside one bin walks that list, skipping entries of cells outside its cell range: every triangle it does not see has its
+// box outside the bin, so the query's box test would have rejected it anyway. Other queries use the cells as before.
+#define BIN_S(lv) ((lv) ? 64.0f : 32.0f)
+#define BIN_B(lv) ((lv) ? 192.0f : 64.0f)
+TD int bin_find(const TModel *M, int lv, float x0, float x1, float z0, float z1) {
+  if (!M->boff[lv]) return -1; float S = BIN_S(lv), B = BIN_B(lv);
+  if (!(x0 >= M->bgx0 + 1.0f && x1 <= M->bgx1 - 1.0f && z0 >= M->bgz0 + 1.0f && z1 <= M->bgz1 - 1.0f)) return -1;   // inside the cell grid: no clamped cell ranges
+  float fx = floorf(x0 / S), fz = floorf(z0 / S); if (!(fx > -1.0e6f && fx < 1.0e6f && fz > -1.0e6f && fz < 1.0e6f)) return -1;
+  if (x1 > fx * S + B || z1 > fz * S + B) return -1;   // does not fit in the bin starting at (fx, fz)
+  int ix = (int)fx - M->bix0[lv], iz = (int)fz - M->biz0[lv]; if (ix < 0 || iz < 0 || ix >= M->bnx[lv] || iz >= M->bnz[lv]) return -1;
+  return ix * M->bnz[lv] + iz; }
+#define FOR_QUERY_TRIS(M, a, b, QX0, QX1, QZ0, QZ1, LV, IDX, ...) do { \
+  int bi_ = bin_find(M, LV, (float)(QX0), (float)(QX1), (float)(QZ0), (float)(QZ1)); \
+  if (bi_ >= 0) { const int *bo_ = (M)->boff[LV], *bk_ = (M)->bk[LV]; const TBS *bs_ = (M)->bseg[LV]; int se_ = ldgi(bo_ + bi_ + 1); \
+    for (int s_ = ldgi(bo_ + bi_); s_ < se_; s_++) { TBS g_ = ldgs(bs_ + s_); int ex_ = g_.c & 255, ey_ = (g_.c >> 8) & 255, ez_ = g_.c >> 16; \
+      if (ex_ < (a)[0] || ex_ > (b)[0] || ey_ < (a)[1] || ey_ > (b)[1] || ez_ < (a)[2] || ez_ > (b)[2]) continue; \
+      for (int q_ = g_.st; q_ < g_.st + g_.n; q_++) { int IDX = ldgi(bk_ + q_); { __VA_ARGS__ } } } } \
+  else FOR_CELL_TRIS(M, a, b, IDX, __VA_ARGS__); } while (0)
+
 // ---- line test, one model (func_800AB0BC). s, e: segment (e is moved to the hit); nout: normal of the hit (normalized at the end)
 TD int line_model(const TWorld *w, int mi, const float *s, float *e, float *nout, unsigned filt, TTri *hit) {
   const TModel *M = w->m[mi]; int mn[3], mx[3]; float d[3]; int found = 0;
@@ -76,11 +146,10 @@ TD int line_model(const TWorld *w, int mi, const float *s, float *e, float *nout
   vsub(d, e, s);
   for (int i = 0; i < 3; i++) { if ((float)mx[i] <= -M->gn) return 0; if (M->gn <= (float)mn[i]) return 0; }
   int ca[3], cb[3]; cell_range(M, mn, mx, ca, cb);
-  FOR_CELL_TRIS(M, ca, cb, k, {
-    unsigned fl = M->TF[k]; if (fl & filt) continue;
-    { const short *bb = M->BB + 6 * k; if (bb[1] < mn[0] || mx[0] < bb[0] || bb[3] < mn[1] || mx[1] < bb[2] || bb[5] < mn[2] || mx[2] < bb[4]) continue; }
-    const unsigned short *T = M->T + 3 * k; const short *A = M->V + 3 * T[0], *Bv = M->V + 3 * T[1], *Cv = M->V + 3 * T[2];
-    float v0[3] = { (float)A[0], (float)A[1], (float)A[2] }, v1[3] = { (float)Bv[0], (float)Bv[1], (float)Bv[2] }, v2[3] = { (float)Cv[0], (float)Cv[1], (float)Cv[2] };
+  FOR_QUERY_TRIS(M, ca, cb, mn[0], mx[0], mn[2], mx[2], 0, k, {
+    TF4 tb0 = ldg4(M->TB + 2 * k), tb1 = ldg4(M->TB + 2 * k + 1); unsigned fl = f2u(tb1.z); if (fl & filt) continue;
+    if (tb0.y < (float)mn[0] || (float)mx[0] < tb0.x || tb0.w < (float)mn[1] || (float)mx[1] < tb0.z || tb1.y < (float)mn[2] || (float)mx[2] < tb1.x) continue;   // = the short box vs the int box
+    float vv[3][3]; tv4(M, k, vv); float v0[3] = { vv[0][0], vv[0][1], vv[0][2] }, v1[3] = { vv[1][0], vv[1][1], vv[1][2] }, v2[3] = { vv[2][0], vv[2][1], vv[2][2] };
     float ab[3], ac[3], N[3]; vsub(ab, v1, v0); vsub(ac, v2, v0); vcross(N, ab, ac);
     if (100000.0f < fabsf_(N[0]) || 100000.0f < fabsf_(N[1]) || 100000.0f < fabsf_(N[2])) { N[0] = N[0] * 9.999999747e-06f; N[1] = N[1] * 9.999999747e-06f; N[2] = N[2] * 9.999999747e-06f; }
     float ls[3], le[3]; vsub(ls, s, v0); vsub(le, e, v0); float a = vdot(ls, N), b = vdot(le, N);
@@ -119,11 +188,10 @@ TD int fast_check(const TWorld *w, int mi, const float *p1, const float *p2, con
   for (int i = 0; i < 3; i++) { if (p1[i] < p2[i]) { mn[i] = p1[i]; mx[i] = p2[i]; } else { mn[i] = p2[i]; mx[i] = p1[i]; } mn[i] = mn[i] - margin; mx[i] = mx[i] + margin; }
   for (int i = 0; i < 3; i++) { if (mx[i] <= -M->gn) return 0; if (M->gn <= mn[i]) return 0; }
   int ca[3], cb[3]; cell_range_f(M, mn, mx, ca, cb); int n = 0;
-  FOR_CELL_TRIS(M, ca, cb, k, {
-    unsigned fl = M->TF[k]; if (fl & filt) continue; if (n >= nact) continue;
-    { const short *bb = M->BB + 6 * k; if (mx[0] < (float)bb[0] || (float)bb[1] < mn[0] || mx[1] < (float)bb[2] || (float)bb[3] < mn[1] || mx[2] < (float)bb[4] || (float)bb[5] < mn[2]) continue; }
-    TAct *A = act + n; const unsigned short *T = M->T + 3 * k;
-    for (int j = 0; j < 3; j++) { const short *p = M->V + 3 * T[j]; A->v[j][0] = (float)p[0]; A->v[j][1] = (float)p[1]; A->v[j][2] = (float)p[2]; }
+  FOR_QUERY_TRIS(M, ca, cb, mn[0], mx[0], mn[2], mx[2], 1, k, {
+    TF4 tb0 = ldg4(M->TB + 2 * k), tb1 = ldg4(M->TB + 2 * k + 1); unsigned fl = f2u(tb1.z); if (fl & filt) continue; if (n >= nact) continue;
+    if (mx[0] < tb0.x || tb0.y < mn[0] || mx[1] < tb0.z || tb0.w < mn[1] || mx[2] < tb1.x || tb1.y < mn[2]) continue;
+    TAct *A = act + n; tv4(M, k, A->v);
     vsub(A->ab, A->v[1], A->v[0]); vsub(A->ac, A->v[2], A->v[0]); vcross(A->n, A->ab, A->ac); vnorm(A->n);
     if (fl & 0x10000) { float q[3]; vsub(q, p1, A->v[0]); if (vdot(q, A->n) < 0.0f) { A->n[0] = -A->n[0]; A->n[1] = -A->n[1]; A->n[2] = -A->n[2]; } }
     if (0.0f < vdot(A->n, vel)) continue;
@@ -168,11 +236,10 @@ TD int sphere_model(const TWorld *w, int mi, const float *pos, float r, float *n
   const TModel *M = w->m[mi]; float rp = r + 0.5f; float mn[3] = { pos[0] - rp, pos[1] - rp, pos[2] - rp }, mx[3] = { pos[0] + rp, pos[1] + rp, pos[2] + rp };
   for (int i = 0; i < 3; i++) { if (mx[i] <= -M->gn) return 0; if (M->gn <= mn[i]) return 0; }
   int ca[3], cb[3]; cell_range_f(M, mn, mx, ca, cb); float acc[3] = { 0, 0, 0 }; int found = 0; float rd = r - 0.5f, r2 = r * r;
-  FOR_CELL_TRIS(M, ca, cb, k, {
-    unsigned fl = M->TF[k]; if (fl & filt) continue;
-    { const short *bb = M->BB + 6 * k; if (mx[0] < (float)bb[0] || (float)bb[1] < mn[0] || mx[1] < (float)bb[2] || (float)bb[3] < mn[1] || mx[2] < (float)bb[4] || (float)bb[5] < mn[2]) continue; }
-    const unsigned short *T = M->T + 3 * k; float v[3][3];
-    for (int j = 0; j < 3; j++) { const short *p = M->V + 3 * T[j]; v[j][0] = (float)p[0]; v[j][1] = (float)p[1]; v[j][2] = (float)p[2]; }
+  FOR_QUERY_TRIS(M, ca, cb, mn[0], mx[0], mn[2], mx[2], 1, k, {
+    TF4 tb0 = ldg4(M->TB + 2 * k), tb1 = ldg4(M->TB + 2 * k + 1); unsigned fl = f2u(tb1.z); if (fl & filt) continue;
+    if (mx[0] < tb0.x || tb0.y < mn[0] || mx[1] < tb0.z || tb0.w < mn[1] || mx[2] < tb1.x || tb1.y < mn[2]) continue;
+    float v[3][3]; tv4(M, k, v);
     float ab[3], ac[3], N[3]; vsub(ab, v[1], v[0]); vsub(ac, v[2], v[0]); vcross(N, ab, ac); vnorm(N);
     if (N[0] == 0.0f && N[1] == 0.0f && N[2] == 0.0f) continue;
     float s0[3]; vsub(s0, pos, v[0]);
@@ -247,14 +314,14 @@ TD int msphere_h(const TWorld *w, const float *A, float *Bf, float h, float r, f
   if (tri_ok(t)) { Bf[0] = b[0]; Bf[1] = b[1] - h; Bf[2] = b[2]; } *hit = t; return tri_ok(t); }
 TD void resolve(const TWorld *w, TTrack *tr, const float *old_in, const float *tgt_in, const float *disp, int grounded_in,
                 float h, float r, unsigned mfilt, TRes *R, TAct *act) {
-  unsigned filt = mfilt | TWATER; float old[3], tgt[3]; vcp(old, old_in); vcp(tgt, tgt_in); int gnd = grounded_in;
+  TP_BEGIN(tp_res); unsigned filt = mfilt | TWATER; float old[3], tgt[3]; vcp(old, old_in); vcp(tgt, tgt_in); int gnd = grounded_in;
   R->hits = 0; R->held = 0; R->held_flag = 0; R->last = TNONE;
   // func_800FAE44: fallback = old pushed out of whatever the sphere at old touches (by 2.0 along the normal), old moved too
   float fb[3]; vcp(fb, old);
-  { float c[3] = { old[0], old[1] + h, old[2] }, n[3] = { 0, 0, 0 }; TTri t = wsphere(w, c, r, n, filt);
+  { float c[3] = { old[0], old[1] + h, old[2] }, n[3] = { 0, 0, 0 }; TP_BEGIN(tp_s); TTri t = wsphere(w, c, r, n, filt); TP_END(tp_s, 2);
     if (tri_ok(t)) { fb[0] = n[0] * 2.0f + old[0]; fb[1] = n[1] * 2.0f + old[1]; fb[2] = n[2] * 2.0f + old[2]; vcp(old, fb);
       float a[3], b[3], n2[3] = { 0, 0, 0 }; vcp(a, old); vcp(b, old); a[1] = a[1] + 100.0f; b[1] = b[1] - 500.0f;
-      TTri t2 = wline(w, a, b, n2, filt);
+      TP_BEGIN(tp_l); TTri t2 = wline(w, a, b, n2, filt); TP_END(tp_l, 3);
       if (tri_ok(t2) && (!(n2[1] < 0.0f) || (triflags(w, t2) & 0x10000)) && old[1] < b[1]) old[1] = b[1]; } }
   TPass P[5]; int i = 0;
   for (i = 0; i < 5; i++) {
@@ -267,7 +334,7 @@ TD void resolve(const TWorld *w, TTrack *tr, const float *old_in, const float *t
       // func_800FABF4 / func_800FAB50: line from old+h to new+h extended by r-1
       #define TLINE() do { float s34[3] = { c->uC[0], c->uC[1] + h, c->uC[2] }, s28[3] = { c->u0[0], c->u0[1] + h, c->u0[2] }; \
         float ext[3]; vsub(ext, s28, s34); vsetlen(ext, r - 1.0f); float s20[3]; vcp(s20, s28); vadd(s20, ext); \
-        TTri lt = wline(w, s34, s20, n44, filt); if (tri_ok(lt)) { vsubin(s20, ext); c->u0[0] = s20[0]; c->u0[1] = s20[1] - h; c->u0[2] = s20[2]; } c->line = lt; } while (0)
+        TP_BEGIN(tp_l2); TTri lt = wline(w, s34, s20, n44, filt); TP_END(tp_l2, 3); if (tri_ok(lt)) { vsubin(s20, ext); c->u0[0] = s20[0]; c->u0[1] = s20[1] - h; c->u0[2] = s20[2]; } c->line = lt; } while (0)
       TLINE();
       if (tri_ok(c->line)) { float dn[3]; vcp(dn, d); vnorm(dn); if (0.0f < vdot(dn, n44)) { vcp(c->u0, keep); c->line = TNONE; } }
       if (tri_ok(c->line) && 0.0f <= n44[1] && n44[1] < 0.01999999955f) {
@@ -276,11 +343,11 @@ TD void resolve(const TWorld *w, TTrack *tr, const float *old_in, const float *t
         c->u0[1] = yl; }
       #undef TLINE
     }
-    floor_snap(tr, w, c->u0, disp, &gnd, mfilt); c->gnd = gnd;
+    { TP_BEGIN(tp_f); floor_snap(tr, w, c->u0, disp, &gnd, mfilt); TP_END(tp_f, 4); } c->gnd = gnd;
     c->c_old[0] = c->uC[0]; c->c_old[1] = c->uC[1] + h; c->c_old[2] = c->uC[2];
     c->c_new[0] = c->u0[0]; c->c_new[1] = c->u0[1] + h; c->c_new[2] = c->u0[2];
     c->n[0] = c->n[1] = c->n[2] = 0.0f;
-    c->hit = wmsphere(w, c->c_old, c->c_new, r, c->n, 3, filt, act);
+    { TP_BEGIN(tp_m); c->hit = wmsphere(w, c->c_old, c->c_new, r, c->n, 3, filt, act); TP_END(tp_m, 5); }
     if (!tri_ok(c->hit)) break;
     R->hits++; R->last = c->hit;
     if (i == 2 && tri_eq(c->hit, P[0].hit) && !tri_eq(pv->hit, c->hit)) { float s[3]; vsum(s, c->n, pv->n); vnorm(s); vcp(c->n, s); }
@@ -304,6 +371,6 @@ TD void resolve(const TWorld *w, TTrack *tr, const float *old_in, const float *t
   }
   if (i == 5) { R->held = 1; if (gnd == 0 && tri_ok(R->last) && tgt_in[1] < old[1]) R->held_flag = 1; vcp(R->out, fb); }
   else vcp(R->out, P[i].u0);
-  R->grounded = gnd;
+  R->grounded = gnd; TP_END(tp_res, 1);
 }
 #endif

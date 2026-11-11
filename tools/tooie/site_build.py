@@ -35,7 +35,7 @@ def build(tc, roomf, outdir):
     # visible level model (display lists) with texture coordinates; the textures are the lab's own (btgen.py)
     try:
         import btvis2
-        vis = btvis2.room_vis(room, os.path.join(outdir, 'tex')); btvis2.save_descs()
+        vis = btvis2.room_vis(room, os.environ.get('BT_TEXDIR') or os.path.join(outdir, 'tex'))   # textures stay with the viewer (bitclip-lab/tooie/tex); data goes to the version repo; btvis2.save_descs()
     except Exception as ex:
         import traceback; traceback.print_exc(); vis = {'verts': [], 'tris': [], 'mats': [], 'error': str(ex)}
     import tempfile
@@ -55,7 +55,7 @@ def build(tc, roomf, outdir):
         if not a: continue
         if a[0] == 'ROOM': head = a
         elif a[0] == 'SEAM':
-            seams.append([float(a[4]), float(a[5]), float(a[6]), float(a[7]), float(a[8]), float(a[9]), round(float(a[10]), 4), round(float(a[11]), 4), int(a[12])])
+            seams.append([float(a[4]), float(a[5]), float(a[6]), float(a[7]), float(a[8]), float(a[9]), round(float(a[10]), 4), round(float(a[11]), 4), int(a[12])] + [int(v) for v in a[2].split(':') + a[3].split(':')])   # + model:triangle of both floors (the browser simulator needs them)
         elif a[0] == 'CELL':
             # exhaustive census: every crack float of this 0.25 cell tested; counts per category + one float of the best category
             bar = a.index('|'); c = [int(v) for v in a[2:bar]]   # n, walk, void, lag, jump, eject, stuck, wall, water, hold
@@ -70,11 +70,7 @@ def build(tc, roomf, outdir):
             x, z = float(r[0]), float(r[2]); thru = cat in ('walk', 'lag', 'jump') or ch > 0
             entry = [x, float(r[1]), z, seam, n, cat, outs, sum(1 for h in hl if h), max(sits), int(r[7]), round(float(r[8]), 2),
                      (jc[0] if jc else -1), (jc[1] if jc else -1), (jc[5] if jc else -1), 1 if ch else 0, c]
-            if thru: nshown += 1; spf.write(json.dumps(entry, separators=(',', ':')) + '\n')
-            else:   # cells where nothing clips: merged per seam per 2x2-unit cell for drawing (counts summed, nothing dropped)
-                k = (seam, math.floor(x / 2), math.floor(z / 2))
-                if k in merged: m_ = merged[k]; m_[15] = [p_ + q_ for p_, q_ in zip(m_[15], c)]; m_[4] += n
-                else: merged[k] = entry
+            nshown += 1; spf.write(json.dumps(entry, separators=(',', ':')) + '\n')   # every 0.25 cell is its own spot (nothing merged)
             continue
         elif a[0] in ('SPOT', 'RUN'):
             run = None
@@ -113,7 +109,7 @@ def build(tc, roomf, outdir):
         e_[5] = 'stuck' if e_[15][6] else 'eject' if e_[15][5] else 'wall' if e_[15][7] else 'water'
         nshown += 1; spf.write(json.dumps(e_, separators=(',', ':')) + '\n')
     every = ncell > 0
-    if every: thin_txt = 'every crack float tested; each spot is one 0.25 cell with counts per outcome; cells where nothing clips are merged per seam per 2x2-unit cell'
+    if every: thin_txt = 'every crack float tested; each spot is one 0.25 cell of one seam with counts per outcome (nothing merged)'
     flatseam = [s[6] > 0.999 and s[7] > 0.999 for s in seams]
     cntflat = collections.Counter()
     for (sm, c), n in byseam.items():
