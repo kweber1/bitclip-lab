@@ -1653,20 +1653,22 @@
    "xlu": null,
    "done": true,
    "seams": 272,
-   "crack_samples": 43972322121,
-   "crack_floats": 14348987,
-   "spots": 385213,
-   "shown": 30815,
+   "crack_samples": 43926122121,
+   "crack_floats": 14339721,
+   "spots": 14339721,
+   "shown": 30173,
    "cats": {
-    "wall": 42812,
-    "eject": 310228,
-    "stuck": 32172,
-    "walk": 1
+    "wall": 233043,
+    "eject": 11086498,
+    "stuck": 3019973,
+    "walk": 207
    },
    "cats_flat": {},
-   "holds": 20,
+   "holds": 802,
    "void": 0,
-   "bytes": 626554
+   "bytes": 760666,
+   "every": true,
+   "cells": 192460
   },
   {
    "map": "0xFF",
