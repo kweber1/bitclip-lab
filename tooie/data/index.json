@@ -3339,29 +3339,31 @@
    "xlu": "0x1DCD",
    "done": true,
    "seams": 301,
-   "crack_samples": 47752762659,
-   "crack_floats": 216552256,
-   "spots": 410493,
+   "crack_samples": 47696762659,
+   "crack_floats": 216252638,
+   "spots": 216252638,
    "cats": {
-    "walk": 2533,
-    "wall": 114756,
-    "eject": 190040,
-    "stuck": 101398,
-    "water": 1709,
-    "lag": 10,
-    "jump": 47
+    "walk": 1205027,
+    "wall": 182832045,
+    "eject": 22656050,
+    "stuck": 9397409,
+    "water": 160700,
+    "jump": 1154,
+    "lag": 253
    },
    "cats_flat": {
-    "eject": 4829,
-    "wall": 100,
-    "walk": 1048,
-    "lag": 10,
-    "jump": 47
+    "eject": 419306,
+    "jump": 1154,
+    "lag": 253,
+    "walk": 14838,
+    "wall": 1324
    },
-   "holds": 8,
-   "void": 1048,
-   "bytes": 1222772,
-   "shown": 58456
+   "holds": 13468,
+   "void": 14838,
+   "bytes": 1510120,
+   "shown": 57160,
+   "every": true,
+   "cells": 376373
   },
   {
    "map": "0x15C",
