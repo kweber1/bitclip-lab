@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bit-Clip Lab · Tooie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;600;700&family=Chivo+Mono:wght@400;500;600&display=swap">
+<style>
+/* Banjo-Tooie section of the Bit-Clip Lab: every level's floor cracks from the GPU census, each one tested by falling into it
+   (standing still, no lag / one lag update) and, where that does not go through, by jumping onto it. Same look as the Kazooie lab. */
+:root{
+  --bg:#e9edeb; --panel:#fbfcfb; --sunk:#f1f4f2; --ink:#16201c; --muted:#5a6863; --line:#d3dbd7; --line-soft:#e3e8e5;
+  --accent:#0f6f63; --accent-soft:#d7ebe6; --accent-ink:#ffffff;
+  --c-walk:#7a35c2; --c-void:#cf3f2b; --c-lag:#d47c15; --c-jump:#1d67b0; --c-eject:#2f8a49; --c-stuck:#b97d0c; --c-wall:#8a948f; --c-water:#0b7f92;
+  --view:#d9dfdc; --shadow:0 6px 24px rgba(20,32,28,.14);
+  --f-ui:"Chivo",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; --f-mono:"Chivo Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1312; --panel:#151b19; --sunk:#111715; --ink:#e3eae6; --muted:#8d9b95; --line:#26302c; --line-soft:#1e2724;
+  --accent:#43c3a5; --accent-soft:#16352e; --accent-ink:#06120f;
+  --c-walk:#bd8bff; --c-void:#ff6a52; --c-lag:#ffad4d; --c-jump:#5aaeff; --c-eject:#6fd486; --c-stuck:#ffc04d; --c-wall:#7d8a84; --c-water:#47d3ea;
+  --view:#0a0e0d; --shadow:0 8px 28px rgba(0,0,0,.45); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1312; --panel:#151b19; --sunk:#111715; --ink:#e3eae6; --muted:#8d9b95; --line:#26302c; --line-soft:#1e2724;
+  --accent:#43c3a5; --accent-soft:#16352e; --accent-ink:#06120f;
+  --c-walk:#bd8bff; --c-void:#ff6a52; --c-lag:#ffad4d; --c-jump:#5aaeff; --c-eject:#6fd486; --c-stuck:#ffc04d; --c-wall:#7d8a84; --c-water:#47d3ea;
+  --view:#0a0e0d; --shadow:0 8px 28px rgba(0,0,0,.45); color-scheme:dark}
+*{box-sizing:border-box} html,body{height:100%} [hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:14px;line-height:1.4}
+.app{display:grid;grid-template-rows:auto minmax(0,1fr);height:100%}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:9px max(16px,env(safe-area-inset-right,0px)) 9px max(16px,env(safe-area-inset-left,0px));background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;white-space:nowrap} .brand b{font-size:16px;font-weight:700;letter-spacing:-.01em} .brand span{color:var(--muted);font-size:12.5px}
+.ctl{display:flex;align-items:center;gap:7px;min-width:0}
+.lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
+select{font:inherit;font-size:13.5px;background:var(--sunk);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 7px;max-width:min(340px,70vw)}
+a{color:var(--accent)} header a.back{margin-left:auto;font-weight:600;font-size:13px;text-decoration:none}
+.btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:7px;padding:5px 11px;cursor:pointer;white-space:nowrap}
+.btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.btn.mini{padding:2px 8px;font-size:12px;font-weight:500}
+input[type=checkbox]{accent-color:var(--accent);margin:0}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+main{display:grid;grid-template-columns:minmax(0,1fr) clamp(360px,30vw,520px);min-height:0}
+#view{position:relative;background:var(--view);min-height:300px;overflow:hidden}
+#view canvas{display:block;width:100%;height:100%}
+#loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:15px;text-align:center;padding:16px}
+.float{position:absolute;background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);backdrop-filter:blur(6px)}
+.legend{left:12px;top:12px;padding:8px 11px;display:grid;gap:5px;font-size:12.5px;max-width:calc(100% - 24px)}
+.legend label{display:flex;align-items:center;gap:8px;cursor:pointer}
+.legend .n{margin-left:auto;padding-left:10px;color:var(--muted);font-family:var(--f-mono);font-size:11.5px}
+.sw{width:10px;height:10px;border-radius:50%;flex:none}
+.legend .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600;margin-top:4px}
+.spot{left:12px;bottom:12px;width:min(380px,calc(100% - 24px));padding:10px 12px;display:grid;gap:8px}
+.spot h3{margin:0;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px} .spot h3 button{margin-left:auto}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12.5px;margin:0}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--f-mono);font-size:11.5px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.runs{display:flex;gap:3px;flex-wrap:wrap}
+.run{font-family:var(--f-mono);font-size:10.5px;border:1px solid var(--line);border-radius:5px;padding:1px 5px;background:var(--sunk)}
+.hint{right:12px;bottom:12px;font-size:11.5px;color:var(--muted);padding:5px 9px}
+aside{border-left:1px solid var(--line);background:var(--panel);display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;min-width:0}
+.tabs{display:flex;gap:4px;padding:8px 12px 0;border-bottom:1px solid var(--line)}
+.tabs button{font:inherit;font-weight:600;font-size:13px;border:0;background:transparent;color:var(--muted);padding:7px 10px;border-bottom:2px solid transparent;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.pane{overflow:auto;padding:12px 14px 20px;display:grid;gap:12px;align-content:start}
+h2{margin:0;font-size:15px} h4{margin:4px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+p.note{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stat{background:var(--sunk);border:1px solid var(--line-soft);border-radius:8px;padding:7px 9px;min-width:0}
+.stat b{display:block;font-size:17px;font-variant-numeric:tabular-nums} .stat span{font-size:11.5px;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:12px} th,td{padding:4px 5px;text-align:right;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-variant-numeric:tabular-nums}
+th{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--panel)}
+td:first-child,th:first-child{text-align:left;white-space:normal}
+tr.room{cursor:pointer} tr.room:hover td{background:var(--sunk)} tr.cur td{background:var(--accent-soft)}
+tr.world td{font-weight:700;background:var(--panel);text-align:left;padding-top:10px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+td.pend{color:var(--muted);text-align:left}
+.bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--line-soft)} .bar i{display:block;height:100%}
+code{font-family:var(--f-mono);font-size:.92em}
+@media (max-width:900px){main{grid-template-columns:1fr;grid-template-rows:minmax(320px,55vh) auto}aside{border-left:0;border-top:1px solid var(--line)}.pane{overflow:visible}.legend{font-size:12px}.hint{display:none}}
+</style></head><body>
+<div class="app">
+<header>
+  <div class="brand"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="5" fill="var(--accent)"/><path d="M5 14.5 11 8l6 6.5" fill="none" stroke="var(--accent-ink)" stroke-width="2"/><path d="M11 8v9" stroke="var(--accent-ink)" stroke-width="2" stroke-dasharray="2 2"/></svg>
+    <b>Bit-Clip Lab</b><span>Banjo-Tooie (USA) · every level</span></div>
+  <div class="ctl"><label class="lbl" for="mapSel">Level</label><select id="mapSel" aria-label="Level"></select></div>
+  <div class="ctl"><label class="lbl" for="viewSel">Show</label><select id="viewSel"><option value="all">All crack spots</option><option value="flat">Flat floors only</option><option value="hold">Holds only</option></select></div>
+  <a class="back" href="../">← Banjo-Kazooie lab</a>
+</header>
+<main>
+  <div id="view"><div id="loading">Loading the level list…</div>
+    <div class="float legend" id="legend" hidden></div>
+    <div class="float spot" id="spotCard" hidden></div>
+    <div class="float hint">Drag to orbit · right-drag to pan · wheel to zoom · click a spot</div>
+  </div>
+  <aside>
+    <div class="tabs" role="tablist"><button role="tab" id="tRoom" aria-selected="true">This level</button><button role="tab" id="tAll" aria-selected="false">All levels</button><button role="tab" id="tHow" aria-selected="false">How it was found</button></div>
+    <div class="pane" id="pRoom"></div>
+    <div class="pane" id="pAll" hidden></div>
+    <div class="pane" id="pHow" hidden></div>
+  </aside>
+</main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const CATS = [
+  ['walk', 'Falls through (walk in)', 'Standing still on it, Banjo falls through the floor with no lag'],
+  ['lag', 'Falls through with a lag frame', 'Needs one 3-VI update while falling in (lag) to go through'],
+  ['jump', 'Jump needed', 'Walking in never goes through, but landing on it from a jump does'],
+  ['eject', 'Ejected', 'Banjo dips in and is pushed back up onto the floor (also after every jump tested)'],
+  ['stuck', 'Stuck in the floor', 'Still sitting in the floor after 3 s (90 updates)'],
+  ['wall', 'Wall pushes off', 'A wall pushes Banjo off the spot on the first update: he cannot stand on it'],
+  ['water', 'Water', 'The floor ray meets water here (swimming not modelled)']];
+const CVAR = { walk: '--c-walk', lag: '--c-lag', jump: '--c-jump', eject: '--c-eject', stuck: '--c-stuck', wall: '--c-wall', water: '--c-water' };
+const OUT = { 0: 'through → floor below', 1: 'through → void', 2: 'ejected', 3: 'stuck', 4: 'water', 5: 'wall push' };
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = (n) => (n ?? 0).toLocaleString('en-US');
+let INDEX = null, ROOM = null, show = { walk: 1, lag: 1, jump: 1, eject: 1, stuck: 1, wall: 0, water: 1 };
+try { const s = JSON.parse(localStorage.getItem('tooie-show') || 'null'); if (s) show = Object.assign(show, s); } catch (e) {}
+
+// ---- three.js scene
+const view = $('view'); const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(2, devicePixelRatio)); view.prepend(renderer.domElement);
+const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(50, 1, 5, 400000); camera.position.set(0, 8000, 8000);
+const controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x445550, 0.62)); const dl = new THREE.DirectionalLight(0xffffff, 0.38); dl.position.set(0.4, 1, 0.3); scene.add(dl);
+let meshObj = null, ptsObj = null, selObj = null, ptsIdx = [];
+function resize() { const r = view.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(view); resize();
+(function loop() { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+function themeColors() { scene.background = new THREE.Color(css('--view')); }
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { themeColors(); if (ROOM) { buildMesh(); buildPoints(); } }); themeColors();
+
+async function gunzipJSON(buf) { const ds = new DecompressionStream('gzip'); const s = new Blob([buf]).stream().pipeThrough(ds); return JSON.parse(await new Response(s).text()); }
+function buildMesh() {
+  if (meshObj) { scene.remove(meshObj); meshObj.geometry.dispose(); }
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const C = dark ? [[0.29, 0.34, 0.31], [0.21, 0.25, 0.23], [0.23, 0.24, 0.29], [0.1, 0.3, 0.38], [0.3, 0.2, 0.2]] : [[0.71, 0.75, 0.71], [0.59, 0.64, 0.61], [0.55, 0.56, 0.61], [0.45, 0.7, 0.8], [0.8, 0.6, 0.6]];
+  const V = ROOM.verts, T = ROOM.tris; const pos = new Float32Array(T.length * 9), col = new Float32Array(T.length * 9);
+  T.forEach((t, i) => { for (let j = 0; j < 3; j++) { const v = V[t[j]]; pos.set([v[0], v[1], v[2]], i * 9 + j * 3); col.set(C[t[3]] || C[1], i * 9 + j * 3); } });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+  // front faces only: indoor rooms face inward, so from outside you look through the walls and roof into the room
+  meshObj = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide })); scene.add(meshObj);
+}
+function visible(s) { const m = $('viewSel').value; if (!show[s[5]]) return false; if (m === 'flat') { const se = ROOM.seams[s[3]]; if (!(se[6] > 0.999 && se[7] > 0.999)) return false; } if (m === 'hold' && !s[14]) return false; return true; }
+function buildPoints() {
+  if (ptsObj) { scene.remove(ptsObj); ptsObj.geometry.dispose(); ptsObj = null; }
+  const S = ROOM.spots; ptsIdx = []; for (let i = 0; i < S.length; i++) if (visible(S[i])) ptsIdx.push(i);
+  const pos = new Float32Array(ptsIdx.length * 3), col = new Float32Array(ptsIdx.length * 3); const cc = {}; for (const k in CVAR) cc[k] = new THREE.Color(css(CVAR[k]));
+  ptsIdx.forEach((i, j) => { const s = S[i]; pos[j * 3] = s[0]; pos[j * 3 + 1] = s[1] + 3; pos[j * 3 + 2] = s[2]; const c = s[5] === 'walk' && s[6][0] === '1' ? new THREE.Color(css('--c-void')) : cc[s[5]]; col[j * 3] = c.r; col[j * 3 + 1] = c.g; col[j * 3 + 2] = c.b; });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  ptsObj = new THREE.Points(g, new THREE.PointsMaterial({ size: 7, sizeAttenuation: false, vertexColors: true, depthTest: true })); scene.add(ptsObj);
+}
+function fitCamera() { const V = ROOM.verts; const mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9]; for (const v of V) for (let i = 0; i < 3; i++) { if (v[i] < mn[i]) mn[i] = v[i]; if (v[i] > mx[i]) mx[i] = v[i]; }
+  const c = new THREE.Vector3((mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, (mn[2] + mx[2]) / 2); const r = Math.max(mx[0] - mn[0], mx[2] - mn[2], 1000);
+  controls.target.copy(c); camera.position.set(c.x + r * 0.35, c.y + r * 0.75, c.z + r * 0.75); camera.near = r / 2000; camera.far = r * 20; camera.updateProjectionMatrix(); }
+function legend() {
+  const cnt = {}; for (const s of ROOM.spots) cnt[s[5]] = (cnt[s[5]] || 0) + 1; const voids = ROOM.spots.filter(s => s[5] === 'walk' && s[6][0] === '1').length;
+  $('legend').innerHTML = '<div class="grp">Crack spots · ' + fmt(ROOM.spots.length) + '</div>' + CATS.map(([k, n, d]) => `<label title="${d}"><input type="checkbox" data-k="${k}" ${show[k] ? 'checked' : ''}><span class="sw" style="background:var(${CVAR[k]})"></span>${n}<span class="n">${fmt(cnt[k] || 0)}</span></label>`).join('')
+    + (voids ? `<label title="Walk-in spots whose fall ends in the void (no floor below)"><span style="width:13px"></span><span class="sw" style="background:var(--c-void)"></span>…into the void<span class="n">${fmt(voids)}</span></label>` : '');
+  $('legend').hidden = false;
+  $('legend').querySelectorAll('input').forEach(b => b.onchange = () => { show[b.dataset.k] = b.checked ? 1 : 0; try { localStorage.setItem('tooie-show', JSON.stringify(show)); } catch (e) {} buildPoints(); });
+}
+function roomPane() {
+  const e = INDEX.rooms.find(r => r.map === ROOM.map); const c = e.cats || {}; const cf = e.cats_flat || {}; const n = e.spots || 0;
+  const bar = CATS.map(([k]) => `<i style="width:${100 * (c[k] || 0) / Math.max(1, n)}%;background:var(${CVAR[k]})" title="${k}: ${fmt(c[k] || 0)}"></i>`).join('');
+  $('pRoom').innerHTML = `<h2>${ROOM.name} <span style="color:var(--muted);font-weight:500">· ${ROOM.group}</span></h2>
+    <p class="note">Map ${ROOM.maps.join(', ')}${ROOM.map_names.length > 1 ? ' (same collision: ' + ROOM.map_names.join(', ') + ')' : ''}. ${fmt(e.tris)} collision triangles, ${fmt(e.seams)} floor seams, ${fmt(e.crack_samples)} floats tested along them.</p>
+    <div class="bar">${bar}</div>
+    <div class="stats">
+      <div class="stat"><b>${fmt(e.crack_floats)}</b><span>crack floats (floor ray misses)</span></div>
+      <div class="stat"><b>${fmt(n)}</b><span>crack spots (one per 0.25 cell per seam)</span></div>
+      <div class="stat"><b style="color:var(--c-walk)">${fmt(c.walk || 0)}</b><span>fall through walking in${e.void ? ` · ${fmt(e.void)} into the void` : ''}</span></div>
+      <div class="stat"><b style="color:var(--c-lag)">${fmt(c.lag || 0)}</b><span>fall through only with a lag frame</span></div>
+      <div class="stat"><b style="color:var(--c-jump)">${fmt(c.jump || 0)}</b><span>need a jump onto the crack</span></div>
+      <div class="stat"><b style="color:var(--c-eject)">${fmt(c.eject || 0)}</b><span>ejected (no clip)</span></div>
+      <div class="stat"><b>${fmt(e.holds)}</b><span>spots with a 5-pass hold</span></div>
+      <div class="stat"><b style="color:var(--c-wall)">${fmt(c.wall || 0)}</b><span>wall pushes Banjo off</span></div>
+    </div>
+    <h4>Flat floors only</h4><p class="note">${CATS.map(([k, nn]) => `${nn}: <b>${fmt(cf[k] || 0)}</b>`).join(' · ')}</p>
+    <p class="note">Click a spot in the view for its exact floats and every run. “Hold” = all 5 resolver passes hit in one update (the Kazooie-style hold); “sitting” = Banjo’s feet are under the floor with his collision sphere resting on it.</p>`;
+}
+function spotCard(i) {
+  const s = ROOM.spots[i]; const se = ROOM.seams[s[3]]; const cat = CATS.find(c => c[0] === s[5]);
+  const runs = [...s[6]].map((o, k) => `<span class="run" title="${k ? 'lag (3-VI update) on update ' + k : 'no lag'}: ${OUT[o]}" style="border-color:var(${o === '0' || o === '1' ? '--c-walk' : o === '2' ? '--c-eject' : '--line'})">${k ? 'L' + k : '—'} ${o === '0' ? 'thru' : o === '1' ? 'void' : o === '2' ? 'eject' : o === '3' ? 'stuck' : o === '4' ? 'water' : 'wall'}</span>`).join('');
+  $('spotCard').innerHTML = `<h3><span class="sw" style="background:var(${CVAR[s[5]]})"></span>${cat[1]}<button class="btn mini" id="closeSpot">Close</button></h3>
+    <dl class="kv"><dt>x</dt><dd>${s[15]}</dd><dt>y</dt><dd>${s[16]}</dd><dt>z</dt><dd>${s[17]}</dd>
+      <dt>seam</dt><dd>(${se[0]}, ${se[1]}, ${se[2]}) – (${se[3]}, ${se[4]}, ${se[5]}), floor n.y ${se[6]} / ${se[7]}</dd>
+      <dt>crack</dt><dd>${s[4]} float${s[4] === 1 ? '' : 's'} in this 0.25 cell</dd>
+      <dt>walk in</dt><dd><div class="runs">${runs}</div></dd>
+      <dt>jump</dt><dd>${s[11] < 0 ? 'not needed / not tested' : `${s[11]} of 42 jump landings go through${s[12] > 0 ? ` (${s[12]} into the void)` : ''}`}</dd>
+      <dt>hold</dt><dd>${s[14] ? 'yes' : 'no'} · ${s[7]} of 9 walk-in runs with a 5-pass hold${s[13] > 0 ? `, ${s[13]} jumps` : ''} · sits up to ${s[8]} update${s[8] === 1 ? '' : 's'}</dd>
+      <dt>no-lag run</dt><dd>decided on update ${s[9]}, ends at y ${s[10]}</dd></dl>`;
+  $('spotCard').hidden = false; $('closeSpot').onclick = () => { $('spotCard').hidden = true; if (selObj) { scene.remove(selObj); selObj = null; } };
+  if (selObj) scene.remove(selObj); const g = new THREE.SphereGeometry(1, 16, 12); selObj = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: css('--accent'), wireframe: true }));
+  selObj.scale.setScalar(35); selObj.position.set(s[0], s[1] + 80, s[2]); scene.add(selObj);
+}
+const ray = new THREE.Raycaster(); let down = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', (e) => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4 || !ptsObj) return;
+  const r = renderer.domElement.getBoundingClientRect(); const m = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(m, camera); ray.params.Points.threshold = camera.position.distanceTo(controls.target) / 300; const hit = ray.intersectObject(ptsObj)[0]; if (hit) spotCard(ptsIdx[hit.index]); });
+$('viewSel').onchange = () => { if (ROOM) buildPoints(); };
+
+function allPane() {
+  const groups = {}; for (const r of INDEX.rooms) (groups[r.group] = groups[r.group] || []).push(r); const done = INDEX.rooms.filter(r => r.done);
+  const tot = (k) => done.reduce((a, r) => a + ((r.cats || {})[k] || 0), 0);
+  let h = `<h2>All levels</h2><p class="note">${done.length} of ${INDEX.rooms.length} levels done (one entry per distinct level collision; maps sharing it are listed under it). Totals: <b>${fmt(done.reduce((a, r) => a + r.spots, 0))}</b> crack spots, <b style="color:var(--c-walk)">${fmt(tot('walk'))}</b> fall through walking in, <b style="color:var(--c-lag)">${fmt(tot('lag'))}</b> with lag, <b style="color:var(--c-jump)">${fmt(tot('jump'))}</b> need a jump, <b style="color:var(--c-eject)">${fmt(tot('eject'))}</b> ejected, <b>${fmt(done.reduce((a, r) => a + r.holds, 0))}</b> with a hold.</p>
+    <table><thead><tr><th>Level</th><th>Spots</th><th>Walk</th><th>Lag</th><th>Jump</th><th>Eject</th><th>Hold</th></tr></thead><tbody>`;
+  for (const g of Object.keys(groups)) { h += `<tr class="world"><td colspan="7">${g}</td></tr>`;
+    for (const r of groups[g]) { const c = r.cats || {};
+      h += `<tr class="room${ROOM && ROOM.map === r.map ? ' cur' : ''}" data-m="${r.map}"><td>${r.name} <span style="color:var(--muted)">${r.maps.join(' ')}</span></td>` + (r.done ? `<td>${fmt(r.spots)}</td><td>${fmt(c.walk || 0)}</td><td>${fmt(c.lag || 0)}</td><td>${fmt(c.jump || 0)}</td><td>${fmt(c.eject || 0)}</td><td>${fmt(r.holds)}</td>` : `<td class="pend" colspan="6">running…</td>`) + '</tr>'; } }
+  $('pAll').innerHTML = h + '</tbody></table>';
+  $('pAll').querySelectorAll('tr.room').forEach(tr => tr.onclick = () => { const r = INDEX.rooms.find(x => x.map === tr.dataset.m); if (r.done) { $('mapSel').value = r.map; loadRoom(r.map); } });
+}
+function howPane() {
+  $('pHow').innerHTML = `<h2>How it was found</h2>
+  <p class="note"><b>Collision.</b> Every level model (opaque and transparent) from the Banjo-Tooie (USA) ROM, read with the decomp's asset table. Props and actors are not included.</p>
+  <p class="note"><b>Cracks.</b> On every seam shared by two walkable floor triangles, every float along the seam (±3 floats across it) is tested with Tooie's floor ray (feet + 56 down to feet − 444, filter <code>0x400005</code>), ported exactly from <code>func_800AB0BC</code>. A crack is a float where the ray misses every triangle at the floor's height.</p>
+  <p class="note"><b>Falling in.</b> Banjo stands still on each crack. Then 90 updates (3 s) of falling run with Tooie's own player collision, ported from the ROM: resolver <code>func_800D4584</code>, sphere tests <code>func_800AC638/800AC978</code>, floor tracker. Timing is NTSC (1/30 s updates). One run has no lag, and eight more each have a 3-VI update on update 1 to 8. Spots that never go through also get 42 jump landings, from the apex of a tap jump (92 units) up to a full jump (174 units).</p>
+  <p class="note"><b>Checked against the game.</b> In BizHawk 625 cracks in GI Basement were fallen into (bt_fallin.lua). Spots where something else moved Banjo were left out: fans, sliding on steep slopes, props. On the rest the model gives the same result update by update on 346 of 350, and the same outcome on all of them. The graphics-card build gives identical output to the CPU build.</p>
+  <p class="note"><b>Not modelled.</b> Fans, conveyors and currents. Sliding on slopes steeper than about 45° (Banjo can't stand still there). Swimming. Moving platforms and props. Lag patterns other than a single 3-VI update.</p>
+  <p class="note">Source: <code>tools/tooie/</code> in this repository (tcol.h, tcensus.cu).</p>`;
+}
+function tab(t) { for (const [b, p] of [['tRoom', 'pRoom'], ['tAll', 'pAll'], ['tHow', 'pHow']]) { $(b).setAttribute('aria-selected', b === t); $(p).hidden = b !== t; } if (t === 'tAll') allPane(); }
+$('tRoom').onclick = () => tab('tRoom'); $('tAll').onclick = () => tab('tAll'); $('tHow').onclick = () => tab('tHow');
+async function loadRoom(m) {
+  $('loading').hidden = false; $('loading').textContent = 'Loading ' + m + '…'; $('spotCard').hidden = true;
+  try { const r = await fetch('data/room-' + m + '.gz.wasm'); if (!r.ok) throw new Error(r.status); ROOM = await gunzipJSON(await r.arrayBuffer()); }
+  catch (e) { $('loading').textContent = 'Could not load ' + m + ' (' + e.message + ')'; return; }
+  buildMesh(); buildPoints(); fitCamera(); legend(); roomPane(); $('loading').hidden = true; try { history.replaceState(null, '', '#' + m); } catch (e) {}
+}
+(async () => {
+  try { const r = await fetch('data/index.json', { cache: 'no-cache' }); INDEX = await r.json(); } catch (e) { $('loading').textContent = 'Could not load the level list.'; return; }
+  const groups = {}; for (const r of INDEX.rooms) (groups[r.group] = groups[r.group] || []).push(r);
+  $('mapSel').innerHTML = Object.keys(groups).map(g => `<optgroup label="${g}">` + groups[g].map(r => `<option value="${r.map}" ${r.done ? '' : 'disabled'}>${r.name} (${r.maps[0]})${r.done ? '' : ' · running'}</option>`).join('') + '</optgroup>').join('');
+  $('mapSel').onchange = () => loadRoom($('mapSel').value); howPane();
+  const want = location.hash.slice(1); const first = INDEX.rooms.find(r => r.done && r.map === want) || INDEX.rooms.find(r => r.done && r.map === '0x10F') || INDEX.rooms.find(r => r.done);
+  if (first) { $('mapSel').value = first.map; loadRoom(first.map); } else $('loading').textContent = 'The census is still running — no level is done yet.';
+})();
+</script>
+</body></html>

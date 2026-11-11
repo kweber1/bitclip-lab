@@ -1,0 +1,2194 @@
+{
+ "game": "Banjo-Tooie (USA)",
+ "method": "tcensus (Tooie collision port, NTSC)",
+ "rooms": [
+  {
+   "map": "0xAF",
+   "name": "Spiral Mountain",
+   "group": "Spiral Mountain",
+   "maps": [
+    "0xAF"
+   ],
+   "map_names": [
+    "Spiral Mountain"
+   ],
+   "tris": 9763,
+   "opa": "0x1CF9",
+   "xlu": "0x1CFA",
+   "done": false
+  },
+  {
+   "map": "0xAD",
+   "name": "Grunty's Lair Entrance",
+   "group": "Spiral Mountain",
+   "maps": [
+    "0xAD"
+   ],
+   "map_names": [
+    "Grunty's Lair Entrance"
+   ],
+   "tris": 3263,
+   "opa": "0x1CFD",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xAE",
+   "name": "Behind The Waterfall",
+   "group": "Spiral Mountain",
+   "maps": [
+    "0xAE"
+   ],
+   "map_names": [
+    "Behind The Waterfall"
+   ],
+   "tris": 1743,
+   "opa": "0x1CFE",
+   "xlu": "0x1CFF",
+   "done": false
+  },
+  {
+   "map": "0xB6",
+   "name": "Wumba's Wigwam",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0xB6",
+    "0xD5",
+    "0xE9",
+    "0x11E",
+    "0x11F",
+    "0x135",
+    "0x140",
+    "0x157"
+   ],
+   "map_names": [
+    "Wumba's Wigwam",
+    "Wumba",
+    "Wumba",
+    "Small Wumba",
+    "Wumba",
+    "Wumba",
+    "Wumba",
+    "Wumba"
+   ],
+   "tris": 2726,
+   "opa": "0x1D00",
+   "xlu": "0x1D05",
+   "done": false
+  },
+  {
+   "map": "0xB7",
+   "name": "Mumbo's Skull",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0xB7",
+    "0xD9",
+    "0xEF",
+    "0x134",
+    "0x13E",
+    "0x13F",
+    "0x156",
+    "0x171",
+    "0x172",
+    "0x176"
+   ],
+   "map_names": [
+    "Mumbo's Skull",
+    "Mumbo",
+    "Mumbo",
+    "Mumbo",
+    "Mumbo",
+    "Mingy Jongo",
+    "Mumbo",
+    "Mumbo",
+    "Mumbo",
+    "Mumbo"
+   ],
+   "tris": 2533,
+   "opa": "0x1D01",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xB8",
+   "name": "Mayahem Temple",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0xB8",
+    "0x167"
+   ],
+   "map_names": [
+    "Mayahem Temple",
+    "Still"
+   ],
+   "tris": 15170,
+   "opa": "0x1D0A",
+   "xlu": "0x1D0B",
+   "done": false
+  },
+  {
+   "map": "0xB9",
+   "name": "Prison Compound",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0xB9"
+   ],
+   "map_names": [
+    "Prison Compound"
+   ],
+   "tris": 6083,
+   "opa": "0x1D0C",
+   "xlu": "0x1D0D",
+   "done": false
+  },
+  {
+   "map": "0xBA",
+   "name": "Columns Vault",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0xBA"
+   ],
+   "map_names": [
+    "Columns Vault"
+   ],
+   "tris": 2677,
+   "opa": "0x1D0E",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xBB",
+   "name": "Kickball Stadium",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0xBB"
+   ],
+   "map_names": [
+    "Kickball Stadium"
+   ],
+   "tris": 4154,
+   "opa": "0x1D0F",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xBC",
+   "name": "Code Chamber",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0xBC"
+   ],
+   "map_names": [
+    "Code Chamber"
+   ],
+   "tris": 3395,
+   "opa": "0x1D10",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xC4",
+   "name": "Jade Snake Grove",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0xC4"
+   ],
+   "map_names": [
+    "Jade Snake Grove"
+   ],
+   "tris": 4825,
+   "opa": "0x1D11",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xC5",
+   "name": "Treasure Chamber",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0xC5"
+   ],
+   "map_names": [
+    "Treasure Chamber"
+   ],
+   "tris": 4808,
+   "opa": "0x1D13",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xC6",
+   "name": "Kickball 1",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0xC6",
+    "0xC8",
+    "0xC9",
+    "0x17F"
+   ],
+   "map_names": [
+    "Kickball 1",
+    "Kickball 2",
+    "Kickball 3",
+    "Kickball 1"
+   ],
+   "tris": 1472,
+   "opa": "0x1D14",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xC7",
+   "name": "Glitter Gulch Mine",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xC7",
+    "0x16F",
+    "0x170"
+   ],
+   "map_names": [
+    "Glitter Gulch Mine",
+    "Race 1",
+    "Race 2"
+   ],
+   "tris": 10537,
+   "opa": "0x1D25",
+   "xlu": "0x1D36",
+   "done": false
+  },
+  {
+   "map": "0xCA",
+   "name": "Fuel Depot",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xCA"
+   ],
+   "map_names": [
+    "Fuel Depot"
+   ],
+   "tris": 3818,
+   "opa": "0x1D19",
+   "xlu": "0x1D32",
+   "done": false
+  },
+  {
+   "map": "0xCB",
+   "name": "Crushing Shed",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xCB"
+   ],
+   "map_names": [
+    "Crushing Shed"
+   ],
+   "tris": 1272,
+   "opa": "0x1D1A",
+   "xlu": "0x1D28",
+   "done": false
+  },
+  {
+   "map": "0xCC",
+   "name": "Flooded Caves",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xCC"
+   ],
+   "map_names": [
+    "Flooded Caves"
+   ],
+   "tris": 5463,
+   "opa": "0x1D1B",
+   "xlu": "0x1D2D",
+   "done": false
+  },
+  {
+   "map": "0xCD",
+   "name": "Water Storage",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xCD"
+   ],
+   "map_names": [
+    "Water Storage"
+   ],
+   "tris": 1702,
+   "opa": "0x1D1C",
+   "xlu": "0x1D30",
+   "done": false
+  },
+  {
+   "map": "0xCE",
+   "name": "Waterfall Cavern",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xCE"
+   ],
+   "map_names": [
+    "Waterfall Cavern"
+   ],
+   "tris": 1495,
+   "opa": "0x1D1D",
+   "xlu": "0x1D26",
+   "done": false
+  },
+  {
+   "map": "0xCF",
+   "name": "Power Hut Basement",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xCF"
+   ],
+   "map_names": [
+    "Power Hut Basement"
+   ],
+   "tris": 2154,
+   "opa": "0x1D1E",
+   "xlu": "0x1D2B",
+   "done": false
+  },
+  {
+   "map": "0xD0",
+   "name": "Chuffy's Cab",
+   "group": "Other",
+   "maps": [
+    "0xD0"
+   ],
+   "map_names": [
+    "Chuffy's Cab"
+   ],
+   "tris": 3024,
+   "opa": "0x1D1F",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xD1",
+   "name": "Inside Chuffy's Boiler",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xD1"
+   ],
+   "map_names": [
+    "Inside Chuffy's Boiler"
+   ],
+   "tris": 1308,
+   "opa": "0x1D20",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xD2",
+   "name": "Gloomy Caverns",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xD2"
+   ],
+   "map_names": [
+    "Gloomy Caverns"
+   ],
+   "tris": 3305,
+   "opa": "0x1D21",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xD3",
+   "name": "Generator Caverns",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xD3"
+   ],
+   "map_names": [
+    "Generator Caverns"
+   ],
+   "tris": 2106,
+   "opa": "0x1D22",
+   "xlu": "0x1D2E",
+   "done": false
+  },
+  {
+   "map": "0xD4",
+   "name": "Power Hut",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xD4"
+   ],
+   "map_names": [
+    "Power Hut"
+   ],
+   "tris": 1947,
+   "opa": "0x1D23",
+   "xlu": "0x1D29",
+   "done": false
+  },
+  {
+   "map": "0xD6",
+   "name": "Witchyworld",
+   "group": "Witchyworld",
+   "maps": [
+    "0xD6",
+    "0x124"
+   ],
+   "map_names": [
+    "Witchyworld",
+    "Saucer Of Peril"
+   ],
+   "tris": 12233,
+   "opa": "0x1D38",
+   "xlu": "0x1D44",
+   "done": false
+  },
+  {
+   "map": "0xD7",
+   "name": "Train Station",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xD7"
+   ],
+   "map_names": [
+    "Train Station"
+   ],
+   "tris": 1510,
+   "opa": "0x1D24",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xD8",
+   "name": "Prospector's Hut",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xD8"
+   ],
+   "map_names": [
+    "Prospector's Hut"
+   ],
+   "tris": 2045,
+   "opa": "0x1D2C",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xDA",
+   "name": "Toxic Gas Cave",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xDA"
+   ],
+   "map_names": [
+    "Toxic Gas Cave"
+   ],
+   "tris": 723,
+   "opa": "0x1D2F",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xDB",
+   "name": "Canary Cave",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xDB"
+   ],
+   "map_names": [
+    "Canary Cave"
+   ],
+   "tris": 1012,
+   "opa": "0x1D27",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xDC",
+   "name": "Ordnance Storage",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0xDC",
+    "0x165"
+   ],
+   "map_names": [
+    "Ordnance Storage",
+    "Ordnance Shooting"
+   ],
+   "tris": 6534,
+   "opa": "0x1D34",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xDD",
+   "name": "Dodgem Lobby",
+   "group": "Witchyworld",
+   "maps": [
+    "0xDD"
+   ],
+   "map_names": [
+    "Dodgem Lobby"
+   ],
+   "tris": 1929,
+   "opa": "0x1D41",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xE1",
+   "name": "Crazy Castle Stockade",
+   "group": "Witchyworld",
+   "maps": [
+    "0xE1",
+    "0x13B"
+   ],
+   "map_names": [
+    "Crazy Castle Stockade",
+    "Crazy Castle SoP"
+   ],
+   "tris": 1263,
+   "opa": "0x1D39",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xE2",
+   "name": "Crazy Castle Lobby",
+   "group": "Witchyworld",
+   "maps": [
+    "0xE2"
+   ],
+   "map_names": [
+    "Crazy Castle Lobby"
+   ],
+   "tris": 1897,
+   "opa": "0x1D3B",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xE3",
+   "name": "Castle Pump Room",
+   "group": "Witchyworld",
+   "maps": [
+    "0xE3"
+   ],
+   "map_names": [
+    "Castle Pump Room"
+   ],
+   "tris": 1841,
+   "opa": "0x1D3A",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xE4",
+   "name": "Balloon Burst",
+   "group": "Witchyworld",
+   "maps": [
+    "0xE4",
+    "0xE5"
+   ],
+   "map_names": [
+    "Balloon Burst",
+    "Hoop Hurry"
+   ],
+   "tris": 1093,
+   "opa": "0x1D46",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xE6",
+   "name": "Star Spinner",
+   "group": "Witchyworld",
+   "maps": [
+    "0xE6",
+    "0x13C"
+   ],
+   "map_names": [
+    "Star Spinner",
+    "Star Spinner SoP"
+   ],
+   "tris": 1533,
+   "opa": "0x1D40",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xE7",
+   "name": "Inferno",
+   "group": "Witchyworld",
+   "maps": [
+    "0xE7"
+   ],
+   "map_names": [
+    "Inferno"
+   ],
+   "tris": 3578,
+   "opa": "0x1D3C",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xEA",
+   "name": "Cave Of Horrors",
+   "group": "Witchyworld",
+   "maps": [
+    "0xEA"
+   ],
+   "map_names": [
+    "Cave Of Horrors"
+   ],
+   "tris": 3292,
+   "opa": "0x1D3D",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xEB",
+   "name": "Haunted Cavern",
+   "group": "Witchyworld",
+   "maps": [
+    "0xEB"
+   ],
+   "map_names": [
+    "Haunted Cavern"
+   ],
+   "tris": 4669,
+   "opa": "0x1D3E",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xEC",
+   "name": "Train Station",
+   "group": "Witchyworld",
+   "maps": [
+    "0xEC"
+   ],
+   "map_names": [
+    "Train Station"
+   ],
+   "tris": 2843,
+   "opa": "0x1D3F",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xED",
+   "name": "Jolly's",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0xED"
+   ],
+   "map_names": [
+    "Jolly's"
+   ],
+   "tris": 8644,
+   "opa": "0x1D57",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xEE",
+   "name": "Pawno",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0xEE"
+   ],
+   "map_names": [
+    "Pawno"
+   ],
+   "tris": 2538,
+   "opa": "0x1D59",
+   "xlu": "0x1D5A",
+   "done": false
+  },
+  {
+   "map": "0xF1",
+   "name": "UFO",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0xF1"
+   ],
+   "map_names": [
+    "UFO"
+   ],
+   "tris": 3519,
+   "opa": "0x1D4C",
+   "xlu": "0x1D64",
+   "done": false
+  },
+  {
+   "map": "0xF4",
+   "name": "Ancient Swimming Baths",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0xF4"
+   ],
+   "map_names": [
+    "Ancient Swimming Baths"
+   ],
+   "tris": 5779,
+   "opa": "0x1D4D",
+   "xlu": "0x1D4E",
+   "done": false
+  },
+  {
+   "map": "0xF6",
+   "name": "Electric Eels Lair",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0xF6"
+   ],
+   "map_names": [
+    "Electric Eels Lair"
+   ],
+   "tris": 2368,
+   "opa": "0x1D4F",
+   "xlu": "0x1D50",
+   "done": false
+  },
+  {
+   "map": "0xF7",
+   "name": "Seaweed Sanctum",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0xF7"
+   ],
+   "map_names": [
+    "Seaweed Sanctum"
+   ],
+   "tris": 7497,
+   "opa": "0x1D51",
+   "xlu": "0x1D52",
+   "done": false
+  },
+  {
+   "map": "0xF8",
+   "name": "Inside Big Fish",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0xF8"
+   ],
+   "map_names": [
+    "Inside Big Fish"
+   ],
+   "tris": 3769,
+   "opa": "0x1D53",
+   "xlu": "0x1D54",
+   "done": false
+  },
+  {
+   "map": "0xF9",
+   "name": "Inside Big Top",
+   "group": "Witchyworld",
+   "maps": [
+    "0xF9"
+   ],
+   "map_names": [
+    "Inside Big Top"
+   ],
+   "tris": 2415,
+   "opa": "0x1D43",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xFA",
+   "name": "Temple Of Fishes",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0xFA"
+   ],
+   "map_names": [
+    "Temple Of Fishes"
+   ],
+   "tris": 2905,
+   "opa": "0x1D55",
+   "xlu": "0x1D5D",
+   "done": false
+  },
+  {
+   "map": "0xFC",
+   "name": "Lord Woo Fak Fak",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0xFC"
+   ],
+   "map_names": [
+    "Lord Woo Fak Fak"
+   ],
+   "tris": 2187,
+   "opa": "0x1D58",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0xFF",
+   "name": "Blubber's Shop",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0xFF"
+   ],
+   "map_names": [
+    "Blubber's Shop"
+   ],
+   "tris": 2628,
+   "opa": "0x1D5B",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x100",
+   "name": "Outside",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x100"
+   ],
+   "map_names": [
+    "Outside"
+   ],
+   "tris": 7604,
+   "opa": "0x1D76",
+   "xlu": "0x1D88",
+   "done": false
+  },
+  {
+   "map": "0x101",
+   "name": "Inside",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x101"
+   ],
+   "map_names": [
+    "Inside"
+   ],
+   "tris": 6129,
+   "opa": "0x1D77",
+   "xlu": "0x1D87",
+   "done": false
+  },
+  {
+   "map": "0x102",
+   "name": "Train Station",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x102"
+   ],
+   "map_names": [
+    "Train Station"
+   ],
+   "tris": 4541,
+   "opa": "0x1D7D",
+   "xlu": "0x1D8C",
+   "done": false
+  },
+  {
+   "map": "0x103",
+   "name": "Workers' Quarters",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x103"
+   ],
+   "map_names": [
+    "Workers' Quarters"
+   ],
+   "tris": 4535,
+   "opa": "0x1D82",
+   "xlu": "0x1D95",
+   "done": false
+  },
+  {
+   "map": "0x104",
+   "name": "Trash Compactor",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x104"
+   ],
+   "map_names": [
+    "Trash Compactor"
+   ],
+   "tris": 2347,
+   "opa": "0x1D7E",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x105",
+   "name": "Elevator Shaft",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x105"
+   ],
+   "map_names": [
+    "Elevator Shaft"
+   ],
+   "tris": 3636,
+   "opa": "0x1D7B",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x106",
+   "name": "Floor 2",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x106"
+   ],
+   "map_names": [
+    "Floor 2"
+   ],
+   "tris": 7997,
+   "opa": "0x1D78",
+   "xlu": "0x1D8F",
+   "done": false
+  },
+  {
+   "map": "0x107",
+   "name": "Floor 2 Electromagnetic Chamber",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x107"
+   ],
+   "map_names": [
+    "Floor 2 Electromagnetic Chamber"
+   ],
+   "tris": 2027,
+   "opa": "0x1D80",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x108",
+   "name": "Floor 3",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x108"
+   ],
+   "map_names": [
+    "Floor 3"
+   ],
+   "tris": 7981,
+   "opa": "0x1D79",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x109",
+   "name": "Floor 3 Boiler Plant",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x109"
+   ],
+   "map_names": [
+    "Floor 3 Boiler Plant"
+   ],
+   "tris": 3977,
+   "opa": "0x1D7F",
+   "xlu": "0x1D94",
+   "done": false
+  },
+  {
+   "map": "0x10A",
+   "name": "Floor 3 Packing Room",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x10A",
+    "0x17D"
+   ],
+   "map_names": [
+    "Floor 3 Packing Room",
+    "Packing Game"
+   ],
+   "tris": 332,
+   "opa": "0x1D8A",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x10B",
+   "name": "Floor 4",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x10B"
+   ],
+   "map_names": [
+    "Floor 4"
+   ],
+   "tris": 6754,
+   "opa": "0x1D7A",
+   "xlu": "0x1D91",
+   "done": false
+  },
+  {
+   "map": "0x10C",
+   "name": "Floor 4 Cable Room",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x10C"
+   ],
+   "map_names": [
+    "Floor 4 Cable Room"
+   ],
+   "tris": 4432,
+   "opa": "0x1D84",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x10D",
+   "name": "Floor 4 Quality Control",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x10D"
+   ],
+   "map_names": [
+    "Floor 4 Quality Control"
+   ],
+   "tris": 2452,
+   "opa": "0x1D85",
+   "xlu": "0x1D89",
+   "done": false
+  },
+  {
+   "map": "0x10E",
+   "name": "Floor 5",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x10E"
+   ],
+   "map_names": [
+    "Floor 5"
+   ],
+   "tris": 4372,
+   "opa": "0x1D83",
+   "xlu": "0x1D92",
+   "done": false
+  },
+  {
+   "map": "0x10F",
+   "name": "Basement",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x10F"
+   ],
+   "map_names": [
+    "Basement"
+   ],
+   "tris": 5430,
+   "opa": "0x1D7C",
+   "xlu": "0x1D93",
+   "done": false
+  },
+  {
+   "map": "0x110",
+   "name": "Basement Repair Depot",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x110"
+   ],
+   "map_names": [
+    "Basement Repair Depot"
+   ],
+   "tris": 1427,
+   "opa": "0x1D8B",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x111",
+   "name": "Basement Waste Disposal",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x111"
+   ],
+   "map_names": [
+    "Basement Waste Disposal"
+   ],
+   "tris": 5608,
+   "opa": "0x1D81",
+   "xlu": "0x1D86",
+   "done": false
+  },
+  {
+   "map": "0x112",
+   "name": "Terrydactyland",
+   "group": "Terrydactyland",
+   "maps": [
+    "0x112"
+   ],
+   "map_names": [
+    "Terrydactyland"
+   ],
+   "tris": 18383,
+   "opa": "0x1D66",
+   "xlu": "0x1D72",
+   "done": false
+  },
+  {
+   "map": "0x113",
+   "name": "Terry's Nest",
+   "group": "Terrydactyland",
+   "maps": [
+    "0x113"
+   ],
+   "map_names": [
+    "Terry's Nest"
+   ],
+   "tris": 1887,
+   "opa": "0x1D6B",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x114",
+   "name": "Train Station",
+   "group": "Terrydactyland",
+   "maps": [
+    "0x114"
+   ],
+   "map_names": [
+    "Train Station"
+   ],
+   "tris": 2980,
+   "opa": "0x1D6E",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x115",
+   "name": "Oogle Boogle Cave",
+   "group": "Terrydactyland",
+   "maps": [
+    "0x115"
+   ],
+   "map_names": [
+    "Oogle Boogle Cave"
+   ],
+   "tris": 5680,
+   "opa": "0x1D6F",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x116",
+   "name": "Inside Mountain",
+   "group": "Terrydactyland",
+   "maps": [
+    "0x116"
+   ],
+   "map_names": [
+    "Inside Mountain"
+   ],
+   "tris": 5955,
+   "opa": "0x1D69",
+   "xlu": "0x1D6A",
+   "done": false
+  },
+  {
+   "map": "0x117",
+   "name": "River Passage",
+   "group": "Terrydactyland",
+   "maps": [
+    "0x117"
+   ],
+   "map_names": [
+    "River Passage"
+   ],
+   "tris": 4041,
+   "opa": "0x1D6C",
+   "xlu": "0x1D6D",
+   "done": false
+  },
+  {
+   "map": "0x118",
+   "name": "Styracosaurus Family Cave",
+   "group": "Terrydactyland",
+   "maps": [
+    "0x118"
+   ],
+   "map_names": [
+    "Styracosaurus Family Cave"
+   ],
+   "tris": 2494,
+   "opa": "0x1D68",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x119",
+   "name": "Unga Bunga's Cave",
+   "group": "Terrydactyland",
+   "maps": [
+    "0x119"
+   ],
+   "map_names": [
+    "Unga Bunga's Cave"
+   ],
+   "tris": 7267,
+   "opa": "0x1D70",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x11A",
+   "name": "Stomping Plains",
+   "group": "Terrydactyland",
+   "maps": [
+    "0x11A"
+   ],
+   "map_names": [
+    "Stomping Plains"
+   ],
+   "tris": 4131,
+   "opa": "0x1D71",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x11B",
+   "name": "Bonfire Caverns",
+   "group": "Terrydactyland",
+   "maps": [
+    "0x11B"
+   ],
+   "map_names": [
+    "Bonfire Caverns"
+   ],
+   "tris": 2787,
+   "opa": "0x1D67",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x120",
+   "name": "Wumba's Wigwam",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0x120"
+   ],
+   "map_names": [
+    "Wumba's Wigwam"
+   ],
+   "tris": 2671,
+   "opa": "0x1D00",
+   "xlu": "0x1D07",
+   "done": false
+  },
+  {
+   "map": "0x121",
+   "name": "Inside Chuffy Wagon",
+   "group": "Other",
+   "maps": [
+    "0x121"
+   ],
+   "map_names": [
+    "Inside Chuffy Wagon"
+   ],
+   "tris": 366,
+   "opa": "0x1D33",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x122",
+   "name": "Wumba's Wigwam (big)",
+   "group": "Terrydactyland",
+   "maps": [
+    "0x122"
+   ],
+   "map_names": [
+    "Wumba's Wigwam (big)"
+   ],
+   "tris": 2501,
+   "opa": "0x1D03",
+   "xlu": "0x1D06",
+   "done": false
+  },
+  {
+   "map": "0x123",
+   "name": "Inside Chompa Belly",
+   "group": "Terrydactyland",
+   "maps": [
+    "0x123",
+    "0x183"
+   ],
+   "map_names": [
+    "Inside Chompa Belly",
+    "Chompas Belly"
+   ],
+   "tris": 1172,
+   "opa": "0x1D73",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x125",
+   "name": "Water Supply Pipe",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x125"
+   ],
+   "map_names": [
+    "Water Supply Pipe"
+   ],
+   "tris": 2413,
+   "opa": "0x1D5F",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x126",
+   "name": "Water Supply Pipe",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0x126"
+   ],
+   "map_names": [
+    "Water Supply Pipe"
+   ],
+   "tris": 2428,
+   "opa": "0x1D5E",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x127",
+   "name": "Lava Side",
+   "group": "Hailfire Peaks",
+   "maps": [
+    "0x127"
+   ],
+   "map_names": [
+    "Lava Side"
+   ],
+   "tris": 23028,
+   "opa": "0x1D99",
+   "xlu": "0x1D9A",
+   "done": false
+  },
+  {
+   "map": "0x128",
+   "name": "Icy Side",
+   "group": "Hailfire Peaks",
+   "maps": [
+    "0x128",
+    "0x168"
+   ],
+   "map_names": [
+    "Icy Side",
+    "Icy Side Still"
+   ],
+   "tris": 17035,
+   "opa": "0x1D9B",
+   "xlu": "0x1D9C",
+   "done": false
+  },
+  {
+   "map": "0x129",
+   "name": "Fire Train Station",
+   "group": "Hailfire Peaks",
+   "maps": [
+    "0x129"
+   ],
+   "map_names": [
+    "Fire Train Station"
+   ],
+   "tris": 4807,
+   "opa": "0x1DA0",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x12A",
+   "name": "Ice Train Station",
+   "group": "Hailfire Peaks",
+   "maps": [
+    "0x12A"
+   ],
+   "map_names": [
+    "Ice Train Station"
+   ],
+   "tris": 4467,
+   "opa": "0x1D9E",
+   "xlu": "0x1D9F",
+   "done": false
+  },
+  {
+   "map": "0x12B",
+   "name": "Chilli Billi",
+   "group": "Hailfire Peaks",
+   "maps": [
+    "0x12B"
+   ],
+   "map_names": [
+    "Chilli Billi"
+   ],
+   "tris": 2348,
+   "opa": "0x1DA5",
+   "xlu": "0x1DA9",
+   "done": false
+  },
+  {
+   "map": "0x12C",
+   "name": "Chilly Willy",
+   "group": "Hailfire Peaks",
+   "maps": [
+    "0x12C"
+   ],
+   "map_names": [
+    "Chilly Willy"
+   ],
+   "tris": 2293,
+   "opa": "0x1DA6",
+   "xlu": "0x1DAA",
+   "done": false
+  },
+  {
+   "map": "0x12D",
+   "name": "Kickball Lobby",
+   "group": "Hailfire Peaks",
+   "maps": [
+    "0x12D"
+   ],
+   "map_names": [
+    "Kickball Lobby"
+   ],
+   "tris": 7777,
+   "opa": "0x1DA3",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x12E",
+   "name": "Kickball 1",
+   "group": "Hailfire Peaks",
+   "maps": [
+    "0x12E",
+    "0x12F",
+    "0x130",
+    "0x180"
+   ],
+   "map_names": [
+    "Kickball 1",
+    "Kickball 2",
+    "Kickball 3",
+    "Kickball 2"
+   ],
+   "tris": 1472,
+   "opa": "0x1DA7",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x131",
+   "name": "Boggy's Igloo",
+   "group": "Hailfire Peaks",
+   "maps": [
+    "0x131"
+   ],
+   "map_names": [
+    "Boggy's Igloo"
+   ],
+   "tris": 5121,
+   "opa": "0x1D9D",
+   "xlu": "0x1DA8",
+   "done": false
+  },
+  {
+   "map": "0x132",
+   "name": "Icicle Grotto",
+   "group": "Hailfire Peaks",
+   "maps": [
+    "0x132"
+   ],
+   "map_names": [
+    "Icicle Grotto"
+   ],
+   "tris": 7468,
+   "opa": "0x1DA1",
+   "xlu": "0x1DA2",
+   "done": false
+  },
+  {
+   "map": "0x133",
+   "name": "Inside Volcano",
+   "group": "Hailfire Peaks",
+   "maps": [
+    "0x133"
+   ],
+   "map_names": [
+    "Inside Volcano"
+   ],
+   "tris": 6212,
+   "opa": "0x1DA4",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x136",
+   "name": "Cloud Cuckooland",
+   "group": "Cloud Cuckooland",
+   "maps": [
+    "0x136",
+    "0x161"
+   ],
+   "map_names": [
+    "Cloud Cuckooland",
+    "Race"
+   ],
+   "tris": 12850,
+   "opa": "0x1DAB",
+   "xlu": "0x1DB3",
+   "done": false
+  },
+  {
+   "map": "0x137",
+   "name": "Trashcan",
+   "group": "Cloud Cuckooland",
+   "maps": [
+    "0x137"
+   ],
+   "map_names": [
+    "Trashcan"
+   ],
+   "tris": 3317,
+   "opa": "0x1DB1",
+   "xlu": "0x1DB2",
+   "done": false
+  },
+  {
+   "map": "0x138",
+   "name": "Cheesewedge",
+   "group": "Cloud Cuckooland",
+   "maps": [
+    "0x138"
+   ],
+   "map_names": [
+    "Cheesewedge"
+   ],
+   "tris": 4243,
+   "opa": "0x1DB0",
+   "xlu": "0x1DB6",
+   "done": false
+  },
+  {
+   "map": "0x139",
+   "name": "Zubba Nest",
+   "group": "Cloud Cuckooland",
+   "maps": [
+    "0x139",
+    "0x188"
+   ],
+   "map_names": [
+    "Zubba Nest",
+    "Bee Hive"
+   ],
+   "tris": 1902,
+   "opa": "0x1DB5",
+   "xlu": "0x1DB7",
+   "done": false
+  },
+  {
+   "map": "0x13A",
+   "name": "Central Cavern",
+   "group": "Cloud Cuckooland",
+   "maps": [
+    "0x13A"
+   ],
+   "map_names": [
+    "Central Cavern"
+   ],
+   "tris": 6824,
+   "opa": "0x1DAC",
+   "xlu": "0x1DB4",
+   "done": false
+  },
+  {
+   "map": "0x13D",
+   "name": "Pot o' Gold",
+   "group": "Cloud Cuckooland",
+   "maps": [
+    "0x13D"
+   ],
+   "map_names": [
+    "Pot o' Gold"
+   ],
+   "tris": 4985,
+   "opa": "0x1DAD",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x141",
+   "name": "Digger Tunnel",
+   "group": "Spiral Mountain",
+   "maps": [
+    "0x141"
+   ],
+   "map_names": [
+    "Digger Tunnel"
+   ],
+   "tris": 2030,
+   "opa": "0x1D04",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x142",
+   "name": "Jinjo Village",
+   "group": "Jinjo Village",
+   "maps": [
+    "0x142",
+    "0x190"
+   ],
+   "map_names": [
+    "Jinjo Village",
+    "Jingaling Temple Drain"
+   ],
+   "tris": 11889,
+   "opa": "0x1DC1",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x143",
+   "name": "Bottles' House",
+   "group": "Jinjo Village",
+   "maps": [
+    "0x143",
+    "0x169"
+   ],
+   "map_names": [
+    "Bottles' House",
+    "Bottles' House Still"
+   ],
+   "tris": 7189,
+   "opa": "0x1DD0",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x144",
+   "name": "Jingaling Throne Room",
+   "group": "Jinjo Village",
+   "maps": [
+    "0x144"
+   ],
+   "map_names": [
+    "Jingaling Throne Room"
+   ],
+   "tris": 1950,
+   "opa": "0x1DD1",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x145",
+   "name": "Jinjo House",
+   "group": "Jinjo Village",
+   "maps": [
+    "0x145",
+    "0x146",
+    "0x147",
+    "0x148",
+    "0x149",
+    "0x14A",
+    "0x14B",
+    "0x14C",
+    "0x14D",
+    "0x14E"
+   ],
+   "map_names": [
+    "Jinjo House",
+    "Black Jinjo House",
+    "Yellow Jinjo House",
+    "Blue Jinjo House",
+    "Unused Jinjo House",
+    "Brown Jinjo House",
+    "Orange Jinjo House",
+    "Purple Jinjo House",
+    "Red Jinjo House",
+    "White Jinjo House"
+   ],
+   "tris": 1277,
+   "opa": "0x1DCF",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x14F",
+   "name": "Wooded Hollow",
+   "group": "Isle o' Hags",
+   "maps": [
+    "0x14F"
+   ],
+   "map_names": [
+    "Wooded Hollow"
+   ],
+   "tris": 8289,
+   "opa": "0x1DC2",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x150",
+   "name": "Heggy's Egg Shed",
+   "group": "Isle o' Hags",
+   "maps": [
+    "0x150"
+   ],
+   "map_names": [
+    "Heggy's Egg Shed"
+   ],
+   "tris": 1663,
+   "opa": "0x1DC7",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x151",
+   "name": "Jiggywiggy Temple",
+   "group": "Isle o' Hags",
+   "maps": [
+    "0x151"
+   ],
+   "map_names": [
+    "Jiggywiggy Temple"
+   ],
+   "tris": 1985,
+   "opa": "0x1DC3",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x152",
+   "name": "Plateau",
+   "group": "Isle o' Hags",
+   "maps": [
+    "0x152"
+   ],
+   "map_names": [
+    "Plateau"
+   ],
+   "tris": 4718,
+   "opa": "0x1DC4",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x153",
+   "name": "Honey B. Hive",
+   "group": "Isle o' Hags",
+   "maps": [
+    "0x153"
+   ],
+   "map_names": [
+    "Honey B. Hive"
+   ],
+   "tris": 1229,
+   "opa": "0x1DCE",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x154",
+   "name": "Pine Grove",
+   "group": "Isle o' Hags",
+   "maps": [
+    "0x154"
+   ],
+   "map_names": [
+    "Pine Grove"
+   ],
+   "tris": 3708,
+   "opa": "0x1DC5",
+   "xlu": "0x1DC6",
+   "done": false
+  },
+  {
+   "map": "0x155",
+   "name": "Cliff Top",
+   "group": "Isle o' Hags",
+   "maps": [
+    "0x155"
+   ],
+   "map_names": [
+    "Cliff Top"
+   ],
+   "tris": 5073,
+   "opa": "0x1DC8",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x15A",
+   "name": "Wasteland",
+   "group": "Isle o' Hags",
+   "maps": [
+    "0x15A"
+   ],
+   "map_names": [
+    "Wasteland"
+   ],
+   "tris": 3437,
+   "opa": "0x1DC9",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x15B",
+   "name": "Another Digger Tunnel",
+   "group": "Isle o' Hags",
+   "maps": [
+    "0x15B"
+   ],
+   "map_names": [
+    "Another Digger Tunnel"
+   ],
+   "tris": 1530,
+   "opa": "0x1DCC",
+   "xlu": "0x1DCD",
+   "done": false
+  },
+  {
+   "map": "0x15C",
+   "name": "Quagmire",
+   "group": "Isle o' Hags",
+   "maps": [
+    "0x15C"
+   ],
+   "map_names": [
+    "Quagmire"
+   ],
+   "tris": 5154,
+   "opa": "0x1DCA",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x15D",
+   "name": "Cauldron Keep",
+   "group": "Cauldron Keep",
+   "maps": [
+    "0x15D",
+    "0x18E",
+    "0x18F"
+   ],
+   "map_names": [
+    "Cauldron Keep",
+    "Meanwhile",
+    "Bob Firing At Jv"
+   ],
+   "tris": 5322,
+   "opa": "0x1DB9",
+   "xlu": "0x1DBA",
+   "done": false
+  },
+  {
+   "map": "0x15E",
+   "name": "Gatehouse",
+   "group": "Cauldron Keep",
+   "maps": [
+    "0x15E"
+   ],
+   "map_names": [
+    "Gatehouse"
+   ],
+   "tris": 2379,
+   "opa": "0x1DBC",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x15F",
+   "name": "Quiz",
+   "group": "Cauldron Keep",
+   "maps": [
+    "0x15F",
+    "0x189"
+   ],
+   "map_names": [
+    "Quiz",
+    "Quiz"
+   ],
+   "tris": 3140,
+   "opa": "0x1DBD",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x160",
+   "name": "Gun Chamber",
+   "group": "Cauldron Keep",
+   "maps": [
+    "0x160",
+    "0x16A",
+    "0x18C",
+    "0x18D"
+   ],
+   "map_names": [
+    "Gun Chamber",
+    "Gun Chamber Still",
+    "Bob Explanation",
+    "Energy Gained Bob"
+   ],
+   "tris": 3489,
+   "opa": "0x1DBB",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x162",
+   "name": "Floor 4 Clinkers Cavern",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x162",
+    "0x164"
+   ],
+   "map_names": [
+    "Floor 4 Clinkers Cavern",
+    "Ordnance Storage"
+   ],
+   "tris": 9567,
+   "opa": "0x1D8D",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x163",
+   "name": "Ordnance Storage Entrance",
+   "group": "Glitter Gulch Mine",
+   "maps": [
+    "0x163"
+   ],
+   "map_names": [
+    "Ordnance Storage Entrance"
+   ],
+   "tris": 1456,
+   "opa": "0x1D35",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x166",
+   "name": "Inside Targitzan's Temple",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0x166",
+    "0x178"
+   ],
+   "map_names": [
+    "Inside Targitzan's Temple",
+    "Inside Targitzan Temple"
+   ],
+   "tris": 8098,
+   "opa": "0x1D16",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x173",
+   "name": "Banjo's House",
+   "group": "Spiral Mountain",
+   "maps": [
+    "0x173"
+   ],
+   "map_names": [
+    "Banjo's House"
+   ],
+   "tris": 825,
+   "opa": "0x1D08",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x177",
+   "name": "Slightly Sacred Chamber",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0x177",
+    "0x17A"
+   ],
+   "map_names": [
+    "Slightly Sacred Chamber",
+    "Targitzan Boss"
+   ],
+   "tris": 2271,
+   "opa": "0x1D15",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x179",
+   "name": "Targitzan Temple Lobby",
+   "group": "Mayahem Temple",
+   "maps": [
+    "0x179"
+   ],
+   "map_names": [
+    "Targitzan Temple Lobby"
+   ],
+   "tris": 856,
+   "opa": "0x1D17",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x17B",
+   "name": "Balloons",
+   "group": "Multiplayer",
+   "maps": [
+    "0x17B",
+    "0x17C"
+   ],
+   "map_names": [
+    "Balloons",
+    "Hoops"
+   ],
+   "tris": 140,
+   "opa": "0x1D4B",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x19B",
+   "name": "Zombie Throne",
+   "group": "Jinjo Village",
+   "maps": [
+    "0x19B"
+   ],
+   "map_names": [
+    "Zombie Throne"
+   ],
+   "tris": 1950,
+   "opa": "0x1DD2",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x181",
+   "name": "Sea Bottom Cavern",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0x181",
+    "0x182"
+   ],
+   "map_names": [
+    "Sea Bottom Cavern",
+    "Submarine"
+   ],
+   "tris": 2477,
+   "opa": "0x1D60",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x184",
+   "name": "Beta Pipe",
+   "group": "Other",
+   "maps": [
+    "0x184"
+   ],
+   "map_names": [
+    "Beta Pipe"
+   ],
+   "tris": 487,
+   "opa": "0x1D61",
+   "xlu": "0x1D62",
+   "done": false
+  },
+  {
+   "map": "0x185",
+   "name": "Trashcan",
+   "group": "Multiplayer",
+   "maps": [
+    "0x185"
+   ],
+   "map_names": [
+    "Trashcan"
+   ],
+   "tris": 3302,
+   "opa": "0x1DB1",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x187",
+   "name": "Floor 4 Sewer Entrance",
+   "group": "Grunty Industries",
+   "maps": [
+    "0x187"
+   ],
+   "map_names": [
+    "Floor 4 Sewer Entrance"
+   ],
+   "tris": 2326,
+   "opa": "0x1D8E",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x18A",
+   "name": "Inside Digger",
+   "group": "Cauldron Keep",
+   "maps": [
+    "0x18A"
+   ],
+   "map_names": [
+    "Inside Digger"
+   ],
+   "tris": 2706,
+   "opa": "0x1DBE",
+   "xlu": null,
+   "done": false
+  },
+  {
+   "map": "0x19A",
+   "name": "Cauldron Keep Hag 1",
+   "group": "Cauldron Keep",
+   "maps": [
+    "0x19A"
+   ],
+   "map_names": [
+    "Cauldron Keep Hag 1"
+   ],
+   "tris": 1414,
+   "opa": "0x1DBF",
+   "xlu": "0x1DBA",
+   "done": false
+  },
+  {
+   "map": "0x1A6",
+   "name": "Smugglers' Cavern",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0x1A6"
+   ],
+   "map_names": [
+    "Smugglers' Cavern"
+   ],
+   "tris": 5825,
+   "opa": "0x729",
+   "xlu": "0x736",
+   "done": false
+  },
+  {
+   "map": "0x1A7",
+   "name": "Jolly Roger's Lagoon (town)",
+   "group": "Jolly Roger's Lagoon",
+   "maps": [
+    "0x1A7",
+    "0x1A8",
+    "0x1A9"
+   ],
+   "map_names": [
+    "Jolly Roger's Lagoon (town)",
+    "Atlantis",
+    "Sea Bottom"
+   ],
+   "tris": 7421,
+   "opa": null,
+   "xlu": "0x1D5C",
+   "done": false
+  }
+ ]
+}
