@@ -154,10 +154,34 @@
     "Mumbo",
     "Mumbo"
    ],
-   "tris": 2533,
+   "tris": 1037,
    "opa": "0x1D01",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 549,
+   "crack_samples": 87247235082,
+   "crack_floats": 611048089,
+   "spots": 411445,
+   "shown": 120852,
+   "cats": {
+    "wall": 29440,
+    "jump": 45865,
+    "eject": 229098,
+    "walk": 47050,
+    "lag": 1027,
+    "stuck": 58965
+   },
+   "cats_flat": {
+    "wall": 8109,
+    "eject": 74763,
+    "walk": 46371,
+    "lag": 759,
+    "jump": 1959,
+    "stuck": 1134
+   },
+   "holds": 3784,
+   "void": 22358,
+   "bytes": 1287078
   },
   {
    "map": "0xB8",
