@@ -128,7 +128,8 @@ let DIG = '0'; try { DIG = localStorage.getItem('tooie-digits') || '0'; } catch 
 const f32b = new DataView(new ArrayBuffer(4));
 function bitsHex(v) { f32b.setFloat32(0, v); return '0x' + f32b.getUint32(0).toString(16).toUpperCase().padStart(8, '0'); }
 // a coordinate in the chosen precision; exact = the f32's shortest 9-significant-digit form (the census strings)
-function num(v, exactStr) { if (DIG === 'exact') return exactStr ?? String(+Math.fround(v).toPrecision(9)); const d = 2 + (+DIG); return (+v).toFixed(d); }
+const f32s = (v) => String(+Math.fround(v).toPrecision(9));   // the f32's 9-significant-digit form (round-trips every bit)
+function num(v) { if (DIG === 'exact') return f32s(v); const d = 2 + (+DIG); return (+v).toFixed(d); }
 try { const s = JSON.parse(localStorage.getItem('tooie-show') || 'null'); if (s) show = Object.assign(show, s); } catch (e) {}
 
 // ---- three.js scene
@@ -193,8 +194,8 @@ function fitCamera() { const V = ROOM.verts; const mn = [1e9, 1e9, 1e9], mx = [-
   controls.target.copy(c); camera.position.set(c.x + r * 0.35, c.y + r * 0.75, c.z + r * 0.75); camera.near = 1; camera.far = Math.max(600000, r * 20); camera.updateProjectionMatrix();
   const s = $('cutY'); if (s) { s.min = Math.floor(mn[1]) - 1; s.max = Math.ceil(mx[1]) + 1; s.value = s.max; setCut(+s.max); } }
 function legend() {
-  const cnt = {}; for (const s of ROOM.spots) cnt[s[5]] = (cnt[s[5]] || 0) + 1; const voids = ROOM.spots.filter(s => s[5] === 'walk' && s[6][0] === '1').length;
-  $('legend').innerHTML = '<div class="lh"><b>Layers</b><button class="btn mini" id="legTog" aria-expanded="true">Hide</button></div><div id="legBody" class="lb"><div class="grp">Crack spots · ' + fmt(ROOM.spots.length) + '</div>' + CATS.map(([k, n, d]) => `<label title="${d}"><input type="checkbox" data-k="${k}" ${show[k] ? 'checked' : ''}><span class="sw" style="background:var(${CVAR[k]})"></span>${n}<span class="n">${fmt(cnt[k] || 0)}</span></label>`).join('')
+  const cnt = Object.assign({}, ROOM.counts || {}); if (!ROOM.counts) for (const s of ROOM.spots) cnt[s[5]] = (cnt[s[5]] || 0) + 1; const voids = ROOM.spots.filter(s => s[5] === 'walk' && s[6][0] === '1').length;
+  $('legend').innerHTML = '<div class="lh"><b>Layers</b><button class="btn mini" id="legTog" aria-expanded="true">Hide</button></div><div id="legBody" class="lb"><div class="grp" title="' + (ROOM.thinned ? 'Drawn: every spot that goes through or holds; ' + ROOM.thinned : '') + '">Crack spots · ' + fmt(Object.values(cnt).reduce((a, b) => a + b, 0)) + '</div>' + CATS.map(([k, n, d]) => `<label title="${d}"><input type="checkbox" data-k="${k}" ${show[k] ? 'checked' : ''}><span class="sw" style="background:var(${CVAR[k]})"></span>${n}<span class="n">${fmt(cnt[k] || 0)}</span></label>`).join('')
     + (voids ? `<label title="Walk-in spots whose fall ends in the void (no floor below)"><span style="width:13px"></span><span class="sw" style="background:var(--c-void)"></span>…into the void<span class="n">${fmt(voids)}</span></label>` : '')
     + `<div class="grp">Collision layers</div>` + LAYERS.map(([k, n, c]) => `<label><input type="checkbox" data-l="${k}" ${layer[k] ? 'checked' : ''}><span class="sw" style="border-radius:2px;background:${['#b4bfb6', '#97a39b', '#8b8f9c', '#73b3cc', '#cc9999'][c]}"></span>${n}<span class="n">${fmt(ROOM.tris.filter(t => t[3] === c).length)}</span></label>`).join('')
     + `<label title="Draw the back of every triangle too (closed rooms then hide their inside)"><input type="checkbox" data-l="back" ${layer.back ? 'checked' : ''}>Back faces</label>`
@@ -234,7 +235,7 @@ function spotCard(i, fromClick) {
   const runs = [...s[6]].map((o, k) => `<span class="run" title="${k ? 'lag (3-VI update) on update ' + k : 'no lag'}: ${OUT[o]}" style="border-color:var(${o === '0' || o === '1' ? '--c-walk' : o === '2' ? '--c-eject' : '--line'})">${k ? 'L' + k : '—'} ${o === '0' ? 'thru' : o === '1' ? 'void' : o === '2' ? 'eject' : o === '3' ? 'stuck' : o === '4' ? 'water' : 'wall'}</span>`).join('');
   $('spotCard').innerHTML = `<h3><span class="sw" style="background:var(${CVAR[s[5]]})"></span>${cat[1]}<button class="btn mini" id="zoomSpot" style="margin-left:auto">Zoom</button><button class="btn mini" id="closeSpot" style="margin-left:0">Close</button></h3>
     <div class="coords"><div class="ch"><span class="lbl">Crack position (Banjo's feet)</span><button class="btn mini" id="copyXYZ" title="Copy x y z as shown">Copy</button><button class="btn mini" id="copyExact" title="Copy the exact f32 values">Copy exact</button></div>
-      <dl class="kv"><dt>x</dt><dd><b>${num(s[0], s[15])}</b> <span class="bits">${bitsHex(s[0])}</span></dd><dt>y</dt><dd><b>${num(s[1], s[16])}</b> <span class="bits">${bitsHex(s[1])}</span></dd><dt>z</dt><dd><b>${num(s[2], s[17])}</b> <span class="bits">${bitsHex(s[2])}</span></dd></dl></div>
+      <dl class="kv"><dt>x</dt><dd><b>${num(s[0])}</b> <span class="bits">${bitsHex(s[0])}</span></dd><dt>y</dt><dd><b>${num(s[1])}</b> <span class="bits">${bitsHex(s[1])}</span></dd><dt>z</dt><dd><b>${num(s[2])}</b> <span class="bits">${bitsHex(s[2])}</span></dd></dl></div>
     <dl class="kv"><dt>seam</dt><dd>(${se[0]}, ${se[1]}, ${se[2]}) – (${se[3]}, ${se[4]}, ${se[5]}), floor n.y ${se[6]} / ${se[7]}</dd>
       <dt>crack</dt><dd>${s[4]} float${s[4] === 1 ? '' : 's'} in this 0.25 cell</dd>
       <dt>walk in</dt><dd><div class="runs">${runs}</div></dd>
@@ -242,7 +243,7 @@ function spotCard(i, fromClick) {
       <dt>hold</dt><dd>${s[14] ? 'yes' : 'no'} · ${s[7]} of 9 walk-in runs with a 5-pass hold${s[13] > 0 ? `, ${s[13]} jumps` : ''} · sits up to ${s[8]} update${s[8] === 1 ? '' : 's'}</dd>
       <dt>no-lag run</dt><dd>decided on update ${s[9]}; Banjo's feet end at y ${num(s[10])}${s[6][0] === '0' ? ' (on the floor below)' : s[6][0] === '1' ? ' (falling into the void)' : ''}</dd></dl>`;
   const cp = (t, b) => { (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { b.textContent = 'Copied'; setTimeout(() => b.textContent = b.id === 'copyXYZ' ? 'Copy' : 'Copy exact', 1200); }).catch(() => { prompt('Copy:', t); }); };
-  $('copyXYZ').onclick = (e) => cp(`${num(s[0], s[15])} ${num(s[1], s[16])} ${num(s[2], s[17])}`, e.target); $('copyExact').onclick = (e) => cp(`${s[15]} ${s[16]} ${s[17]}`, e.target);
+  $('copyXYZ').onclick = (e) => cp(`${num(s[0])} ${num(s[1])} ${num(s[2])}`, e.target); $('copyExact').onclick = (e) => cp(`${f32s(s[0])} ${f32s(s[1])} ${f32s(s[2])}`, e.target);
   $('spotCard').hidden = false; $('closeSpot').onclick = () => { $('spotCard').hidden = true; if (selObj) { scene.remove(selObj); selObj = null; } };
   if (selObj) scene.remove(selObj); const g = new THREE.SphereGeometry(1, 16, 12); selObj = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: css('--accent'), wireframe: true }));
   selObj.scale.setScalar(35); selObj.position.set(s[0], s[1] + 80, s[2]); scene.add(selObj);

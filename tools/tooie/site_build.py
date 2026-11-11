@@ -56,21 +56,29 @@ def build(tc, roomf, outdir):
             else: cat = 'eject'
             hold = sum(holds) > 0 or (jc is not None and jc[5] > 0)
             spots.append([float(x), float(y), float(z), seam, width, cat, outs, sum(1 for h in holds if h), max(sits), upd, round(endy, 2),
-                          (jc[0] if jc else -1), (jc[1] if jc else -1), (jc[5] if jc else -1), 1 if hold else 0, x, y, z])
+                          (jc[0] if jc else -1), (jc[1] if jc else -1), (jc[5] if jc else -1), 1 if hold else 0])
     cnt = collections.Counter(s[5] for s in spots)
+    # the site keeps every spot that goes through (walk / lag / jump) or holds at the census resolution (0.25 cell); the rest
+    # (ejected, stuck, wall, water) one per seam per 2x2-unit cell, so the levels fit on GitHub Pages
+    shown, seen = [], set()
+    for s_ in spots:
+        if s_[5] in ('walk', 'lag', 'jump') or s_[14]: shown.append(s_); continue
+        k = (s_[3], math.floor(s_[0] / 2), math.floor(s_[2] / 2), s_[5])
+        if k in seen: continue
+        seen.add(k); shown.append(s_)
     flatseam = [s[6] > 0.999 and s[7] > 0.999 for s in seams]
     cntflat = collections.Counter(s[5] for s in spots if flatseam[s[3]])
     data = {'map': key, 'name': room['name'], 'group': room['group'], 'maps': room['maps'], 'map_names': room['map_names'],
             'verts': [list(v) for v in verts], 'tris': tris, 'seams': seams,
             'spot_fields': ['x', 'y', 'z', 'seam', 'crack_floats', 'category', 'walk_outcomes_9', 'walk_runs_with_hold', 'max_sit_updates',
-                            'decided_update', 'end_y', 'jump_clips_of_42', 'jump_voids_of_42', 'jump_drops_with_hold', 'any_hold', 'x_str', 'y_str', 'z_str'],
-            'spots': spots}
+                            'decided_update', 'end_y', 'jump_clips_of_42', 'jump_voids_of_42', 'jump_drops_with_hold', 'any_hold'],
+            'thinned': 'eject/stuck/wall/water spots: one per seam per 2x2-unit cell', 'counts': dict(cnt), 'spots': shown}
     os.makedirs(os.path.join(outdir, 'data'), exist_ok=True)
     raw = json.dumps(data, separators=(',', ':')).encode()
     with open(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key), 'wb') as f: f.write(gzip.compress(raw, 9))
     entry = {'map': key, 'name': room['name'], 'group': room['group'], 'maps': room['maps'], 'map_names': room['map_names'],
              'tris': len(tris), 'seams': len(seams), 'crack_samples': int(head[5]) if head else 0, 'crack_floats': int(head[7]) if head else 0,
-             'spots': len(spots), 'cats': dict(cnt), 'cats_flat': dict(cntflat), 'holds': sum(s[14] for s in spots),
+             'spots': len(spots), 'shown': len(shown), 'cats': dict(cnt), 'cats_flat': dict(cntflat), 'holds': sum(s[14] for s in spots),
              'void': sum(1 for s in spots if s[6][0] == '1'), 'bytes': os.path.getsize(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key))}
     return entry
 
