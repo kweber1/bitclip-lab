@@ -702,10 +702,34 @@
    "map_names": [
     "Prospector's Hut"
    ],
-   "tris": 2045,
+   "tris": 1085,
    "opa": "0x1D2C",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 272,
+   "crack_samples": 21243846148,
+   "crack_floats": 87901967,
+   "spots": 54240,
+   "shown": 17957,
+   "cats": {
+    "wall": 19175,
+    "stuck": 2528,
+    "eject": 26651,
+    "walk": 5352,
+    "jump": 457,
+    "lag": 77
+   },
+   "cats_flat": {
+    "wall": 16869,
+    "stuck": 743,
+    "eject": 23175,
+    "walk": 5178,
+    "jump": 266,
+    "lag": 58
+   },
+   "holds": 5589,
+   "void": 5165,
+   "bytes": 291600
   },
   {
    "map": "0xDA",
