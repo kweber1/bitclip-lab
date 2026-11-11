@@ -2174,10 +2174,32 @@
    "map_names": [
     "Beta Pipe"
    ],
-   "tris": 487,
+   "tris": 216,
    "opa": "0x1D61",
    "xlu": "0x1D62",
-   "done": false
+   "done": true,
+   "seams": 90,
+   "crack_samples": 18759427883,
+   "crack_floats": 572812,
+   "spots": 5853,
+   "cats": {
+    "wall": 2896,
+    "water": 2176,
+    "walk": 274,
+    "stuck": 39,
+    "eject": 454,
+    "jump": 14
+   },
+   "cats_flat": {
+    "walk": 274,
+    "stuck": 39,
+    "eject": 454,
+    "water": 1751,
+    "jump": 14
+   },
+   "holds": 11,
+   "void": 0,
+   "bytes": 145888
   },
   {
    "map": "0x185",
