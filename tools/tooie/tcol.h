@@ -19,7 +19,7 @@
 #endif
 
 typedef struct {
-  int nv, nt, ncell; const short *V; const unsigned short *T; const unsigned *TF; const unsigned short *C;
+  int nv, nt, ncell; const short *V; const unsigned short *T; const unsigned *TF; const unsigned short *C; const short *BB;   // BB: per triangle min x, max x, min y, max y, min z, max z (precomputed, for the cell scans)
   short h[11]; float gn;            // h = collision header (min xyz, max xyz, ystride, zstride, ncell, cell size, ntri); gn = vertex header [10]
 } TModel;
 typedef struct { const TModel *m[2]; } TWorld;   // m[0] opaque, m[1] transparent (either may be 0)
@@ -78,10 +78,8 @@ TD int line_model(const TWorld *w, int mi, const float *s, float *e, float *nout
   int ca[3], cb[3]; cell_range(M, mn, mx, ca, cb);
   FOR_CELL_TRIS(M, ca, cb, k, {
     unsigned fl = M->TF[k]; if (fl & filt) continue;
+    { const short *bb = M->BB + 6 * k; if (bb[1] < mn[0] || mx[0] < bb[0] || bb[3] < mn[1] || mx[1] < bb[2] || bb[5] < mn[2] || mx[2] < bb[4]) continue; }
     const unsigned short *T = M->T + 3 * k; const short *A = M->V + 3 * T[0], *Bv = M->V + 3 * T[1], *Cv = M->V + 3 * T[2];
-    if (A[0] < mn[0] && Bv[0] < mn[0] && Cv[0] < mn[0]) continue; if (mx[0] < A[0] && mx[0] < Bv[0] && mx[0] < Cv[0]) continue;
-    if (A[1] < mn[1] && Bv[1] < mn[1] && Cv[1] < mn[1]) continue; if (mx[1] < A[1] && mx[1] < Bv[1] && mx[1] < Cv[1]) continue;
-    if (A[2] < mn[2] && Bv[2] < mn[2] && Cv[2] < mn[2]) continue; if (mx[2] < A[2] && mx[2] < Bv[2] && mx[2] < Cv[2]) continue;
     float v0[3] = { (float)A[0], (float)A[1], (float)A[2] }, v1[3] = { (float)Bv[0], (float)Bv[1], (float)Bv[2] }, v2[3] = { (float)Cv[0], (float)Cv[1], (float)Cv[2] };
     float ab[3], ac[3], N[3]; vsub(ab, v1, v0); vsub(ac, v2, v0); vcross(N, ab, ac);
     if (100000.0f < fabsf_(N[0]) || 100000.0f < fabsf_(N[1]) || 100000.0f < fabsf_(N[2])) { N[0] = N[0] * 9.999999747e-06f; N[1] = N[1] * 9.999999747e-06f; N[2] = N[2] * 9.999999747e-06f; }
@@ -123,11 +121,9 @@ TD int fast_check(const TWorld *w, int mi, const float *p1, const float *p2, con
   int ca[3], cb[3]; cell_range_f(M, mn, mx, ca, cb); int n = 0;
   FOR_CELL_TRIS(M, ca, cb, k, {
     unsigned fl = M->TF[k]; if (fl & filt) continue; if (n >= nact) continue;
+    { const short *bb = M->BB + 6 * k; if (mx[0] < (float)bb[0] || (float)bb[1] < mn[0] || mx[1] < (float)bb[2] || (float)bb[3] < mn[1] || mx[2] < (float)bb[4] || (float)bb[5] < mn[2]) continue; }
     TAct *A = act + n; const unsigned short *T = M->T + 3 * k;
     for (int j = 0; j < 3; j++) { const short *p = M->V + 3 * T[j]; A->v[j][0] = (float)p[0]; A->v[j][1] = (float)p[1]; A->v[j][2] = (float)p[2]; }
-    float tmin[3], tmax[3]; vcp(tmin, A->v[0]); vcp(tmax, A->v[0]);
-    for (int j = 1; j < 3; j++) for (int i = 0; i < 3; i++) { float c = A->v[j][i]; if (c < tmin[i]) tmin[i] = c; if (tmax[i] < c) tmax[i] = c; }
-    if (mx[0] < tmin[0] || tmax[0] < mn[0] || mx[1] < tmin[1] || tmax[1] < mn[1] || mx[2] < tmin[2] || tmax[2] < mn[2]) continue;
     vsub(A->ab, A->v[1], A->v[0]); vsub(A->ac, A->v[2], A->v[0]); vcross(A->n, A->ab, A->ac); vnorm(A->n);
     if (fl & 0x10000) { float q[3]; vsub(q, p1, A->v[0]); if (vdot(q, A->n) < 0.0f) { A->n[0] = -A->n[0]; A->n[1] = -A->n[1]; A->n[2] = -A->n[2]; } }
     if (0.0f < vdot(A->n, vel)) continue;
@@ -173,11 +169,10 @@ TD int sphere_model(const TWorld *w, int mi, const float *pos, float r, float *n
   for (int i = 0; i < 3; i++) { if (mx[i] <= -M->gn) return 0; if (M->gn <= mn[i]) return 0; }
   int ca[3], cb[3]; cell_range_f(M, mn, mx, ca, cb); float acc[3] = { 0, 0, 0 }; int found = 0; float rd = r - 0.5f, r2 = r * r;
   FOR_CELL_TRIS(M, ca, cb, k, {
-    unsigned fl = M->TF[k]; if (fl & filt) continue; const unsigned short *T = M->T + 3 * k; float v[3][3];
+    unsigned fl = M->TF[k]; if (fl & filt) continue;
+    { const short *bb = M->BB + 6 * k; if (mx[0] < (float)bb[0] || (float)bb[1] < mn[0] || mx[1] < (float)bb[2] || (float)bb[3] < mn[1] || mx[2] < (float)bb[4] || (float)bb[5] < mn[2]) continue; }
+    const unsigned short *T = M->T + 3 * k; float v[3][3];
     for (int j = 0; j < 3; j++) { const short *p = M->V + 3 * T[j]; v[j][0] = (float)p[0]; v[j][1] = (float)p[1]; v[j][2] = (float)p[2]; }
-    float tmin[3], tmax[3]; vcp(tmin, v[0]); vcp(tmax, v[0]);
-    for (int j = 1; j < 3; j++) for (int i = 0; i < 3; i++) { float c = v[j][i]; if (c < tmin[i]) tmin[i] = c; if (tmax[i] < c) tmax[i] = c; }
-    if (mx[0] < tmin[0] || tmax[0] < mn[0] || mx[1] < tmin[1] || tmax[1] < mn[1] || mx[2] < tmin[2] || tmax[2] < mn[2]) continue;
     float ab[3], ac[3], N[3]; vsub(ab, v[1], v[0]); vsub(ac, v[2], v[0]); vcross(N, ab, ac); vnorm(N);
     if (N[0] == 0.0f && N[1] == 0.0f && N[2] == 0.0f) continue;
     float s0[3]; vsub(s0, pos, v[0]);

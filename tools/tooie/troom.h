@@ -9,5 +9,8 @@ static TModel *load_model(FILE *f) {
   for (int i = 0; i < 3 * M->nv; i++) { int x; if (fscanf(f, "%d", &x) != 1) exit(3); V[i] = (short)x; }
   for (int i = 0; i < M->nt; i++) { int a, b, c; unsigned fl; if (fscanf(f, "%d %d %d %u", &a, &b, &c, &fl) != 4) exit(3); T[3 * i] = a; T[3 * i + 1] = b; T[3 * i + 2] = c; TF[i] = fl; }
   for (int i = 0; i < 2 * M->ncell; i++) { int x; if (fscanf(f, "%d", &x) != 1) exit(3); C[i] = (unsigned short)x; }
-  M->V = V; M->T = T; M->TF = TF; M->C = C; return M; }
+  short *BB = (short *)malloc(12 * M->nt + 12);
+  for (int i = 0; i < M->nt; i++) for (int c = 0; c < 3; c++) { short lo = V[3 * T[3 * i] + c], hi = lo;
+      for (int j = 1; j < 3; j++) { short q = V[3 * T[3 * i + j] + c]; if (q < lo) lo = q; if (hi < q) hi = q; } BB[6 * i + 2 * c] = lo; BB[6 * i + 2 * c + 1] = hi; }
+  M->V = V; M->T = T; M->TF = TF; M->C = C; M->BB = BB; return M; }
 static void load_world(const char *fn, TWorld *w) { FILE *f = fopen(fn, "r"); if (!f) { fprintf(stderr, "no room %s\n", fn); exit(2); } w->m[0] = load_model(f); w->m[1] = load_model(f); fclose(f); }

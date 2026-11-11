@@ -18,8 +18,12 @@
 // TC_ZEROPART=2: every float except those within [-1, 1] on a seam's major axis; TC_ZEROPART=1: only those (the two phases).
 // T-junction seams (a floor edge lying along part of another floor triangle's edge) are scanned too.
 // Output (text): ROOM, SEAM lines, SPOT lines (see write_out). Validated against BizHawk fall-in traces (bt_fallin.lua).
-// Build: nvcc -O3 --fmad=false -prec-div=true -prec-sqrt=true -o tcensus tcensus.cu    (GPU)
-//        gcc -x c -O2 -ffp-contract=off -fopenmp -DTCPU -o tcensus tcensus.cu -lm          (CPU)
+// Exhaustive mode speed-ups (all checked byte for byte against earlier builds on finished levels): crack floats are found on the card
+// (one thread per float, its 7 across offsets; per-seam block candidate lists; precomputed triangle planes; a 2-unit box pre-check
+// except on slivers) and compacted there in order; spots are made on the card; fall-in / jump runs go in large batches (variant-major
+// thread order) while a worker thread counts the previous batch into cells; free-air updates and repeating states are skipped exactly.
+// Build: nvcc -O3 -arch=sm_89 --fmad=false -prec-div=true -prec-sqrt=true -ftz=false -o tcensus tcensus.cu    (GPU)
+//        g++ -x c++ -O2 -ffp-contract=off -fopenmp -DTCPU -o tcensus tcensus.cu -lm -lpthread               (CPU)
 #ifndef TCPU
 #define TCOL_CUDA
 #endif
@@ -40,7 +44,7 @@ static double T0; static double now(void) { return (double)clock() / CLOCKS_PER_
 #endif
 enum { O_LAND = 0, O_VOID = 1, O_EJECT = 2, O_STUCK = 3, O_WATER = 4, O_WALL = 5 };
 
-typedef struct { int a, b; int ma, mb; float P[3], Q[3]; int axis; double nya, nyb; uint32_t k0, k1; uint32_t n1, n2, n3; uint32_t k2; float z0; int candoff, ncand; float ymin, ymax; } Seam;
+typedef struct { int a, b; int ma, mb; float P[3], Q[3]; int axis; double nya, nyb; uint32_t k0, k1; uint32_t n1, n2, n3; uint32_t k2; float z0; int candoff, ncand; float ymin, ymax; int ivoff, ivn, ivwater; int boff, nb; double bm0, bstep; double dax, dot; float bm0f, binvf; } Seam;
 // samples along the major axis: every float in [lo, -1), then steps of 1e-5 over [-1, 1] (floats are too dense there), then every float in (1, hi]
 typedef struct { int seam; float x, y, z; int width; } Spot;
 typedef struct { unsigned char out[NVAR], holds[NVAR], maxhits[NVAR], upd[NVAR], sits[NVAR]; float endy[NVAR]; } SpotRes;
@@ -69,7 +73,18 @@ TD int tri_line_hit(const TWorld *w, int mi, int k, const float *s, const float 
   float ww = (f1 * e0 - f0 * e1) * inv; if (ww < 0.0f || 1.0f < ww) return 0; if (1.0f < u + ww) return 0;
   return 1;
 }
+// plane of each triangle, precomputed (the same exact integer products as below, in double): nx ny nz Ax Ay Az per triangle
+#ifndef TCPU
+__device__ const double *dPN[2];
+#endif
+static const double *HPN[2];
 TD double plane_y(const TWorld *w, int mi, int k, double x, double z) {
+#ifdef __CUDA_ARCH__
+  const double *pn = dPN[mi];
+#else
+  const double *pn = HPN[mi];
+#endif
+  if (pn) { const double *q = pn + 6 * k; double nx = q[0], ny = q[1], nz = q[2]; if (ny == 0) return q[4]; return q[4] - (nx * (x - q[3]) + nz * (z - q[5])) / ny; }
   const TModel *M = w->m[mi]; const unsigned short *T = M->T + 3 * k; const short *A = M->V + 3 * T[0], *B = M->V + 3 * T[1], *C = M->V + 3 * T[2];
   double ux = B[0] - A[0], uy = B[1] - A[1], uz = B[2] - A[2], vx = C[0] - A[0], vy = C[1] - A[1], vz = C[2] - A[2];
   double nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; if (ny == 0) return A[1];
@@ -82,22 +97,55 @@ TD void seam_point(const TWorld *w, const Seam *S, uint32_t j, int o, float *x, 
   double t = ((double)m - S->P[ax]) / ((double)S->Q[ax] - S->P[ax]); double c = S->P[ot] + t * ((double)S->Q[ot] - S->P[ot]);
   float cf = fstep((float)c, o); float p[3]; p[ax] = m; p[ot] = cf;
   double yy = plane_y(w, S->ma, S->a, p[0], p[2]); *x = p[0]; *z = p[2]; *y = (float)yy; }
-TD int crack_at(const TWorld *w, const Seam *S, const int *cand, float x, float y, float z) {
-  float s[3] = { x, y + 56.0f, z }, e[3] = { x, y + -444.0f, z };
-  for (int q = 0; q < S->ncand; q++) { int c = cand[S->candoff + q]; if (tri_line_hit(w, c >> 24, c & 0xFFFFFF, s, e)) {
-      // a hit counts only if it is this floor (within 5 below .. 56 above): compute the hit height
-      const TModel *M = w->m[c >> 24]; int k = c & 0xFFFFFF; (void)M; double py = plane_y(w, c >> 24, k, x, z); if (py >= (double)y - 5.0 && py <= (double)y + 56.0) return 0; } }
+// candidates of one block of a seam (see "block candidates" in main): the triangles whose XZ box reaches that part of the seam
+TD const int *block_cands(const Seam *S, const int *bcand, const int *bofs, float x, float z, int *n) {
+  float m = S->axis == 0 ? x : z; float bf = floorf((m - S->bm0f) * S->binvf); int b = bf < 0.0f ? 0 : bf > (float)(S->nb - 1) ? S->nb - 1 : (int)bf;
+  const int *o = bofs + 2 * (S->boff + b); *n = o[1]; return bcand + o[0]; }
+// yy = this floor's height at (x, z) in double (= plane_y of the seam's triangle a, reused when the ray hits that triangle).
+// Candidate entries: model << 24 | triangle, bit 30 = "unsafe" (a sliver where float rounding could pass the inside test far from
+// the triangle; tested everywhere as before). For every other triangle a hit is only possible within ~0.02 of its XZ box, so a
+// sample more than 2 units outside the box skips the test (same answer, no plane test).
+TD int crack_at2(const TWorld *w, const Seam *S, const int *bcand, const int *bofs, float x, float y, float z, double yy) {
+  float s[3] = { x, y + 56.0f, z }, e[3] = { x, y + -444.0f, z }; int nq; const int *cl = block_cands(S, bcand, bofs, x, z, &nq);
+  for (int q = 0; q < nq; q++) { int c = cl[q]; int mi = (c >> 24) & 1, k = c & 0xFFFFFF;
+    if (!(c & 0x40000000)) { const short *bb = w->m[mi]->BB + 6 * k; if (x < (float)bb[0] - 2.0f || (float)bb[1] + 2.0f < x || z < (float)bb[4] - 2.0f || (float)bb[5] + 2.0f < z) continue; }
+    if (tri_line_hit(w, mi, k, s, e)) {
+      // a hit counts only if it is this floor (within 5 below .. 56 above): the hit height
+      double py = (mi == S->ma && k == S->a) ? yy : plane_y(w, mi, k, x, z); if (py >= (double)y - 5.0 && py <= (double)y + 56.0) return 0; } }
   return 1; }
+TD float seam_m(const Seam *S, uint32_t j) {
+  if (j < S->n1) return kfloat(S->k0 + j); if (j < S->n1 + S->n2) return (float)((double)S->z0 + (double)(j - S->n1) * 1e-5); return kfloat(S->k2 + (j - S->n1 - S->n2)); }
+// crack test of samples o = o0..o1 (of -3..3) of float j of seam S -> r[o + 3] (1 = crack); the same numbers as seam_point + crack_at
+TD void crack7(const TWorld *w, const Seam *S, const int *bcand, const int *bofs, uint32_t j, int o0, int o1, uint8_t *r) {
+  float m = seam_m(S, j); int ax = S->axis, ot = 2 - ax;
+  double t = ((double)m - S->P[ax]) / S->dax; double c = S->P[ot] + t * S->dot;
+  for (int o = o0; o <= o1; o++) { float cf = fstep((float)c, o); float p[3]; p[ax] = m; p[ot] = cf; p[1] = 0.0f;
+    double yy = plane_y(w, S->ma, S->a, p[0], p[2]); r[o + 3] = (uint8_t)crack_at2(w, S, bcand, bofs, p[0], (float)yy, p[2], yy); } }
 // ---- fall-in simulation of one spot, one timing variant
-TD void fall_run2(const TWorld *w, float x, float y, float z, float drop, int lagupd, TAct *act, unsigned char *out, unsigned char *holds, unsigned char *maxh, unsigned char *upd, unsigned char *sits, float *endy) {
+// Free-air updates: iv = the seam's merged height intervals of every triangle within 40 units horizontally of the seam (the
+// "air column"); when the falling sphere's whole vertical span this update (feet - 2 .. sphere top + 2) meets none of them, no
+// sphere / line test can hit anything, so the resolver's result is exactly the floor-tracker step (floor_snap) alone.
+TD int air_free(const float *iv, int ivn, float lo, float hi) {
+  if (ivn < 0) return 0; for (int q = 0; q < ivn; q++) if (iv[2 * q] <= hi && iv[2 * q + 1] >= lo) return 0; return 1; }
+TD int same5(const float *a, const float *b) { for (int i = 0; i < 5; i++) { uint32_t x, y; memcpy(&x, a + i, 4); memcpy(&y, b + i, 4); if (x != y) return 0; } return 1; }   // bit-identical
+TD void fall_run2(const TWorld *w, float x, float y, float z, float drop, int lagupd, TAct *act, unsigned char *out, unsigned char *holds, unsigned char *maxh, unsigned char *upd, unsigned char *sits, float *endy, const float *iv, int ivn, int ivw) {
   float pos[3] = { x, y + drop, z }, vy = 0.0f; int gnd = drop == 0.0f ? 1 : 0; TTrack tr; memset(&tr, 0, sizeof tr); tr.posZ = 56.0f; tr.mode = 2;
   int nh = 0, mh = 0, touched = 0, ns = 0; int res = O_STUCK, k;
+  // cycle fast-forward: from update kreg on, an update depends only on (pos, vy, gnd); when that state repeats after one or two
+  // updates (Banjo held in place in the crack), every remaining update repeats too, so the rest of the 90 is added up exactly
+  float hs[2][5]; int hheld[2], hsit[2], nhist = 0; const int kreg = lagupd > 1 ? lagupd + 1 : 2;
   for (k = 1; k <= NUPD; k++) {
     float dt = (k == lagupd) ? 0.050000004f : 0.033333335f;
     vy = vy + dt * -2700.0f; if (vy < -4000.0f) vy = -4000.0f;
     float disp[3] = { 0.0f, vy * dt, 0.0f }, tgt[3] = { pos[0], pos[1] + disp[1], pos[2] };
-    TRes R; resolve(w, &tr, pos, tgt, disp, gnd, 80.0f, 35.0f, TFILT_FLOOR, &R, act);
-    if (R.hits && R.out[1] == pos[1] && pos[1] < y - 1.0f) ns++;   // sitting in the crack: feet under the floor, sphere resting on it
+    TRes R;
+    { float lo = (pos[1] < tgt[1] ? pos[1] : tgt[1]) - 2.0f, hi = (pos[1] > tgt[1] ? pos[1] : tgt[1]) + 80.0f + 35.0f + 2.0f;
+      if (air_free(iv, ivn, lo, hi)) {
+        if (!ivw && !gnd) { R.hits = 0; R.held = 0; R.held_flag = 0; R.last = TNONE; vcp(R.out, tgt); R.grounded = 0; }   // no water in the column: the tracker can neither snap nor see water
+        else { float u0[3]; vcp(u0, tgt); int g = gnd; floor_snap(&tr, w, u0, disp, &g, TFILT_FLOOR);
+          R.hits = 0; R.held = 0; R.held_flag = 0; R.last = TNONE; vcp(R.out, u0); R.grounded = g; } }
+      else resolve(w, &tr, pos, tgt, disp, gnd, 80.0f, 35.0f, TFILT_FLOOR, &R, act); }
+    int sitinc = (R.hits && R.out[1] == pos[1] && pos[1] < y - 1.0f) ? 1 : 0; ns += sitinc;   // sitting in the crack: feet under the floor, sphere resting on it
     vcp(pos, R.out); gnd = R.grounded; if (gnd && vy < 0.0f) vy = -1.0f;
     if (R.held) nh++; if (R.hits > mh) mh = R.hits; if (R.hits) touched = 1;
     if (k == 1 && drop == 0.0f && (pos[0] != x || pos[2] != z)) { res = O_WALL; break; }
@@ -106,34 +154,54 @@ TD void fall_run2(const TWorld *w, float x, float y, float z, float drop, int la
       float a[3] = { pos[0], pos[1] + 1.0f, pos[2] }, b[3] = { pos[0], -30000.0f, pos[2] }, n[3] = { 0, 0, 0 };
       res = tri_ok(wline(w, a, b, n, TFILT_FLOOR)) ? O_LAND : O_VOID; break; }
     if (gnd && pos[1] >= y - 0.5f && (touched || k > 1) && (drop == 0.0f || vy == -1.0f)) { res = O_EJECT; break; }
+    if (k >= kreg && k < NUPD) {
+      float cur[5] = { pos[0], pos[1], pos[2], vy, (float)gnd };
+      if (nhist >= 1 && same5(cur, hs[0])) {   // period 1
+        int r = NUPD - k; nh += r * (R.held ? 1 : 0); ns += r * sitinc; k = NUPD + 1; break; }
+      if (nhist >= 2 && same5(cur, hs[1]) && k - 1 >= kreg) {   // period 2: updates k+1, k+2, ... repeat k-1, k, ...
+        int r = NUPD - k, a_ = (r + 1) / 2, b_ = r / 2; nh += a_ * hheld[0] + b_ * (R.held ? 1 : 0); ns += a_ * hsit[0] + b_ * sitinc;
+        if (r % 2) { pos[0] = hs[0][0]; pos[1] = hs[0][1]; pos[2] = hs[0][2]; } k = NUPD + 1; break; }
+      memcpy(hs[1], hs[0], sizeof hs[0]); hheld[1] = hheld[0]; hsit[1] = hsit[0]; memcpy(hs[0], cur, sizeof cur); hheld[0] = R.held ? 1 : 0; hsit[0] = sitinc; nhist++; }
+    else if (k < kreg) { float cur[5] = { pos[0], pos[1], pos[2], vy, (float)gnd }; memcpy(hs[1], hs[0], sizeof hs[0]); hheld[1] = hheld[0]; hsit[1] = hsit[0]; memcpy(hs[0], cur, sizeof cur); hheld[0] = R.held ? 1 : 0; hsit[0] = sitinc; nhist++; }
   }
   *out = (unsigned char)res; *holds = (unsigned char)nh; *maxh = (unsigned char)mh; *upd = (unsigned char)(k > NUPD ? NUPD : k); *sits = (unsigned char)(ns > 255 ? 255 : ns); *endy = pos[1];
 }
 
-TD void fall_run(const TWorld *w, float x, float y, float z, int lagupd, TAct *act, unsigned char *out, unsigned char *holds, unsigned char *maxh, unsigned char *upd, unsigned char *sits, float *endy) {
-  fall_run2(w, x, y, z, 0.0f, lagupd, act, out, holds, maxh, upd, sits, endy); }
+TD void fall_run(const TWorld *w, float x, float y, float z, int lagupd, TAct *act, unsigned char *out, unsigned char *holds, unsigned char *maxh, unsigned char *upd, unsigned char *sits, float *endy, const float *iv = 0, int ivn = -1, int ivw = 1) {
+  fall_run2(w, x, y, z, 0.0f, lagupd, act, out, holds, maxh, upd, sits, endy, iv, ivn, ivw); }
 // jump drops: Banjo coming down from a jump's apex onto the spot. Tooie jump (measured in BizHawk): tap A = apex 92 above the
 // take-off floor, A held = 174.46; after the apex gravity is -2700 either way. NJ apex heights from 92 to 174 cover every
 // arrival phase relative to the update boundaries (no lag).
 #define NJ 42
 TD float jump_h(int j) { return 92.0f + (float)j * 2.0f; }
 typedef struct { unsigned char clip, voids, eject, stuck, hold, sitmax, other, pad; } JumpRes;
-TD void jump_run(const TWorld *w, float x, float y, float z, int j, TAct *act, unsigned char *o, unsigned char *h, unsigned char *si) {
-  unsigned char m, u; float e; fall_run2(w, x, y, z, jump_h(j), 0, act, o, h, &m, &u, si, &e); }
+TD void jump_run(const TWorld *w, float x, float y, float z, int j, TAct *act, unsigned char *o, unsigned char *h, unsigned char *si, const float *iv = 0, int ivn = -1, int ivw = 1) {
+  unsigned char m, u; float e; fall_run2(w, x, y, z, jump_h(j), 0, act, o, h, &m, &u, si, &e, iv, ivn, ivw); }
 #ifndef TCPU
 // ---- device copies of the world
 __device__ TModel dM[2]; __device__ TWorld dW;
-__global__ void k_crack(const Seam *S, int nseam, const int *cand, const uint64_t *off, uint64_t total, uint64_t base, uint8_t *out, uint64_t n) {
-  uint64_t id = (uint64_t)blockIdx.x * blockDim.x + threadIdx.x; if (id >= n) return; uint64_t g = base + id;
-  int lo = 0, hi = nseam - 1; while (lo < hi) { int mid = (lo + hi + 1) / 2; if (off[mid] <= g) lo = mid; else hi = mid - 1; }
-  const Seam *s = S + lo; uint64_t r = g - off[lo]; uint32_t j = (uint32_t)(r / 7); int o = (int)(r % 7) - 3;
-  float x, y, z; seam_point(&dW, s, j, o, &x, &y, &z); out[id] = (uint8_t)crack_at(&dW, s, cand, x, y, z); }
-__global__ void k_jump(const Spot *P, const int *idx, int n, unsigned char *O) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x; if (id >= n * NJ) return; int q = id / NJ, j = id % NJ; const Spot *s = P + idx[q]; TAct act[TMAXACT];
-  jump_run(&dW, s->x, s->y, s->z, j, act, O + 3 * (size_t)id, O + 3 * (size_t)id + 1, O + 3 * (size_t)id + 2); }
-__global__ void k_fall(const Spot *P, int n, SpotRes *R) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x; if (id >= n * NVAR) return; int sp = id / NVAR, v = id % NVAR; TAct act[TMAXACT];
-  fall_run(&dW, P[sp].x, P[sp].y, P[sp].z, v, act, &R[sp].out[v], &R[sp].holds[v], &R[sp].maxhits[v], &R[sp].upd[v], &R[sp].sits[v], &R[sp].endy[v]); }
+__global__ void k_crack2(const Seam *S, int nseam, const int *bcand, const int *bofs, const uint64_t *off, uint64_t base, uint8_t *out, uint64_t n) {
+  uint64_t g0 = (base / 7 + (uint64_t)blockIdx.x * blockDim.x + threadIdx.x) * 7; if (g0 >= base + n) return;   // seam offsets are multiples of 7
+  int lo = 0, hi = nseam - 1; while (lo < hi) { int mid = (lo + hi + 1) / 2; if (off[mid] <= g0) lo = mid; else hi = mid - 1; }
+  int o0 = g0 < base ? -3 + (int)(base - g0) : -3, o1 = g0 + 6 >= base + n ? -3 + (int)(base + n - 1 - g0) : 3; uint8_t r[7];
+  crack7(&dW, S + lo, bcand, bofs, (uint32_t)((g0 - off[lo]) / 7), o0, o1, r); for (int o = o0; o <= o1; o++) out[g0 + 3 + o - base] = r[o + 3]; }
+static unsigned crack_blocks(uint64_t base, uint64_t n) { return (unsigned)(((base + n - 1) / 7 - base / 7 + 1 + 255) / 256); }
+__device__ const Seam *dSeams; __device__ const float *dIV;
+#ifdef LB_MINB
+#define KLB __launch_bounds__(64, LB_MINB)   // fewer registers per thread, more threads per SM (bench variants)
+#else
+#define KLB
+#endif
+__global__ void KLB k_jump(const Spot *P, const int *idx, int n, unsigned char *O) {
+  // height-major: a warp gets 32 neighbouring floats at the same apex height (near-identical paths: little divergence)
+  int id = blockIdx.x * blockDim.x + threadIdx.x; if (id >= n * NJ) return; int j = id / n, q = id % n; const Spot *s = P + idx[q]; TAct act[TMAXACT];
+  id = q * NJ + j;   // output slot as before
+  const Seam *S = dSeams ? dSeams + s->seam : 0;
+  jump_run(&dW, s->x, s->y, s->z, j, act, O + 3 * (size_t)id, O + 3 * (size_t)id + 1, O + 3 * (size_t)id + 2, S ? dIV + 2 * S->ivoff : 0, S ? S->ivn : -1, S ? S->ivwater : 1); }
+__global__ void KLB k_fall(const Spot *P, int n, SpotRes *R) {
+  int id = blockIdx.x * blockDim.x + threadIdx.x; if (id >= n * NVAR) return; int v = id / n, sp = id % n; TAct act[TMAXACT];   // variant-major (see k_jump)
+  const Seam *S = dSeams ? dSeams + P[sp].seam : 0;
+  fall_run(&dW, P[sp].x, P[sp].y, P[sp].z, v, act, &R[sp].out[v], &R[sp].holds[v], &R[sp].maxhits[v], &R[sp].upd[v], &R[sp].sits[v], &R[sp].endy[v], S ? dIV + 2 * S->ivoff : 0, S ? S->ivn : -1, S ? S->ivwater : 1); }
 static void upload(const TWorld *w) {
   TModel hm[2]; memset(hm, 0, sizeof hm); TWorld hw; memset(&hw, 0, sizeof hw); TModel *dmp; cudaGetSymbolAddress((void **)&dmp, dM);
   for (int i = 0; i < 2; i++) { if (!w->m[i]) continue; const TModel *M = w->m[i]; hm[i] = *M; void *p;
@@ -141,6 +209,8 @@ static void upload(const TWorld *w) {
     cudaMalloc(&p, 6 * M->nt + 8); cudaMemcpy(p, M->T, 6 * M->nt, cudaMemcpyHostToDevice); hm[i].T = (unsigned short *)p;
     cudaMalloc(&p, 4 * M->nt + 8); cudaMemcpy(p, M->TF, 4 * M->nt, cudaMemcpyHostToDevice); hm[i].TF = (unsigned *)p;
     cudaMalloc(&p, 4 * M->ncell + 8); cudaMemcpy(p, M->C, 4 * M->ncell, cudaMemcpyHostToDevice); hm[i].C = (unsigned short *)p;
+    cudaMalloc(&p, 12 * M->nt + 12); cudaMemcpy(p, M->BB, 12 * M->nt, cudaMemcpyHostToDevice); hm[i].BB = (short *)p;
+    if (HPN[i]) { cudaMalloc(&p, 48 * (size_t)M->nt + 48); cudaMemcpy(p, HPN[i], 48 * (size_t)M->nt, cudaMemcpyHostToDevice); const double *pd = (const double *)p; cudaMemcpyToSymbol(dPN, &pd, sizeof pd, sizeof pd * i); }
     hw.m[i] = dmp + i; }
   cudaMemcpyToSymbol(dM, hm, sizeof hm); cudaMemcpyToSymbol(dW, &hw, sizeof hw);
   cudaDeviceSetLimit(cudaLimitStackSize, 32768); }
@@ -158,10 +228,48 @@ static int same_tri(const TWorld *w, int ma, int a, int mb, int b) {   // same t
   int va[3][3], vb[3][3]; for (int j = 0; j < 3; j++) for (int i = 0; i < 3; i++) { va[j][i] = w->m[ma]->V[3 * w->m[ma]->T[3 * a + j] + i]; vb[j][i] = w->m[mb]->V[3 * w->m[mb]->T[3 * b + j] + i]; }
   for (int j = 0; j < 3; j++) { int f = 0; for (int l = 0; l < 3; l++) if (va[j][0] == vb[l][0] && va[j][1] == vb[l][1] && va[j][2] == vb[l][2]) f = 1; if (!f) return 0; } return 1; }
 
-static int ZEROSTEP = 0, EVERY = 0, HAVEREG = 0, ZEROPART = 0; static double REG[4];
+static int *BOFS = 0, NBOFS = 0;   // block candidates: (offset, count) per seam block
+static int ZEROSTEP = 0, EVERY = 0, HAVEREG = 0, ZEROPART = 0, CRACKONLY = 0; static double REG[4];
 static int in_region(const Seam *s) {   // distance from the region point to the seam segment
   if (!HAVEREG) return 1; double d[3], v[3], L2 = 0, t = 0; for (int c = 0; c < 3; c++) { v[c] = (double)s->Q[c] - s->P[c]; d[c] = REG[c] - s->P[c]; L2 += v[c] * v[c]; t += d[c] * v[c]; }
   t = L2 > 0 ? fmin(1, fmax(0, t / L2)) : 0; double q = 0; for (int c = 0; c < 3; c++) { double e = s->P[c] + t * v[c] - REG[c]; q += e * e; } return sqrt(q) <= REG[3]; }
+// ---- air columns (see air_free): per seam, merged [ymin, ymax] of every triangle within 40 units (XZ) of the seam segment
+static const Seam *HS = 0; static float *HIV = 0; static int NIV = 0;
+static double seg_seg2(double ax, double az, double bx, double bz, double cx, double cz, double dx, double dz) {   // squared XZ distance of two segments
+  auto pd = [](double px, double pz, double ax, double az, double bx, double bz) { double vx = bx - ax, vz = bz - az, L = vx * vx + vz * vz, t = L > 0 ? ((px - ax) * vx + (pz - az) * vz) / L : 0; t = t < 0 ? 0 : t > 1 ? 1 : t; double ex = ax + t * vx - px, ez = az + t * vz - pz; return ex * ex + ez * ez; };
+  auto cr = [](double ax, double az, double bx, double bz, double cx, double cz) { return (bx - ax) * (cz - az) - (bz - az) * (cx - ax); };
+  double d1 = cr(ax, az, bx, bz, cx, cz), d2 = cr(ax, az, bx, bz, dx, dz), d3 = cr(cx, cz, dx, dz, ax, az), d4 = cr(cx, cz, dx, dz, bx, bz);
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return 0;
+  double m = pd(ax, az, cx, cz, dx, dz); double t; if ((t = pd(bx, bz, cx, cz, dx, dz)) < m) m = t; if ((t = pd(cx, cz, ax, az, bx, bz)) < m) m = t; if ((t = pd(dx, dz, ax, az, bx, bz)) < m) m = t; return m; }
+static void build_air(const TWorld *w, Seam *S, int ns) {
+  const char *e = getenv("TC_NOAIR"); int off = 0; static float tmp[2 * 65536]; HIV = (float *)malloc(sizeof(float) * 2 * 64); int cap = 32;
+  for (int i = 0; i < ns; i++) { Seam *s = S + i; s->ivoff = off; s->ivn = -1; s->ivwater = 1; if (e && atoi(e)) continue; int water = 0;
+    double ax = s->P[0], az = s->P[2], bx = s->Q[0], bz = s->Q[2], R = 40.0; int n = 0;
+    double bx0 = fmin(ax, bx) - R, bx1 = fmax(ax, bx) + R, bz0 = fmin(az, bz) - R, bz1 = fmax(az, bz) + R;
+    for (int mi = 0; mi < 2; mi++) { const TModel *M = w->m[mi]; if (!M) continue;
+      for (int k = 0; k < M->nt; k++) { const short *v[3]; for (int j = 0; j < 3; j++) v[j] = M->V + 3 * M->T[3 * k + j];
+        double mnx = fmin(v[0][0], fmin(v[1][0], v[2][0])), mxx = fmax(v[0][0], fmax(v[1][0], v[2][0])), mnz = fmin(v[0][2], fmin(v[1][2], v[2][2])), mxz = fmax(v[0][2], fmax(v[1][2], v[2][2]));
+        if (mxx < bx0 || mnx > bx1 || mxz < bz0 || mnz > bz1) continue;
+        // inside test (segment endpoint inside the triangle's XZ projection) or edge distance
+        double best = 1e30; for (int j = 0; j < 3; j++) { double d = seg_seg2(ax, az, bx, bz, v[j][0], v[j][2], v[(j + 1) % 3][0], v[(j + 1) % 3][2]); if (d < best) best = d; }
+        { double c0 = (v[1][0] - v[0][0]) * (az - v[0][2]) - (v[1][2] - v[0][2]) * (ax - v[0][0]), c1 = (v[2][0] - v[1][0]) * (az - v[1][2]) - (v[2][2] - v[1][2]) * (ax - v[1][0]), c2 = (v[0][0] - v[2][0]) * (az - v[2][2]) - (v[0][2] - v[2][2]) * (ax - v[2][0]);
+          if ((c0 >= 0 && c1 >= 0 && c2 >= 0) || (c0 <= 0 && c1 <= 0 && c2 <= 0)) best = 0; }
+        if (best > R * R) continue;
+        if (M->TF[k] & TWATER) water = 1;
+        float ylo = fminf(v[0][1], fminf(v[1][1], v[2][1])) - 1.0f, yhi = fmaxf(v[0][1], fmaxf(v[1][1], v[2][1])) + 1.0f;
+        if (n < 65536) { tmp[2 * n] = ylo; tmp[2 * n + 1] = yhi; n++; } else { n = -1; break; } }
+      if (n < 0) break; }
+    if (n < 0) continue;   // too many: no skipping on this seam
+    // sort by start and merge
+    for (int a = 1; a < n; a++) { float l = tmp[2 * a], h = tmp[2 * a + 1]; int b = a - 1; while (b >= 0 && tmp[2 * b] > l) { tmp[2 * b + 2] = tmp[2 * b]; tmp[2 * b + 3] = tmp[2 * b + 1]; b--; } tmp[2 * b + 2] = l; tmp[2 * b + 3] = h; }
+    int m = 0; for (int a = 0; a < n; a++) { if (m && tmp[2 * a] <= tmp[2 * (m - 1) + 1]) { if (tmp[2 * a + 1] > tmp[2 * (m - 1) + 1]) tmp[2 * (m - 1) + 1] = tmp[2 * a + 1]; } else { tmp[2 * m] = tmp[2 * a]; tmp[2 * m + 1] = tmp[2 * a + 1]; m++; } }
+    while (off + m > cap) { cap *= 2; HIV = (float *)realloc(HIV, sizeof(float) * 2 * cap); }
+    memcpy(HIV + 2 * off, tmp, sizeof(float) * 2 * m); s->ivoff = off; s->ivn = m; s->ivwater = water; off += m; }
+  NIV = off; HS = S; LOG("air columns: %d intervals over %d seams%s\n", off, ns, (e && atoi(e)) ? " (disabled)" : ""); }
+#ifndef TCPU
+static void set_air_dev(Seam *dS) { float *d = 0; cudaMalloc(&d, sizeof(float) * 2 * (NIV + 1)); cudaMemcpy(d, HIV, sizeof(float) * 2 * (NIV + 1), cudaMemcpyHostToDevice);
+  const Seam *ps = dS; const float *pf = d; cudaMemcpyToSymbol(dSeams, &ps, sizeof ps); cudaMemcpyToSymbol(dIV, &pf, sizeof pf); }
+#endif
 // ---- exhaustive mode: every crack float gets the 9 fall-in runs and (when walking in does not clip) the 42 jump drops.
 // Crack floats are processed chunk by chunk. Each float is classified like the site does (walk / lag / jump / stuck / eject / wall /
 // water, + void, + hold) and counted into its 0.25 x 0.25 cell of its seam; nothing is skipped. One line per cell:
@@ -169,6 +277,12 @@ static int in_region(const Seam *s) {   // distance from the region point to the
 // counts are crack floats; after "|" the full result of one float of the cell's best category (walk > lag > jump > stuck > eject >
 // wall > water; the first such float), with its exact coordinates, for reproducing it.
 #include <map>
+#include <vector>
+#include <thread>
+#include <chrono>
+#ifndef TCPU
+#include <cub/device/device_select.cuh>
+#endif
 typedef struct { int seam, o; uint32_t j; } CF;
 enum { C_WALK, C_VOID, C_LAG, C_JUMP, C_EJECT, C_STUCK, C_WALL, C_WATER, C_HOLD, C_N };
 static const int CPRI[8] = { 0, 9, 1, 2, 4, 3, 5, 6 };   // priority by category index (lower = better); void is counted inside walk
@@ -186,76 +300,134 @@ static void cell_write(FILE *f, int seam, const CellAcc *A) {
   for (int v = 0; v < NVAR; v++) fprintf(f, "%d", r->maxhits[v] > 9 ? 9 : r->maxhits[v]); fprintf(f, " ");
   for (int v = 0; v < NVAR; v++) fprintf(f, "%s%d", v ? "," : "", r->sits[v]); fprintf(f, " %d %.3f", r->upd[0], r->endy[0]);
   const JumpRes *J = &A->rj; if (J->pad) fprintf(f, " J%d/%d:%d,%d,%d,%d,%d,%d\n", NJ, J->clip, J->voids, J->eject, J->stuck, J->other, J->hold, J->sitmax); else fprintf(f, " -\n"); }
+// batches of crack floats: filled by the main thread, run (fall-in + jump drops) on the GPU, then counted into cells by a
+// worker thread while the main thread fills and runs the next batch (two batch buffers). Floats keep their order, so the
+// output is the same as one float at a time.
+typedef struct { Spot *SP; CF *cf; SpotRes *RS; JumpRes *JR; int np; } Batch;
+static double wnow(void) { return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
+#ifndef TCPU
+__global__ void k_jacc(const unsigned char *O, int m, JumpRes *J) {   // the 42 jump drops of each float -> its JumpRes (as the host did)
+  int q = blockIdx.x * blockDim.x + threadIdx.x; if (q >= m) return; JumpRes r = { 0, 0, 0, 0, 0, 0, 0, 0 };
+  for (int j = 0; j < NJ; j++) { const unsigned char *o = O + 3 * ((size_t)q * NJ + j);
+    if (o[0] == O_LAND || o[0] == O_VOID) r.clip++; if (o[0] == O_VOID) r.voids++; if (o[0] == O_EJECT) r.eject++; if (o[0] == O_STUCK) r.stuck++;
+    if (o[0] == O_WATER || o[0] == O_WALL) r.other++; if (o[1]) r.hold++; if (o[2] > r.sitmax) r.sitmax = o[2]; }
+  r.pad = 1; J[q] = r; }
+__global__ void k_iota(uint32_t *a, uint32_t n) { uint32_t i = blockIdx.x * blockDim.x + threadIdx.x; if (i < n) a[i] = i; }
+#endif
+#ifndef TCPU
+__global__ void k_spots(const uint32_t *sel, int nsel, uint64_t base, const Seam *S, int nseam, const uint64_t *off, Spot *P, CF *C) {   // crack floats -> spots (as the host did)
+  int t = blockIdx.x * blockDim.x + threadIdx.x; if (t >= nsel) return; uint64_t g = base + sel[t];
+  int lo = 0, hi = nseam - 1; while (lo < hi) { int mid = (lo + hi + 1) / 2; if (off[mid] <= g) lo = mid; else hi = mid - 1; }
+  uint64_t r = g - off[lo]; uint32_t j = (uint32_t)(r / 7); int o = (int)(r % 7) - 3; float x, y, z; seam_point(&dW, S + lo, j, o, &x, &y, &z);
+  Spot sp; sp.seam = lo; sp.x = x; sp.y = y; sp.z = z; sp.width = 1; P[t] = sp; CF c; c.seam = lo; c.o = o; c.j = j; C[t] = c; }
+#endif
 static int every_mode(TWorld *wp, Seam *S, int ns, int *cand, int nc, uint64_t *off, uint64_t total, const char *room, const char *outp) {
-  TWorld &w = *wp; char rp[1024]; snprintf(rp, sizeof rp, "%s.runs", outp); FILE *fr = fopen(rp, "w"); if (!fr) { fprintf(stderr, "cannot write %s\n", rp); return 2; }
+  TWorld &w = *wp; const int *bofs = BOFS; (void)bofs; char rp[1024]; snprintf(rp, sizeof rp, "%s.runs", outp); FILE *fr = fopen(rp, "w"); if (!fr) { fprintf(stderr, "cannot write %s\n", rp); return 2; }
   uint64_t ncracks = 0, nfall = 0, njump = 0; uint64_t *seamcr = (uint64_t *)calloc(ns + 1, 8);
-  const uint64_t CH = 1ull << 23; uint8_t *buf = (uint8_t *)malloc(CH);
-  Spot *SP = (Spot *)malloc(sizeof(Spot) * (CH + 1)); CF *cf = (CF *)malloc(sizeof(CF) * (CH + 1)); SpotRes *RS = (SpotRes *)malloc(sizeof(SpotRes) * (CH + 1));
-  JumpRes *JR = (JumpRes *)malloc(sizeof(JumpRes) * (CH + 1)); int *jidx = (int *)malloc(4 * (CH + 1)); unsigned char *JO = (unsigned char *)malloc(3 * (size_t)NJ * (1 << 16) + 3);
-  std::map<int64_t, CellAcc> cells; int curseam = -1; uint64_t ncells = 0; uint64_t catn[C_N] = { 0 };
+  uint64_t CH = 1ull << 23; int BATCH = 1 << 20; const int FB = 1 << 18, JB = 1 << 17;
+  { const char *e = getenv("TC_TESTCHUNK"); if (e && atoi(e) > 0) { CH = (uint64_t)atoi(e); BATCH = (int)(CH / 3) + 1; } }   // testing: small chunks and batches
+  const int CAP = (int)CH;
+  Batch B[2]; for (int k = 0; k < 2; k++) { B[k].SP = (Spot *)malloc(sizeof(Spot) * (CAP + 1)); B[k].cf = (CF *)malloc(sizeof(CF) * (CAP + 1));
+    B[k].RS = (SpotRes *)malloc(sizeof(SpotRes) * (CAP + 1)); B[k].JR = (JumpRes *)malloc(sizeof(JumpRes) * (CAP + 1)); B[k].np = 0; }
+  int *jidx = (int *)malloc(4 * (CAP + 1));
+  std::map<int64_t, CellAcc> cells; int curseam = -1; uint64_t ncells = 0; uint64_t catn[C_N] = { 0 };   // owned by the worker while it runs
+  int64_t lastkey = 0; CellAcc *lastA = 0;   // the previous float's cell (neighbouring floats share cells: skips most map lookups)
+  double tcr = 0, tcrh = 0, tfa = 0, tju = 0, twait = 0, tagg = 0;
 #ifndef TCPU
-  upload(&w); Seam *dS; int *dC; uint64_t *dO; uint8_t *dB; cudaMalloc(&dS, sizeof(Seam) * (ns + 1)); cudaMemcpy(dS, S, sizeof(Seam) * ns, cudaMemcpyHostToDevice);
-  cudaMalloc(&dC, 4 * (nc + 1)); cudaMemcpy(dC, cand, 4 * nc, cudaMemcpyHostToDevice); cudaMalloc(&dO, 8 * (ns + 1)); cudaMemcpy(dO, off, 8 * (ns + 1), cudaMemcpyHostToDevice); cudaMalloc(&dB, CH);
-  Spot *dP; SpotRes *dR; int *dI; unsigned char *dJ; const int FB = 1 << 18, JB = 1 << 16;
-  cudaMalloc(&dP, sizeof(Spot) * (CH + 1)); cudaMalloc(&dR, sizeof(SpotRes) * (FB + 1)); cudaMalloc(&dI, 4 * (JB + 1)); cudaMalloc(&dJ, 3 * (size_t)NJ * JB + 3);
-#endif
-  double tlast = now();
-  for (uint64_t base = 0; base < total; base += CH) { uint64_t n = total - base < CH ? total - base : CH;
-#ifndef TCPU
-    k_crack<<<(unsigned)((n + 255) / 256), 256>>>(dS, ns, dC, dO, total, base, dB, n); cudaMemcpy(buf, dB, n, cudaMemcpyDeviceToHost);
-    { cudaError_t er = cudaGetLastError(); if (er != cudaSuccess) { fprintf(stderr, "cuda crack: %s\n", cudaGetErrorString(er)); return 4; } }
+  upload(&w); Seam *dS; int *dC; uint64_t *dO; uint8_t *dB; cudaMalloc(&dS, sizeof(Seam) * (ns + 1)); cudaMemcpy(dS, S, sizeof(Seam) * ns, cudaMemcpyHostToDevice); set_air_dev(dS);
+  cudaMalloc(&dC, 4 * (nc + 1)); cudaMemcpy(dC, cand, 4 * nc, cudaMemcpyHostToDevice); int *dBO; cudaMalloc(&dBO, 8 * (NBOFS + 1)); cudaMemcpy(dBO, BOFS, 8 * (size_t)NBOFS, cudaMemcpyHostToDevice); cudaMalloc(&dO, 8 * (ns + 1)); cudaMemcpy(dO, off, 8 * (ns + 1), cudaMemcpyHostToDevice); cudaMalloc(&dB, CH);
+  uint32_t *dIota, *dSel, *hSel; int *dNsel; void *dTmp = 0; size_t tmpb = 0;
+  cudaMalloc(&dIota, 4 * CH); cudaMalloc(&dSel, 4 * CH + 4); cudaMalloc(&dNsel, 8); cudaMallocHost(&hSel, 4 * CH + 4);
+  k_iota<<<(unsigned)((CH + 255) / 256), 256>>>(dIota, (uint32_t)CH);
+  cub::DeviceSelect::Flagged(dTmp, tmpb, dIota, dB, dSel, dNsel, (int)CH); cudaMalloc(&dTmp, tmpb + 16);
+  Spot *dP, *dPB[2]; CF *dCF; SpotRes *dR; int *dI; unsigned char *dJ; JumpRes *dJR; JumpRes *hJR = (JumpRes *)malloc(sizeof(JumpRes) * (JB + 1));
+  cudaMalloc(&dPB[0], sizeof(Spot) * (CAP + 1)); cudaMalloc(&dPB[1], sizeof(Spot) * (CAP + 1)); cudaMalloc(&dCF, sizeof(CF) * (CAP + 1)); dP = dPB[0]; cudaMalloc(&dR, sizeof(SpotRes) * (FB + 1)); cudaMalloc(&dI, 4 * (JB + 1)); cudaMalloc(&dJ, 3 * (size_t)NJ * JB + 3); cudaMalloc(&dJR, sizeof(JumpRes) * (JB + 1));
+  { cudaError_t er = cudaGetLastError(); if (er != cudaSuccess) { fprintf(stderr, "cuda setup: %s\n", cudaGetErrorString(er)); return 4; } }
+  { cudaFuncAttributes a1, a2, a3; cudaFuncGetAttributes(&a1, k_crack2); cudaFuncGetAttributes(&a2, k_fall); cudaFuncGetAttributes(&a3, k_jump);
+    LOG("kernels (registers / local bytes): crack %d/%d, fall-in %d/%d, jump %d/%d\n", a1.numRegs, (int)a1.localSizeBytes, a2.numRegs, (int)a2.localSizeBytes, a3.numRegs, (int)a3.localSizeBytes); }
 #else
-    #pragma omp parallel for schedule(dynamic, 4096)
-    for (int64_t id = 0; id < (int64_t)n; id++) { uint64_t g = base + id; int lo = 0, hi = ns - 1; while (lo < hi) { int mid = (lo + hi + 1) / 2; if (off[mid] <= g) lo = mid; else hi = mid - 1; }
-      uint64_t r = g - off[lo]; float x, y, z; seam_point(&w, S + lo, (uint32_t)(r / 7), (int)(r % 7) - 3, &x, &y, &z); buf[id] = (uint8_t)crack_at(&w, S + lo, cand, x, y, z); }
+  uint8_t *buf = (uint8_t *)malloc(CH); unsigned char *JO = (unsigned char *)malloc(3 * (size_t)NJ * JB + 3);
 #endif
-    // the crack floats of this chunk, in order
-    int np = 0; int si = 0; { int lo = 0, hi = ns - 1; while (lo < hi) { int mid = (lo + hi + 1) / 2; if (off[mid] <= base) lo = mid; else hi = mid - 1; } si = lo; }
-    for (uint64_t id = 0; id < n; id++) { if (!buf[id]) continue; uint64_t g = base + id; while (si + 1 < ns && off[si + 1] <= g) si++;
-      uint64_t r = g - off[si]; float x, y, z; uint32_t j = (uint32_t)(r / 7); int o = (int)(r % 7) - 3; seam_point(&w, S + si, j, o, &x, &y, &z); ncracks++; seamcr[si]++;
-      SP[np].seam = si; SP[np].x = x; SP[np].y = y; SP[np].z = z; SP[np].width = 1; cf[np].seam = si; cf[np].o = o; cf[np].j = j; np++; }
-    if (!np) continue;
-    // fall-in: 9 runs per crack float
+  // worker: count a run batch into cells, in float order
+  auto aggregate = [&](Batch *bt) { double t0 = wnow();
+    for (int i = 0; i < bt->np; i++) { const CF *c = bt->cf + i; const Spot *sp = bt->SP + i; const SpotRes *rs = bt->RS + i; const JumpRes *jr = bt->JR + i;
+      if (c->seam != curseam) { for (auto &kv : cells) { cell_write(fr, curseam, &kv.second); ncells++; } cells.clear(); curseam = c->seam; lastA = 0; }
+      int64_t key = (int64_t)floor(sp->x / 0.25) * 4000003 + (int64_t)floor(sp->z / 0.25);
+      if (!lastA || key != lastkey) { lastA = &cells[key]; lastkey = key; } CellAcc &A = *lastA;
+      if (A.n == 0) { memset(&A, 0, sizeof A); A.best = 99; }
+      int hold; int cat = classify(rs, jr, &hold); A.n++; A.c[cat]++; catn[cat]++; if (cat == C_WALK && rs->out[0] == O_VOID) { A.c[C_VOID]++; catn[C_VOID]++; }
+      if (hold) { A.c[C_HOLD]++; catn[C_HOLD]++; }
+      if (CPRI[cat] < A.best) { A.best = CPRI[cat]; A.rep = *sp; A.rr = *rs; A.rj = *jr; } }
+    tagg += wnow() - t0; };
+  // main: fall-in (9 runs per float) and jump drops (42 per float that does not get through walking in without lag)
+  auto run = [&](Batch *bt) -> int { int np = bt->np; Spot *SP = bt->SP; SpotRes *RS = bt->RS; JumpRes *JR = bt->JR; double t0 = wnow();
 #ifndef TCPU
-    cudaMemcpy(dP, SP, sizeof(Spot) * np, cudaMemcpyHostToDevice);
-    for (int b = 0; b < np; b += FB) { int m = np - b < FB ? np - b : FB; k_fall<<<(m * NVAR + 63) / 64, 64>>>(dP + b, m, dR); cudaDeviceSynchronize();
-      cudaError_t er = cudaGetLastError(); if (er != cudaSuccess) { fprintf(stderr, "cuda fall: %s\n", cudaGetErrorString(er)); return 4; }
-      cudaMemcpy(RS + b, dR, sizeof(SpotRes) * m, cudaMemcpyDeviceToHost); }
+    dP = dPB[bt - B];   // the batch's spots are already on the card (k_spots)
+    for (int b = 0; b < np; b += FB) { int m = np - b < FB ? np - b : FB; k_fall<<<(m * NVAR + 63) / 64, 64>>>(dP + b, m, dR);
+      cudaMemcpy(RS + b, dR, sizeof(SpotRes) * m, cudaMemcpyDeviceToHost);
+      cudaError_t er = cudaGetLastError(); if (er != cudaSuccess) { fprintf(stderr, "cuda fall: %s\n", cudaGetErrorString(er)); return 4; } }
 #else
     #pragma omp parallel for schedule(dynamic, 16)
     for (int i = 0; i < np * NVAR; i++) { static __thread TAct act[TMAXACT]; int sp = i / NVAR, v = i % NVAR;
-      fall_run(&w, SP[sp].x, SP[sp].y, SP[sp].z, v, act, &RS[sp].out[v], &RS[sp].holds[v], &RS[sp].maxhits[v], &RS[sp].upd[v], &RS[sp].sits[v], &RS[sp].endy[v]); }
+      fall_run(&w, SP[sp].x, SP[sp].y, SP[sp].z, v, act, &RS[sp].out[v], &RS[sp].holds[v], &RS[sp].maxhits[v], &RS[sp].upd[v], &RS[sp].sits[v], &RS[sp].endy[v], HIV + 2 * HS[SP[sp].seam].ivoff, HS[SP[sp].seam].ivn, HS[SP[sp].seam].ivwater); }
 #endif
-    nfall += np;
-    // jump drops where walking in (no lag) does not take Banjo through
+    nfall += np; double t1 = wnow(); tfa += t1 - t0;
     memset(JR, 0, sizeof(JumpRes) * np); int nj = 0; for (int i = 0; i < np; i++) { int oo = RS[i].out[0]; if (oo == O_EJECT || oo == O_STUCK) jidx[nj++] = i; }
-    for (int b = 0; b < nj; b += (1 << 16)) { int m = nj - b < (1 << 16) ? nj - b : (1 << 16);
+    for (int b = 0; b < nj; b += JB) { int m = nj - b < JB ? nj - b : JB;
 #ifndef TCPU
       cudaMemcpy(dI, jidx + b, 4 * m, cudaMemcpyHostToDevice);
-      k_jump<<<(m * NJ + 63) / 64, 64>>>(dP, dI, m, dJ); cudaDeviceSynchronize();
+      k_jump<<<(m * NJ + 63) / 64, 64>>>(dP, dI, m, dJ); k_jacc<<<(m + 63) / 64, 64>>>(dJ, m, dJR);
+      cudaMemcpy(hJR, dJR, sizeof(JumpRes) * m, cudaMemcpyDeviceToHost);
       { cudaError_t er = cudaGetLastError(); if (er != cudaSuccess) { fprintf(stderr, "cuda jump: %s\n", cudaGetErrorString(er)); return 4; } }
-      cudaMemcpy(JO, dJ, 3 * (size_t)m * NJ, cudaMemcpyDeviceToHost);
+      for (int q = 0; q < m; q++) JR[jidx[b + q]] = hJR[q];
 #else
       #pragma omp parallel for schedule(dynamic, 16)
       for (int i = 0; i < m * NJ; i++) { static __thread TAct act[TMAXACT]; int q = i / NJ, jj = i % NJ; const Spot *sp = SP + jidx[b + q];
-        jump_run(&w, sp->x, sp->y, sp->z, jj, act, JO + 3 * (size_t)i, JO + 3 * (size_t)i + 1, JO + 3 * (size_t)i + 2); }
-#endif
+        jump_run(&w, sp->x, sp->y, sp->z, jj, act, JO + 3 * (size_t)i, JO + 3 * (size_t)i + 1, JO + 3 * (size_t)i + 2, HIV + 2 * HS[sp->seam].ivoff, HS[sp->seam].ivn, HS[sp->seam].ivwater); }
       for (int q = 0; q < m; q++) { JumpRes *J = JR + jidx[b + q]; for (int jj = 0; jj < NJ; jj++) { unsigned char *r = JO + 3 * ((size_t)q * NJ + jj);
           if (r[0] == O_LAND || r[0] == O_VOID) J->clip++; if (r[0] == O_VOID) J->voids++; if (r[0] == O_EJECT) J->eject++; if (r[0] == O_STUCK) J->stuck++;
-          if (r[0] == O_WATER || r[0] == O_WALL) J->other++; if (r[1]) J->hold++; if (r[2] > J->sitmax) J->sitmax = r[2]; } J->pad = 1; } }
-    njump += nj;
-    // cells (every float counted)
-    for (int i = 0; i < np; i++) { const CF *c = cf + i;
-      if (c->seam != curseam) { for (auto &kv : cells) { cell_write(fr, curseam, &kv.second); ncells++; } cells.clear(); curseam = c->seam; }
-      int64_t key = (int64_t)floor(SP[i].x / 0.25) * 4000003 + (int64_t)floor(SP[i].z / 0.25); CellAcc &A = cells[key];
-      if (A.n == 0) { memset(&A, 0, sizeof A); A.best = 99; }
-      int hold; int cat = classify(RS + i, JR + i, &hold); A.n++; A.c[cat]++; catn[cat]++; if (cat == C_WALK && RS[i].out[0] == O_VOID) { A.c[C_VOID]++; catn[C_VOID]++; }
-      if (hold) { A.c[C_HOLD]++; catn[C_HOLD]++; }
-      if (CPRI[cat] < A.best) { A.best = CPRI[cat]; A.rep = SP[i]; A.rr = RS[i]; A.rj = JR[i]; } }
-    if (now() - tlast > 20) { tlast = now(); LOG("  samples %llu/%llu, crack floats %llu, fall-in %llu, jump drops %llu x %d, cells %llu; floats walk %llu lag %llu jump %llu\n", (unsigned long long)(base + n), (unsigned long long)total, (unsigned long long)ncracks, (unsigned long long)nfall, (unsigned long long)njump, NJ, (unsigned long long)ncells, (unsigned long long)catn[C_WALK], (unsigned long long)catn[C_LAG], (unsigned long long)catn[C_JUMP]); }
-  }
+          if (r[0] == O_WATER || r[0] == O_WALL) J->other++; if (r[1]) J->hold++; if (r[2] > J->sitmax) J->sitmax = r[2]; } J->pad = 1; }
+#endif
+    }
+    njump += nj; tju += wnow() - t1; return 0; };
+  std::thread worker; int cur = 0; double tlast = wnow(); uint64_t done = 0;
+  auto flush = [&]() -> int { Batch *bt = B + cur; if (!bt->np) return 0; int rc = run(bt); if (rc) return rc;
+    double t0 = wnow(); if (worker.joinable()) worker.join(); twait += wnow() - t0;
+    if (wnow() - tlast > 20) { tlast = wnow(); LOG("  samples %llu/%llu, crack floats %llu, fall-in %llu, jump drops %llu x %d, cells %llu; floats walk %llu lag %llu jump %llu\n", (unsigned long long)done, (unsigned long long)total, (unsigned long long)ncracks, (unsigned long long)nfall, (unsigned long long)njump, NJ, (unsigned long long)ncells, (unsigned long long)catn[C_WALK], (unsigned long long)catn[C_LAG], (unsigned long long)catn[C_JUMP]); }
+    worker = std::thread(aggregate, bt); cur ^= 1; B[cur].np = 0; return 0; };
+  for (uint64_t base = 0; base < total; base += CH) { uint64_t n = total - base < CH ? total - base : CH; int rc;
+    if (B[cur].np + (int64_t)n > CAP && (rc = flush())) return rc;
+    double t0 = wnow(); Batch *bt = B + cur; int np = bt->np; int si = 0; { int lo = 0, hi = ns - 1; while (lo < hi) { int mid = (lo + hi + 1) / 2; if (off[mid] <= base) lo = mid; else hi = mid - 1; } si = lo; }
+#ifndef TCPU
+    k_crack2<<<crack_blocks(base, n), 256>>>(dS, ns, dC, dBO, dO, base, dB, n);
+    cub::DeviceSelect::Flagged(dTmp, tmpb, dIota, dB, dSel, dNsel, (int)n); int nsel = 0; cudaMemcpy(&nsel, dNsel, 4, cudaMemcpyDeviceToHost);
+    if (nsel) cudaMemcpy(hSel, dSel, 4 * (size_t)nsel, cudaMemcpyDeviceToHost);
+    { cudaError_t er = cudaGetLastError(); if (er != cudaSuccess) { fprintf(stderr, "cuda crack: %s\n", cudaGetErrorString(er)); return 4; } }
+    double t1 = wnow(); tcr += t1 - t0;
+    if (CRACKONLY) { for (int t = 0; t < nsel; t++) { uint64_t g = base + hSel[t]; while (si + 1 < ns && off[si + 1] <= g) si++; ncracks++; seamcr[si]++; } nsel = 0; }
+    if (nsel) { k_spots<<<(nsel + 255) / 256, 256>>>(dSel, nsel, base, dS, ns, dO, dPB[cur] + np, dCF);
+      cudaMemcpy(bt->SP + np, dPB[cur] + np, sizeof(Spot) * (size_t)nsel, cudaMemcpyDeviceToHost); cudaMemcpy(bt->cf + np, dCF, sizeof(CF) * (size_t)nsel, cudaMemcpyDeviceToHost);
+      { cudaError_t er = cudaGetLastError(); if (er != cudaSuccess) { fprintf(stderr, "cuda spots: %s\n", cudaGetErrorString(er)); return 4; } }
+      for (int t = 0; t < nsel; t++) seamcr[bt->cf[np + t].seam]++; ncracks += nsel; np += nsel; }
+    if (0) for (int t = 0; t < nsel; t++) { uint64_t id = hSel[t];
+#else
+    #pragma omp parallel for schedule(dynamic, 1024)
+    for (int64_t G = (int64_t)(base / 7); G <= (int64_t)((base + n - 1) / 7); G++) { uint64_t g0 = (uint64_t)G * 7; int lo = 0, hi = ns - 1; while (lo < hi) { int mid = (lo + hi + 1) / 2; if (off[mid] <= g0) lo = mid; else hi = mid - 1; }
+      int o0 = g0 < base ? -3 + (int)(base - g0) : -3, o1 = g0 + 6 >= base + n ? -3 + (int)(base + n - 1 - g0) : 3; uint8_t r[7];
+      crack7(&w, S + lo, cand, bofs, (uint32_t)((g0 - off[lo]) / 7), o0, o1, r); for (int o = o0; o <= o1; o++) buf[g0 + 3 + o - base] = r[o + 3]; }
+    double t1 = wnow(); tcr += t1 - t0;
+    if (CRACKONLY) { for (uint64_t id = 0; id < n; id++) if (buf[id]) { uint64_t g = base + id; while (si + 1 < ns && off[si + 1] <= g) si++; ncracks++; seamcr[si]++; } n = 0; }
+    for (uint64_t id = 0; id < n; id++) { if (!buf[id]) continue;
+#endif
+      uint64_t g = base + id; while (si + 1 < ns && off[si + 1] <= g) si++;
+      uint64_t r = g - off[si]; float x, y, z; uint32_t j = (uint32_t)(r / 7); int o = (int)(r % 7) - 3; seam_point(&w, S + si, j, o, &x, &y, &z); ncracks++; seamcr[si]++;
+      bt->SP[np].seam = si; bt->SP[np].x = x; bt->SP[np].y = y; bt->SP[np].z = z; bt->SP[np].width = 1; bt->cf[np].seam = si; bt->cf[np].o = o; bt->cf[np].j = j; np++; }
+    bt->np = np; done = base + CH < total ? base + CH : total; tcrh += wnow() - t1;
+    if (bt->np >= BATCH && (rc = flush())) return rc; }
+  { int rc = flush(); if (rc) return rc; } if (worker.joinable()) worker.join();
   for (auto &kv : cells) { cell_write(fr, curseam, &kv.second); ncells++; } cells.clear();
   fclose(fr);
+  LOG("time: crack %.1f s (host %.1f), fall-in %.1f, jump drops %.1f, waiting for cell counting %.1f (counting %.1f)\n", tcr, tcrh, tfa, tju, twait, tagg);
   LOG("%llu crack floats, every one tested (%llu jump-drop floats), %llu cells; floats: walk %llu (void %llu) lag %llu jump %llu stuck %llu eject %llu wall %llu water %llu hold %llu\n", (unsigned long long)ncracks, (unsigned long long)njump, (unsigned long long)ncells,
       (unsigned long long)catn[C_WALK], (unsigned long long)catn[C_VOID], (unsigned long long)catn[C_LAG], (unsigned long long)catn[C_JUMP], (unsigned long long)catn[C_STUCK], (unsigned long long)catn[C_EJECT], (unsigned long long)catn[C_WALL], (unsigned long long)catn[C_WATER], (unsigned long long)catn[C_HOLD]);
   FILE *o = fopen(outp, "w"); fprintf(o, "ROOM %s seams %d samples %llu cracks %llu cells %llu every 1 zeropart %d\n", room, ns, (unsigned long long)total, (unsigned long long)ncracks, (unsigned long long)ncells, ZEROPART);
@@ -263,10 +435,15 @@ static int every_mode(TWorld *wp, Seam *S, int ns, int *cand, int nc, uint64_t *
   fr = fopen(rp, "r"); { static char lb[1 << 16]; size_t k; while ((k = fread(lb, 1, sizeof lb, fr)) > 0) fwrite(lb, 1, k, o); } fclose(fr); remove(rp);
   fclose(o); fprintf(stderr, "done\n"); return 0; }
 int main(int argc, char **argv) {
-  { const char *e; ZEROSTEP = (e = getenv("TC_ZEROSTEP")) && atoi(e); EVERY = (e = getenv("TC_EVERY")) && atoi(e); ZEROPART = (e = getenv("TC_ZEROPART")) ? atoi(e) : 0;
+  { const char *e; ZEROSTEP = (e = getenv("TC_ZEROSTEP")) && atoi(e); EVERY = (e = getenv("TC_EVERY")) && atoi(e); ZEROPART = (e = getenv("TC_ZEROPART")) ? atoi(e) : 0; CRACKONLY = (e = getenv("TC_CRACKONLY")) && atoi(e);
     if ((e = getenv("TC_REGION")) && sscanf(e, "%lf %lf %lf %lf", REG, REG + 1, REG + 2, REG + 3) == 4) HAVEREG = 1; }
   if (argc < 3) { fprintf(stderr, "usage: tcensus room.txt out.txt [maxseams]\n"); return 1; }
   T0 = now(); TWorld w; load_world(argv[1], &w); int maxseams = argc > 3 ? atoi(argv[3]) : 1 << 30;
+  for (int mi = 0; mi < 2; mi++) { const TModel *M = w.m[mi]; if (!M) continue; double *pn = (double *)malloc(sizeof(double) * 6 * (M->nt + 1));   // plane table (see plane_y)
+    for (int k = 0; k < M->nt; k++) { const unsigned short *T = M->T + 3 * k; const short *A = M->V + 3 * T[0], *B = M->V + 3 * T[1], *C = M->V + 3 * T[2];
+      double ux = B[0] - A[0], uy = B[1] - A[1], uz = B[2] - A[2], vx = C[0] - A[0], vy = C[1] - A[1], vz = C[2] - A[2];
+      double *q = pn + 6 * k; q[0] = uy * vz - uz * vy; q[1] = uz * vx - ux * vz; q[2] = ux * vy - uy * vx; q[3] = A[0]; q[4] = A[1]; q[5] = A[2]; }
+    HPN[mi] = pn; }
 #ifdef TCPU
   if (argc > 4 && !strcmp(argv[3], "--spots")) { FILE *sf = fopen(argv[4], "r"); float x, y, z; static TAct act[TMAXACT];
     while (fscanf(sf, "%f %f %f", &x, &y, &z) == 3) { printf("%.9g %.9g %.9g:", x, y, z); for (int v = 0; v < NVAR; v++) { unsigned char o, h, m, u, si; float e;
@@ -337,25 +514,60 @@ int main(int argc, char **argv) {
         if (mxx < bx0 || mnx > bx1 || mxz < bz0 || mnz > bz1 || mxy < by0 || mny > by1) continue;
         if (nc == capc) { capc *= 2; cand = (int *)realloc(cand, 4 * capc); } cand[nc++] = (mi << 24) | k; } }
     s->ncand = nc - s->candoff; }
+  // block candidates: each seam is cut into nb blocks along its major axis (>= 8 units each, at most 512); a block keeps the seam's
+  // candidates whose XZ box reaches the block's stretch of the seam, with the same 2-unit margin as above. A vertical ray at (x, z)
+  // can only hit a triangle whose box holds (x, z), so every crack test gets the same answer from fewer triangles (long seams).
+  { const char *e = getenv("TC_NOBLOCKS"); int noblk = e && atoi(e);
+    int nbt = 0; for (int i = 0; i < ns; i++) { Seam *s = S + i; int ax = s->axis; double lo = fmin(s->P[ax], s->Q[ax]), hi = fmax(s->P[ax], s->Q[ax]);
+      int nb = noblk ? 1 : (int)ceil((hi - lo) / 8.0); if (nb < 1) nb = 1; if (nb > 512) nb = 512; s->boff = nbt; s->nb = nb; s->bm0 = lo; s->bstep = (hi - lo) / nb;
+      if (!(s->bstep > 0)) s->bstep = 1; nbt += nb;
+      s->dax = (double)s->Q[ax] - s->P[ax]; s->dot = (double)s->Q[2 - ax] - s->P[2 - ax]; s->bm0f = (float)lo; s->binvf = (float)(1.0 / s->bstep); }
+    int nunsafe = 0;
+    BOFS = (int *)malloc(8 * (nbt + 1)); NBOFS = nbt; std::vector<int> bc; bc.reserve(nc + 1024); std::vector<std::vector<int> > lists;
+    for (int i = 0; i < ns; i++) { Seam *s = S + i; int ax = s->axis, ot = 2 - ax; lists.assign(s->nb, std::vector<int>());
+      double d = (double)s->Q[ax] - s->P[ax];
+      for (int q = 0; q < s->ncand; q++) { int c = cand[s->candoff + q]; const TModel *M = w.m[c >> 24]; int k = c & 0xFFFFFF; int mn[3] = { 1 << 30, 1 << 30, 1 << 30 }, mx[3] = { -(1 << 30), -(1 << 30), -(1 << 30) };
+        for (int j = 0; j < 3; j++) { const short *p = M->V + 3 * M->T[3 * k + j]; for (int a = 0; a < 3; a++) { if (p[a] < mn[a]) mn[a] = p[a]; if (p[a] > mx[a]) mx[a] = p[a]; } }
+        { // sliver test: float rounding in the inside test is ~7e-7 * L^3 / A (L longest edge, A largest normal component = projected
+          // twice-area); unsafe when that could reach 0.02 units outside the box (100x below the 2-unit margin): keep it everywhere
+          const short *A0 = M->V + 3 * M->T[3 * k], *A1 = M->V + 3 * M->T[3 * k + 1], *A2 = M->V + 3 * M->T[3 * k + 2];
+          double ux = A1[0] - A0[0], uy = A1[1] - A0[1], uz = A1[2] - A0[2], vx = A2[0] - A0[0], vy = A2[1] - A0[1], vz = A2[2] - A0[2];
+          double nx = fabs(uy * vz - uz * vy), ny = fabs(uz * vx - ux * vz), nz = fabs(ux * vy - uy * vx), Aa = fmax(nx, fmax(ny, nz));
+          double wx = A2[0] - A1[0], wy = A2[1] - A1[1], wz = A2[2] - A1[2];
+          double L = sqrt(fmax(ux * ux + uy * uy + uz * uz, fmax(vx * vx + vy * vy + vz * vz, wx * wx + wy * wy + wz * wz)));
+          if (!(Aa > 0) || L * L * L / Aa > 2.8e4) { for (int b = 0; b < s->nb; b++) lists[b].push_back(c | 0x40000000); nunsafe++; continue; } }
+        int b0 = (int)floor((mn[ax] - 2.0 - s->bm0) / s->bstep) - 1, b1 = (int)floor((mx[ax] + 2.0 - s->bm0) / s->bstep) + 1; if (b0 < 0) b0 = 0; if (b1 > s->nb - 1) b1 = s->nb - 1;
+        for (int b = b0; b <= b1; b++) { double m0 = s->bm0 + b * s->bstep, m1 = b == s->nb - 1 ? fmax(s->P[ax], s->Q[ax]) : s->bm0 + (b + 1) * s->bstep;
+          if (b == 0) m0 = fmin(s->P[ax], s->Q[ax]);
+          double c0 = d != 0 ? s->P[ot] + (m0 - s->P[ax]) / d * ((double)s->Q[ot] - s->P[ot]) : s->P[ot], c1 = d != 0 ? s->P[ot] + (m1 - s->P[ax]) / d * ((double)s->Q[ot] - s->P[ot]) : s->Q[ot];
+          double a0 = m0 - 2, a1 = m1 + 2, o0 = fmin(c0, c1) - 2, o1 = fmax(c0, c1) + 2;
+          if (mx[ax] < a0 || mn[ax] > a1 || mx[ot] < o0 || mn[ot] > o1) continue; lists[b].push_back(c); } }
+      for (int b = 0; b < s->nb; b++) { BOFS[2 * (s->boff + b)] = (int)bc.size(); BOFS[2 * (s->boff + b) + 1] = (int)lists[b].size(); bc.insert(bc.end(), lists[b].begin(), lists[b].end()); } }
+    LOG("block candidates: %d blocks, %d entries (was %d), %d sliver entries kept everywhere\n", nbt, (int)bc.size(), nc, nunsafe);
+    free(cand); nc = (int)bc.size(); cand = (int *)malloc(4 * (nc + 1)); memcpy(cand, bc.data(), 4 * (size_t)nc); }
   uint64_t *off = (uint64_t *)malloc(8 * (ns + 1)); uint64_t total = 0; for (int i = 0; i < ns; i++) { off[i] = total; total += ((uint64_t)S[i].n1 + S[i].n2 + S[i].n3) * 7; } off[ns] = total;
   LOG("%d seams, %d candidate entries, %llu crack samples\n", ns, nc, (unsigned long long)total);
+  build_air(&w, S, ns);
+  { const char *e = getenv("TC_MAXSAMPLES"); if (e && atoll(e) > 0 && (uint64_t)atoll(e) < total) total = (uint64_t)atoll(e); }   // testing: stop early
   if (EVERY) return every_mode(&w, S, ns, cand, nc, off, total, argv[1], argv[2]);
   // crack scan -> spots (one per seam and 0.25 cell)
+  const int *bofs = BOFS; (void)bofs;
   int caps = 1 << 16, np = 0; Spot *SP = (Spot *)malloc(sizeof(Spot) * caps); uint64_t ncracks = 0; uint64_t *seamcr = (uint64_t *)calloc(ns + 1, 8);
   const uint64_t CH = 1ull << 27; uint8_t *buf = (uint8_t *)malloc(CH);
 #ifndef TCPU
-  upload(&w); Seam *dS; int *dC; uint64_t *dO; uint8_t *dB; cudaMalloc(&dS, sizeof(Seam) * (ns + 1)); cudaMemcpy(dS, S, sizeof(Seam) * ns, cudaMemcpyHostToDevice);
-  cudaMalloc(&dC, 4 * (nc + 1)); cudaMemcpy(dC, cand, 4 * nc, cudaMemcpyHostToDevice); cudaMalloc(&dO, 8 * (ns + 1)); cudaMemcpy(dO, off, 8 * (ns + 1), cudaMemcpyHostToDevice); cudaMalloc(&dB, CH);
+  upload(&w); Seam *dS; int *dC; uint64_t *dO; uint8_t *dB; cudaMalloc(&dS, sizeof(Seam) * (ns + 1)); cudaMemcpy(dS, S, sizeof(Seam) * ns, cudaMemcpyHostToDevice); set_air_dev(dS);
+  cudaMalloc(&dC, 4 * (nc + 1)); cudaMemcpy(dC, cand, 4 * nc, cudaMemcpyHostToDevice); int *dBO; cudaMalloc(&dBO, 8 * (NBOFS + 1)); cudaMemcpy(dBO, BOFS, 8 * (size_t)NBOFS, cudaMemcpyHostToDevice); cudaMalloc(&dO, 8 * (ns + 1)); cudaMemcpy(dO, off, 8 * (ns + 1), cudaMemcpyHostToDevice); cudaMalloc(&dB, CH);
 #endif
   int cur = -1; int64_t lastcell = INT64_MIN;
   for (uint64_t base = 0; base < total; base += CH) { uint64_t n = total - base < CH ? total - base : CH;
 #ifndef TCPU
-    k_crack<<<(unsigned)((n + 255) / 256), 256>>>(dS, ns, dC, dO, total, base, dB, n); cudaMemcpy(buf, dB, n, cudaMemcpyDeviceToHost);
+    k_crack2<<<crack_blocks(base, n), 256>>>(dS, ns, dC, dBO, dO, base, dB, n); cudaMemcpy(buf, dB, n, cudaMemcpyDeviceToHost);
     { cudaError_t er = cudaGetLastError(); if (er != cudaSuccess) { fprintf(stderr, "cuda crack: %s\n", cudaGetErrorString(er)); return 4; } } LOG("  crack samples %llu/%llu\n", (unsigned long long)(base + n), (unsigned long long)total);
 #else
-    #pragma omp parallel for schedule(dynamic, 4096)
-    for (int64_t id = 0; id < (int64_t)n; id++) { uint64_t g = base + id; int lo = 0, hi = ns - 1; while (lo < hi) { int mid = (lo + hi + 1) / 2; if (off[mid] <= g) lo = mid; else hi = mid - 1; }
-      uint64_t r = g - off[lo]; float x, y, z; seam_point(&w, S + lo, (uint32_t)(r / 7), (int)(r % 7) - 3, &x, &y, &z); buf[id] = (uint8_t)crack_at(&w, S + lo, cand, x, y, z); }
+    #pragma omp parallel for schedule(dynamic, 1024)
+    for (int64_t G = (int64_t)(base / 7); G <= (int64_t)((base + n - 1) / 7); G++) { uint64_t g0 = (uint64_t)G * 7; int lo = 0, hi = ns - 1; while (lo < hi) { int mid = (lo + hi + 1) / 2; if (off[mid] <= g0) lo = mid; else hi = mid - 1; }
+      int o0 = g0 < base ? -3 + (int)(base - g0) : -3, o1 = g0 + 6 >= base + n ? -3 + (int)(base + n - 1 - g0) : 3; uint8_t r[7];
+      crack7(&w, S + lo, cand, bofs, (uint32_t)((g0 - off[lo]) / 7), o0, o1, r); for (int o = o0; o <= o1; o++) buf[g0 + 3 + o - base] = r[o + 3]; }
 #endif
     int si = 0; { int lo = 0, hi = ns - 1; while (lo < hi) { int mid = (lo + hi + 1) / 2; if (off[mid] <= base) lo = mid; else hi = mid - 1; } si = lo; }
     for (uint64_t id = 0; id < n; id++) { if (!buf[id]) continue; uint64_t g = base + id; while (si + 1 < ns && off[si + 1] <= g) si++;
@@ -375,7 +587,7 @@ int main(int argc, char **argv) {
 #else
   #pragma omp parallel for schedule(dynamic, 16)
   for (int i = 0; i < np * NVAR; i++) { static __thread TAct act[TMAXACT]; int sp = i / NVAR, v = i % NVAR;
-    fall_run(&w, SP[sp].x, SP[sp].y, SP[sp].z, v, act, &RS[sp].out[v], &RS[sp].holds[v], &RS[sp].maxhits[v], &RS[sp].upd[v], &RS[sp].sits[v], &RS[sp].endy[v]); }
+    fall_run(&w, SP[sp].x, SP[sp].y, SP[sp].z, v, act, &RS[sp].out[v], &RS[sp].holds[v], &RS[sp].maxhits[v], &RS[sp].upd[v], &RS[sp].sits[v], &RS[sp].endy[v], HIV + 2 * HS[SP[sp].seam].ivoff, HS[SP[sp].seam].ivn, HS[SP[sp].seam].ivwater); }
 #endif
   // jump drops for the spots where walking in (no lag) does not take Banjo through
   JumpRes *JR = (JumpRes *)calloc(np + 1, sizeof(JumpRes)); int nj = 0; int *jidx = (int *)malloc(4 * (np + 1));
@@ -391,7 +603,7 @@ int main(int argc, char **argv) {
 #else
     #pragma omp parallel for schedule(dynamic, 16)
     for (int i = 0; i < nj * NJ; i++) { static __thread TAct act[TMAXACT]; int q = i / NJ, j = i % NJ; const Spot *sp = SP + jidx[q];
-      jump_run(&w, sp->x, sp->y, sp->z, j, act, JO + 3 * (size_t)i, JO + 3 * (size_t)i + 1, JO + 3 * (size_t)i + 2); }
+      jump_run(&w, sp->x, sp->y, sp->z, j, act, JO + 3 * (size_t)i, JO + 3 * (size_t)i + 1, JO + 3 * (size_t)i + 2, HIV + 2 * HS[sp->seam].ivoff, HS[sp->seam].ivn, HS[sp->seam].ivwater); }
 #endif
     for (int q = 0; q < nj; q++) { JumpRes *J = JR + jidx[q]; for (int j = 0; j < NJ; j++) { unsigned char *r = JO + 3 * ((size_t)q * NJ + j);
         if (r[0] == O_LAND || r[0] == O_VOID) J->clip++; if (r[0] == O_VOID) J->voids++; if (r[0] == O_EJECT) J->eject++; if (r[0] == O_STUCK) J->stuck++;
