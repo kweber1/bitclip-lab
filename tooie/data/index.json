@@ -2183,10 +2183,33 @@
    "map_names": [
     "Ordnance Storage Entrance"
    ],
-   "tris": 1456,
+   "tris": 720,
    "opa": "0x1D35",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 171,
+   "crack_samples": 38901149231,
+   "crack_floats": 17410993,
+   "spots": 65599,
+   "cats": {
+    "wall": 15269,
+    "walk": 2534,
+    "stuck": 4477,
+    "jump": 220,
+    "eject": 42975,
+    "lag": 124
+   },
+   "cats_flat": {
+    "wall": 5271,
+    "walk": 2486,
+    "stuck": 1026,
+    "jump": 214,
+    "eject": 11806,
+    "lag": 124
+   },
+   "holds": 37,
+   "void": 1973,
+   "bytes": 1601645
   },
   {
    "map": "0x166",
