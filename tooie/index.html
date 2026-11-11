@@ -57,6 +57,7 @@ main{display:grid;grid-template-columns:minmax(0,1fr) clamp(360px,30vw,520px);mi
 .coords .ch{display:flex;gap:6px;align-items:center}.coords .ch .lbl{margin-right:auto}
 .coords dd b{font-size:13px;color:var(--ink)} .bits{color:var(--muted);font-size:10.5px}
 .legend{max-height:calc(100% - 24px);overflow:auto}
+.legend .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--sunk)}.legend .seg button{border:0;background:transparent;color:var(--ink);font:inherit;font-weight:600;font-size:12px;padding:4px 9px;cursor:pointer}.legend .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .legend .lh{display:flex;align-items:center;gap:8px}.legend .lh b{margin-right:auto;font-size:13px}.legend .lb{display:grid;gap:5px}
 .hint{right:12px;bottom:12px;font-size:11.5px;color:var(--muted);padding:5px 9px}
 aside{border-left:1px solid var(--line);background:var(--panel);display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;min-width:0}
@@ -122,7 +123,7 @@ const fmt = (n) => (n ?? 0).toLocaleString('en-US');
 let INDEX = null, ROOM = null, show = { walk: 1, lag: 1, jump: 1, eject: 1, stuck: 1, wall: 0, water: 1 };
 // collision layers (triangle classes from site_build.py: 0 floor, 1 wall, 2 ceiling, 3 water, 4 not solid for Banjo)
 const LAYERS = [['floor', 'Floors', 0], ['wall', 'Walls', 1], ['ceil', 'Ceilings', 2], ['water', 'Water', 3], ['nosolid', 'Not solid for Banjo', 4]];
-let layer = { floor: 1, wall: 1, ceil: 1, water: 1, nosolid: 0, back: 0, opacity: 100 };
+let layer = { floor: 1, wall: 1, ceil: 1, water: 1, nosolid: 0, back: 0, opacity: 100, draw: 'game' };   // draw: game (visible model) / coll / both
 try { const l = JSON.parse(localStorage.getItem('tooie-layers') || 'null'); if (l) layer = Object.assign(layer, l); } catch (e) {}
 let DIG = '0'; try { DIG = localStorage.getItem('tooie-digits') || '0'; } catch (e) {}
 const f32b = new DataView(new ArrayBuffer(4));
@@ -148,7 +149,7 @@ function stepFly() { if (!fly) return; const k = Math.min(1, (performance.now() 
 // what is under the cursor (mesh or spot), for zoom and double-click
 function underCursor(e) { const rc = renderer.domElement.getBoundingClientRect(); const m = new THREE.Vector2(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1);
   const rr = new THREE.Raycaster(); rr.setFromCamera(m, camera); const td = camera.position.distanceTo(controls.target); rr.params.Points.threshold = Math.max(0.05, td / 400);
-  const objs = [meshObj, ptsObj].filter(Boolean); const hit = rr.intersectObjects(objs, false).filter(h => h.point.y <= cutY + 0.01).sort((a, b) => a.distance - b.distance)[0];
+  const objs = [meshObj, ptsObj, ...(visObj ? visObj.children : [])].filter(Boolean); const hit = rr.intersectObjects(objs, false).filter(h => h.point.y <= cutY + 0.01).sort((a, b) => a.distance - b.distance)[0];
   return { hit, ray: rr.ray, td }; }
 // mouse wheel zooms toward whatever is under the cursor (camera and orbit centre scale around that point)
 view.addEventListener('wheel', (e) => { if (e.target !== renderer.domElement) return; e.preventDefault(); fly = null;
@@ -162,7 +163,7 @@ renderer.domElement.addEventListener('touchstart', (e) => { controls.enableZoom 
 renderer.domElement.addEventListener('dblclick', (e) => { const { hit, td } = underCursor(e); if (hit) flyTo(hit.point, Math.min(td, Math.max(60, td * 0.45))); });
 let cutY = 1e9;
 scene.add(new THREE.HemisphereLight(0xffffff, 0x445550, 0.62)); const dl = new THREE.DirectionalLight(0xffffff, 0.38); dl.position.set(0.4, 1, 0.3); scene.add(dl);
-let meshObj = null, ptsObj = null, selObj = null, ptsIdx = [];
+let meshObj = null, visObj = null, ptsObj = null, selObj = null, ptsIdx = [];
 function resize() { const r = view.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); }
 new ResizeObserver(resize).observe(view); resize();
 (function loop() { stepFly(); controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
@@ -170,15 +171,32 @@ function themeColors() { scene.background = new THREE.Color(css('--view')); }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { themeColors(); if (ROOM) { buildMesh(); buildPoints(); } }); themeColors();
 
 async function gunzipJSON(buf) { const ds = new DecompressionStream('gzip'); const s = new Blob([buf]).stream().pipeThrough(ds); return JSON.parse(await new Response(s).text()); }
+function buildVis() {
+  if (visObj) { scene.remove(visObj); visObj.traverse(o => o.geometry && o.geometry.dispose()); visObj = null; }
+  if (layer.draw === 'coll' || !ROOM.vis || !ROOM.vis.tris.length) return;
+  visObj = new THREE.Group(); const V = ROOM.vis.verts;
+  // the floor / wall / ceiling switches apply to the game look too (by each triangle's normal)
+  const cls = (t) => { const a = V[t[0]], b = V[t[1]], c = V[t[2]]; const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const L = Math.hypot(nx, ny, nz) || 1; const y = ny / L; return y > 0.3 ? 'floor' : y < -0.3 ? 'ceil' : 'wall'; };
+  for (const xl of [0, 1]) { const T = ROOM.vis.tris.filter(t => t[3] === xl && layer[cls(t)]); if (!T.length) continue;
+    const pos = new Float32Array(T.length * 9), col = new Float32Array(T.length * 9);
+    T.forEach((t, i) => { for (let j = 0; j < 3; j++) { const v = V[t[j]]; pos.set([v[0], v[1], v[2]], i * 9 + j * 3); col.set([v[3] / 255, v[4] / 255, v[5] / 255], i * 9 + j * 3); } });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const op = xl ? 0.55 : layer.opacity / 100;
+    visObj.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: layer.back ? THREE.DoubleSide : THREE.FrontSide, clippingPlanes: [clipPlane], transparent: op < 1, opacity: op, depthWrite: op >= 1, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }))); }
+  scene.add(visObj);
+}
 function buildMesh() {
-  if (meshObj) { scene.remove(meshObj); meshObj.geometry.dispose(); }
+  buildVis();
+  if (meshObj) { scene.remove(meshObj); meshObj.geometry.dispose(); meshObj = null; }
+  if (layer.draw === 'game' && ROOM.vis && ROOM.vis.tris.length) return;
   const dark = matchMedia('(prefers-color-scheme: dark)').matches;
   const C = dark ? [[0.29, 0.34, 0.31], [0.21, 0.25, 0.23], [0.23, 0.24, 0.29], [0.1, 0.3, 0.38], [0.3, 0.2, 0.2]] : [[0.71, 0.75, 0.71], [0.59, 0.64, 0.61], [0.55, 0.56, 0.61], [0.45, 0.7, 0.8], [0.8, 0.6, 0.6]];
   const on = LAYERS.map(L => !!layer[L[0]]); const V = ROOM.verts, T = ROOM.tris.filter(t => on[t[3]]); const pos = new Float32Array(T.length * 9), col = new Float32Array(T.length * 9);
   T.forEach((t, i) => { for (let j = 0; j < 3; j++) { const v = V[t[j]]; pos.set([v[0], v[1], v[2]], i * 9 + j * 3); col.set(C[t[3]] || C[1], i * 9 + j * 3); } });
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
   // front faces only: indoor rooms face inward, so from outside you look through the walls and roof into the room
-  const op = layer.opacity / 100; meshObj = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: layer.back ? THREE.DoubleSide : THREE.FrontSide, clippingPlanes: [clipPlane], transparent: op < 1, opacity: op, depthWrite: op >= 1 })); scene.add(meshObj);
+  const op = layer.opacity / 100; const wire = layer.draw === 'both'; meshObj = new THREE.Mesh(g, wire ? new THREE.MeshBasicMaterial({ vertexColors: true, wireframe: true, clippingPlanes: [clipPlane], transparent: true, opacity: 0.6 }) : new THREE.MeshLambertMaterial({ vertexColors: true, side: layer.back ? THREE.DoubleSide : THREE.FrontSide, clippingPlanes: [clipPlane], transparent: op < 1, opacity: op, depthWrite: op >= 1 })); scene.add(meshObj);
 }
 function visible(s) { const m = $('viewSel').value; if (!show[s[5]]) return false; if (m === 'flat') { const se = ROOM.seams[s[3]]; if (!(se[6] > 0.999 && se[7] > 0.999)) return false; } if (m === 'hold' && !s[14]) return false; return true; }
 function buildPoints() {
@@ -197,13 +215,15 @@ function legend() {
   const cnt = Object.assign({}, ROOM.counts || {}); if (!ROOM.counts) for (const s of ROOM.spots) cnt[s[5]] = (cnt[s[5]] || 0) + 1; const voids = ROOM.spots.filter(s => s[5] === 'walk' && s[6][0] === '1').length;
   $('legend').innerHTML = '<div class="lh"><b>Layers</b><button class="btn mini" id="legTog" aria-expanded="true">Hide</button></div><div id="legBody" class="lb"><div class="grp" title="' + (ROOM.thinned ? 'Drawn: every spot that goes through or holds; ' + ROOM.thinned : '') + '">Crack spots · ' + fmt(Object.values(cnt).reduce((a, b) => a + b, 0)) + '</div>' + CATS.map(([k, n, d]) => `<label title="${d}"><input type="checkbox" data-k="${k}" ${show[k] ? 'checked' : ''}><span class="sw" style="background:var(${CVAR[k]})"></span>${n}<span class="n">${fmt(cnt[k] || 0)}</span></label>`).join('')
     + (voids ? `<label title="Walk-in spots whose fall ends in the void (no floor below)"><span style="width:13px"></span><span class="sw" style="background:var(--c-void)"></span>…into the void<span class="n">${fmt(voids)}</span></label>` : '')
-    + `<div class="grp">Collision layers</div>` + LAYERS.map(([k, n, c]) => `<label><input type="checkbox" data-l="${k}" ${layer[k] ? 'checked' : ''}><span class="sw" style="border-radius:2px;background:${['#b4bfb6', '#97a39b', '#8b8f9c', '#73b3cc', '#cc9999'][c]}"></span>${n}<span class="n">${fmt(ROOM.tris.filter(t => t[3] === c).length)}</span></label>`).join('')
+    + `<div class="grp">Draw the level as</div><div class="seg" role="group" aria-label="Draw the level as">${[['game', 'Game look'], ['coll', 'Collision'], ['both', 'Both']].map(([k, n]) => `<button data-draw="${k}" aria-pressed="${layer.draw === k}" title="${k === 'game' ? 'The level model as drawn in game (vertex shading), incl. decoration Banjo does not touch' : k === 'coll' ? 'Collision triangles coloured by type' : 'Game look with the collision as a wireframe'}">${n}</button>`).join('')}</div>`
+    + `<div class="grp">Surfaces (both looks)</div>` + LAYERS.map(([k, n, c]) => `<label><input type="checkbox" data-l="${k}" ${layer[k] ? 'checked' : ''}><span class="sw" style="border-radius:2px;background:${['#b4bfb6', '#97a39b', '#8b8f9c', '#73b3cc', '#cc9999'][c]}"></span>${n}<span class="n">${fmt(ROOM.tris.filter(t => t[3] === c).length)}</span></label>`).join('')
     + `<label title="Draw the back of every triangle too (closed rooms then hide their inside)"><input type="checkbox" data-l="back" ${layer.back ? 'checked' : ''}>Back faces</label>`
     + `<div class="grp">See-through <span id="opVal" style="font-family:var(--f-mono);text-transform:none">${layer.opacity}%</span></div><input type="range" id="opac" min="15" max="100" value="${layer.opacity}" style="width:100%;accent-color:var(--accent)">`
     + `<div class="grp">Cut away above y <span id="cutVal" style="font-family:var(--f-mono);text-transform:none">off</span></div><input type="range" id="cutY" style="width:100%;accent-color:var(--accent)"></div>`;
   $('legTog').onclick = () => { const h = !$('legBody').hidden; $('legBody').hidden = h; $('legTog').textContent = h ? 'Show' : 'Hide'; $('legTog').setAttribute('aria-expanded', !h); };
   const saveL = () => { try { localStorage.setItem('tooie-layers', JSON.stringify(layer)); } catch (e) {} };
   $('legend').querySelectorAll('input[data-l]').forEach(b => b.onchange = () => { layer[b.dataset.l] = b.checked ? 1 : 0; saveL(); buildMesh(); });
+  $('legend').querySelectorAll('button[data-draw]').forEach(b => b.onclick = () => { layer.draw = b.dataset.draw; saveL(); $('legend').querySelectorAll('button[data-draw]').forEach(x => x.setAttribute('aria-pressed', x === b)); buildMesh(); });
   $('opac').oninput = () => { layer.opacity = +$('opac').value; $('opVal').textContent = layer.opacity + '%'; saveL(); buildMesh(); };
   $('legend').hidden = false;
   $('legend').querySelectorAll('input[data-k]').forEach(b => b.onchange = () => { show[b.dataset.k] = b.checked ? 1 : 0; try { localStorage.setItem('tooie-show', JSON.stringify(show)); } catch (e) {} buildPoints(); });
