@@ -27,10 +27,34 @@
    "map_names": [
     "Grunty's Lair Entrance"
    ],
-   "tris": 3263,
+   "tris": 1203,
    "opa": "0x1CFD",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 420,
+   "crack_samples": 55409153373,
+   "crack_floats": 172923780,
+   "spots": 828705,
+   "shown": 52330,
+   "cats": {
+    "wall": 664223,
+    "eject": 112955,
+    "jump": 2633,
+    "lag": 824,
+    "walk": 8300,
+    "stuck": 39770
+   },
+   "cats_flat": {
+    "wall": 55810,
+    "eject": 54360,
+    "jump": 215,
+    "lag": 149,
+    "walk": 4838,
+    "stuck": 1497
+   },
+   "holds": 11453,
+   "void": 4827,
+   "bytes": 909928
   },
   {
    "map": "0xAE",
