@@ -3227,10 +3227,34 @@
     "Quiz",
     "Quiz"
    ],
-   "tris": 3140,
+   "tris": 1277,
    "opa": "0x1DBD",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 381,
+   "crack_samples": 38429167539,
+   "crack_floats": 13841429,
+   "spots": 88922,
+   "shown": 44342,
+   "cats": {
+    "wall": 15026,
+    "eject": 33656,
+    "walk": 32723,
+    "stuck": 5444,
+    "jump": 1700,
+    "lag": 373
+   },
+   "cats_flat": {
+    "wall": 10506,
+    "eject": 31048,
+    "walk": 29526,
+    "lag": 274,
+    "jump": 1045,
+    "stuck": 1245
+   },
+   "holds": 835,
+   "void": 29201,
+   "bytes": 611375
   },
   {
    "map": "0x160",
