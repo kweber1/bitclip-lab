@@ -96,10 +96,35 @@
     "Wumba",
     "Wumba"
    ],
-   "tris": 2726,
+   "tris": 1045,
    "opa": "0x1D00",
    "xlu": "0x1D05",
-   "done": false
+   "done": true,
+   "seams": 451,
+   "crack_samples": 63152735289,
+   "crack_floats": 66438312,
+   "spots": 141845,
+   "shown": 32074,
+   "cats": {
+    "wall": 32801,
+    "eject": 68655,
+    "stuck": 38995,
+    "walk": 863,
+    "lag": 51,
+    "jump": 479,
+    "water": 1
+   },
+   "cats_flat": {
+    "wall": 1402,
+    "eject": 6416,
+    "walk": 11,
+    "lag": 5,
+    "stuck": 15,
+    "jump": 1
+   },
+   "holds": 12219,
+   "void": 5,
+   "bytes": 610533
   },
   {
    "map": "0xB7",
