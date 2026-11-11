@@ -1914,10 +1914,33 @@
    "map_names": [
     "Honey B. Hive"
    ],
-   "tris": 1229,
+   "tris": 538,
    "opa": "0x1DCE",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 200,
+   "crack_samples": 32517994334,
+   "crack_floats": 33234103,
+   "spots": 203333,
+   "cats": {
+    "wall": 8434,
+    "stuck": 6972,
+    "eject": 25381,
+    "walk": 83700,
+    "lag": 78413,
+    "jump": 433
+   },
+   "cats_flat": {
+    "eject": 9502,
+    "wall": 4349,
+    "stuck": 1705,
+    "walk": 83697,
+    "lag": 78413,
+    "jump": 433
+   },
+   "holds": 275,
+   "void": 83149,
+   "bytes": 2138018
   },
   {
    "map": "0x154",
