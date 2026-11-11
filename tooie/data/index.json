@@ -1716,10 +1716,32 @@
     "Kickball 3",
     "Kickball 2"
    ],
-   "tris": 1472,
+   "tris": 576,
    "opa": "0x1DA7",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 576,
+   "crack_samples": 79909811352,
+   "crack_floats": 17963334,
+   "spots": 68107,
+   "cats": {
+    "walk": 4542,
+    "eject": 29529,
+    "stuck": 13863,
+    "jump": 1151,
+    "wall": 18270,
+    "lag": 752
+   },
+   "cats_flat": {
+    "eject": 4913,
+    "lag": 7,
+    "walk": 804,
+    "jump": 30,
+    "wall": 1599
+   },
+   "holds": 2349,
+   "void": 832,
+   "bytes": 1859421
   },
   {
    "map": "0x131",
