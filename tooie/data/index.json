@@ -1178,10 +1178,33 @@
    "map_names": [
     "Cave Of Horrors"
    ],
-   "tris": 3292,
+   "tris": 1065,
    "opa": "0x1D3D",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 168,
+   "crack_samples": 34764447361,
+   "crack_floats": 41867449,
+   "spots": 120959,
+   "shown": 58334,
+   "cats": {
+    "wall": 12512,
+    "walk": 44277,
+    "eject": 62529,
+    "jump": 951,
+    "stuck": 327,
+    "lag": 363
+   },
+   "cats_flat": {
+    "wall": 8919,
+    "walk": 43966,
+    "eject": 62522,
+    "jump": 730,
+    "lag": 299
+   },
+   "holds": 113,
+   "void": 43145,
+   "bytes": 711089
   },
   {
    "map": "0xEB",
