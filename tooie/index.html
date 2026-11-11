@@ -321,7 +321,7 @@ function spotCard(i, fromClick) {
     <div class="coords"><div class="ch"><span class="lbl">Crack position (Banjo's feet)</span><button class="btn mini" id="copyXYZ" title="Copy x y z as shown">Copy</button><button class="btn mini" id="copyExact" title="Copy the exact f32 values">Copy exact</button></div>
       <dl class="kv"><dt>x</dt><dd><b>${num(s[0])}</b> <span class="bits">${bitsHex(s[0])}</span></dd><dt>y</dt><dd><b>${num(s[1])}</b> <span class="bits">${bitsHex(s[1])}</span></dd><dt>z</dt><dd><b>${num(s[2])}</b> <span class="bits">${bitsHex(s[2])}</span></dd></dl></div>
     <dl class="kv"><dt>seam</dt><dd>(${se[0]}, ${se[1]}, ${se[2]}) – (${se[3]}, ${se[4]}, ${se[5]}), floor n.y ${se[6]} / ${se[7]}</dd>
-      <dt>crack</dt><dd>${s[4]} float${s[4] === 1 ? '' : 's'} in this 0.25 cell</dd>
+      <dt>crack</dt><dd>${s.length > 15 ? `<b>every float tested</b>: ${s[15]} consecutive crack float${s[15] === 1 ? '' : 's'} along the seam (${s[18] ? (s[18] > 0 ? '+' : '') + s[18] + ' floats across' : 'on the seam line'}), all with these results, from here to x ${num(s[16])}, z ${num(s[17])}` : `${s[4]} float${s[4] === 1 ? '' : 's'} in this 0.25 cell (one tested)`}</dd>
       <dt>walk in</dt><dd><div class="runs">${runs}</div></dd>
       <dt>jump</dt><dd>${s[11] < 0 ? 'not needed / not tested' : `${s[11]} of 42 jump landings go through${s[12] > 0 ? ` (${s[12]} into the void)` : ''}`}</dd>
       <dt>hold</dt><dd>${s[14] ? 'yes' : 'no'} · ${s[7]} of 9 walk-in runs with a 5-pass hold${s[13] > 0 ? `, ${s[13]} jumps` : ''} · sits up to ${s[8]} update${s[8] === 1 ? '' : 's'}</dd>

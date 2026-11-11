@@ -38,22 +38,35 @@ def build(tc, roomf, outdir):
         vis = btvis2.room_vis(room, os.path.join(outdir, 'tex')); btvis2.save_descs()
     except Exception as ex:
         import traceback; traceback.print_exc(); vis = {'verts': [], 'tris': [], 'mats': [], 'error': str(ex)}
-    seams, spots = [], []
+    import tempfile
+    seams, seen = [], set(); nshown = 0
+    spf = tempfile.TemporaryFile('w+')   # shown spots as JSON text, one per line (rooms with millions of spots)
     head = None
-    for l in open(tc):
+    cnt = collections.Counter(); byseam = collections.Counter(); nsp = 0; nhold = 0; nvoid = 0
+    # the site keeps every spot that goes through (walk / lag / jump) or holds at the census resolution (0.25 cell); the rest
+    # (ejected, stuck, wall, water) one per seam per 2x2-unit cell, so the levels fit on GitHub Pages. Spots are kept as JSON text
+    # (not lists) so rooms with millions of spots (e.g. Chuffy's Cab, a 4.2 GB census file) fit in memory.
+    big = False   # the user wants every through / hold spot shown, also in huge rooms
+    CATI = {'walk': 0, 'lag': 1, 'jump': 2, 'stuck': 3, 'eject': 4, 'wall': 5, 'water': 6}
+    thin_txt = 'eject/stuck/wall/water spots: one per seam per 2x2-unit cell'
+    fh = gzip.open(tc, 'rt') if tc.endswith('.gz') else open(tc)
+    for l in fh:
         a = l.split()
         if not a: continue
         if a[0] == 'ROOM': head = a
         elif a[0] == 'SEAM':
             seams.append([float(a[4]), float(a[5]), float(a[6]), float(a[7]), float(a[8]), float(a[9]), round(float(a[10]), 4), round(float(a[11]), 4), int(a[12])])
-        elif a[0] == 'SPOT':
-            seam, x, y, z, width = int(a[1]), a[2], a[3], a[4], int(a[5]); outs = a[6]
-            holds = [int(v) for v in a[7].split(',')]; maxh = a[8]; sits = [int(v) for v in a[9].split(',')]; upd = int(a[10]); endy = float(a[11])
-            j = a[12] if len(a) > 12 else '-'
+        elif a[0] in ('SPOT', 'RUN'):
+            run = None
+            if a[0] == 'RUN':   # exhaustive census: n consecutive crack floats with identical outcomes, every one tested
+                run = (int(a[3]), float(a[7]), float(a[8]), int(a[2]))   # n, x_end, z_end, across offset
+                a = ['SPOT', a[1], a[4], a[5], a[6], a[3]] + a[9:]
+            seam = int(a[1]); outs = a[6]
+            holds = a[7]; j = a[12] if len(a) > 12 else '-'
             if j != '-':
                 nj, rest = j[1:].split('/'); jc = [int(v) for v in rest.replace(':', ',').split(',')]   # clip, voids, eject, stuck, other, hold, sitmax
-            else: nj, jc = 0, None
-            walk = outs[0]; anyclip = any(c in '01' for c in outs)
+            else: jc = None
+            walk = outs[0]; anyclip = ('0' in outs) or ('1' in outs)
             if walk in '01': cat = 'walk'
             elif walk == '5': cat = 'wall'
             elif walk == '4': cat = 'water'
@@ -61,32 +74,44 @@ def build(tc, roomf, outdir):
             elif jc and jc[0] > 0: cat = 'jump'
             elif walk == '3': cat = 'stuck'
             else: cat = 'eject'
-            hold = sum(holds) > 0 or (jc is not None and jc[5] > 0)
-            spots.append([float(x), float(y), float(z), seam, width, cat, outs, sum(1 for h in holds if h), max(sits), upd, round(endy, 2),
-                          (jc[0] if jc else -1), (jc[1] if jc else -1), (jc[5] if jc else -1), 1 if hold else 0])
-    cnt = collections.Counter(s[5] for s in spots)
-    # the site keeps every spot that goes through (walk / lag / jump) or holds at the census resolution (0.25 cell); the rest
-    # (ejected, stuck, wall, water) one per seam per 2x2-unit cell, so the levels fit on GitHub Pages
-    shown, seen = [], set()
-    for s_ in spots:
-        if s_[5] in ('walk', 'lag', 'jump') or s_[14]: shown.append(s_); continue
-        k = (s_[3], math.floor(s_[0] / 2), math.floor(s_[2] / 2), s_[5])
-        if k in seen: continue
-        seen.add(k); shown.append(s_)
+            hl = [int(v) for v in holds.split(',')]
+            hold = sum(hl) > 0 or (jc is not None and jc[5] > 0)
+            cnt[cat] += 1; byseam[(seam, cat)] += 1; nsp += 1; nhold += hold; nvoid += walk == '1'
+            x, z = float(a[2]), float(a[4]); thru = cat in ('walk', 'lag', 'jump') or hold
+            if run: k = None   # every tested run is shown
+            elif big: k = (seam, math.floor(x), math.floor(z), cat, hold) if thru else (seam, math.floor(x / 4), math.floor(z / 4), cat)
+            else: k = None if thru else (seam, math.floor(x / 2), math.floor(z / 2), cat)
+            if k is not None:
+                k = ((k[0] * 4000037 + k[1] + 2000000) * 4000037 + k[2] + 2000000) * 16 + CATI[k[3]]   # exact packed key (hash() would merge -1 and -2)
+                if k in seen: continue
+                seen.add(k)
+            sits = [int(v) for v in a[9].split(',')]
+            nshown += 1; spf.write(json.dumps([x, float(a[3]), z, seam, int(a[5]), cat, outs, sum(1 for h in hl if h), max(sits), int(a[10]), round(float(a[11]), 2),
+                          (jc[0] if jc else -1), (jc[1] if jc else -1), (jc[5] if jc else -1), 1 if hold else 0] + (list(run) if run else []), separators=(',', ':')) + '\n')
+    fh.close(); seen = None
     flatseam = [s[6] > 0.999 and s[7] > 0.999 for s in seams]
-    cntflat = collections.Counter(s[5] for s in spots if flatseam[s[3]])
+    cntflat = collections.Counter()
+    for (sm, c), n in byseam.items():
+        if sm < len(flatseam) and flatseam[sm]: cntflat[c] += n
     data = {'map': key, 'name': room['name'], 'group': room['group'], 'maps': room['maps'], 'map_names': room['map_names'],
             'verts': [list(v) for v in verts], 'tris': tris, 'vis': vis, 'seams': seams,
             'spot_fields': ['x', 'y', 'z', 'seam', 'crack_floats', 'category', 'walk_outcomes_9', 'walk_runs_with_hold', 'max_sit_updates',
-                            'decided_update', 'end_y', 'jump_clips_of_42', 'jump_voids_of_42', 'jump_drops_with_hold', 'any_hold'],
-            'thinned': 'eject/stuck/wall/water spots: one per seam per 2x2-unit cell', 'counts': dict(cnt), 'spots': shown}
+                            'decided_update', 'end_y', 'jump_clips_of_42', 'jump_voids_of_42', 'jump_drops_with_hold', 'any_hold',
+                            'every_float_run: floats_in_run', 'x_end', 'z_end', 'across_offset'],
+            'thinned': thin_txt, 'counts': dict(cnt), 'spots': '__SPOTS__'}
     os.makedirs(os.path.join(outdir, 'data'), exist_ok=True)
-    raw = json.dumps(data, separators=(',', ':')).encode()
-    with open(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key), 'wb') as f: f.write(gzip.compress(raw, 9))
+    pre, post = json.dumps(data, separators=(',', ':')).split('"__SPOTS__"', 1)
+    spf.seek(0)
+    with gzip.open(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key), 'wb', 9) as f:
+        f.write((pre + '[').encode()); first = True
+        for line in spf:
+            f.write(((',' if not first else '') + line.rstrip('\n')).encode()); first = False
+        f.write((']' + post).encode())
+    spf.close()
     entry = {'map': key, 'name': room['name'], 'group': room['group'], 'maps': room['maps'], 'map_names': room['map_names'],
              'tris': len(tris), 'seams': len(seams), 'crack_samples': int(head[5]) if head else 0, 'crack_floats': int(head[7]) if head else 0,
-             'spots': len(spots), 'shown': len(shown), 'cats': dict(cnt), 'cats_flat': dict(cntflat), 'holds': sum(s[14] for s in spots),
-             'void': sum(1 for s in spots if s[6][0] == '1'), 'bytes': os.path.getsize(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key))}
+             'spots': nsp, 'shown': nshown, 'cats': dict(cnt), 'cats_flat': dict(cntflat), 'holds': nhold,
+             'void': nvoid, 'bytes': os.path.getsize(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key))}
     return entry
 
 if __name__ == '__main__':
