@@ -256,6 +256,9 @@ td.tag{text-align:left;font-weight:600}
           <div class="seg" role="group" aria-label="Draw the level as" id="drawSeg"><button data-draw="game" title="The level model as drawn in game (its own vertex shading), with the lab's textures">Game look</button><button data-draw="coll" title="The collision Banjo stands on (what every census uses)">Collision</button><button data-draw="both" title="Game look and collision together">Both</button></div>
           <label title="Textures painted by the Bit-Clip Lab from each original texture's colours and kind of surface (no game art is used)"><input type="checkbox" id="visTex" checked> Textures</label>
           <label title="Where the BK Reloaded HD pack by GhostlyDark has a replacement (matched by GLideN64's texture checksum), use it; loaded from the pack's own GitHub. Elsewhere the lab-made textures."><input type="checkbox" id="visHD" checked> HD where available (BK Reloaded) <span class="n" id="nHD"></span></label>
+          <div class="grp">Objects</div>
+          <label title="Every actor spawn point and cube prop in the map's setup file (collectables, NPCs, enemies, doors, pads…), drawn with its model. Click one for its position."><input type="checkbox" id="showObjs" checked> Objects &amp; enemies <span class="n" id="objN"></span></label>
+          <label title="Setup-file entries with no model to draw: notes, eggs and other sprites, spawners, triggers, sound sources. Click one for its id."><input type="checkbox" id="showMarks"> Other objects (markers) <span class="n" id="markN"></span></label>
           <div class="grp">Room</div>
           <label><input type="checkbox" id="showSpawns" checked> <span class="sw" style="background:var(--pop)"></span> Load-in points <span class="n" id="nSpawns"></span></label>
           <label title="Loading zones: the boxes that send Banjo to another room when his position is inside them. Click the dot in the middle to select one."><input type="checkbox" id="showExits" checked> <span class="sw" style="background:var(--accent)"></span> Exits (loading zones) <span class="n" id="nExits"></span></label>
@@ -837,8 +840,32 @@ function buildVis(){ disposeGroup(visGroup); const vis=room&&room._vis; if(drawM
     T.forEach((t,i)=>{ for(let j=0;j<3;j++){ const v=V[t[j]]; pos.set([v[0],v[1],v[2]],i*9+j*3); col.set([v[3]/255,v[4]/255,v[5]/255],i*9+j*3); if(uv) uv.set([v[6],v[7]],i*6+j*2); } });
     const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3)); if(uv) g.setAttribute('uv',new THREE.BufferAttribute(uv,2)); g.computeVertexNormals();
     visGroup.add(new THREE.Mesh(g,new (mat?THREE.MeshBasicMaterial:THREE.MeshLambertMaterial)({vertexColors:true,map:mat?labTexture(mat[0],mat[1],mat[2]):null,alphaTest:mat&&mat[3]&&!xl?0.5:0,side:THREE.FrontSide,clippingPlanes:[clipPlane],transparent:!!xl,opacity:xl?0.6:1,depthWrite:!xl,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1}))); } }
+// ---- objects and enemies: every map's setup file (actor spawn points + cube props), models drawn like the game look
+// (data/objects.gz.wasm, models/<asset>.gz.wasm from tools/bk/bkobjects.py)
+let OBJS=null, objGroup=null; const modelCache={}, matCache={}; const markGeo=new THREE.OctahedronGeometry(22,0);
+const objsP=fetch('data/objects.gz.wasm').then(r=>r.ok?r.arrayBuffer():null).then(b=>b?gunzipJSON(b):null).catch(()=>null).then(j=>{ OBJS=j||{maps:{},models:{},names:{}}; });
+function objName(o){ const k='0x'+o[8].toString(16).toUpperCase(); return OBJS.names[k]||((o[9]===1?'Prop ':'Actor ')+k); }
+function modelMats(mat){ const id=mat?mat.join('/')+($('visHD').checked?'/hd':''):'none'; if(matCache[id]) return matCache[id];
+  return (matCache[id]=new (mat?THREE.MeshBasicMaterial:THREE.MeshLambertMaterial)({vertexColors:true,map:mat?labTexture(mat[0],mat[1],mat[2]):null,alphaTest:mat&&mat[3]?0.5:0,side:THREE.DoubleSide,clippingPlanes:[clipPlane]})); }
+function modelGeo(asset){ if(modelCache[asset]) return modelCache[asset];
+  return (modelCache[asset]=fetch('models/'+asset.slice(2)+'.gz.wasm').then(r=>r.arrayBuffer()).then(gunzipJSON).then(M=>{ const groups=new Map(); for(const t of M.tris){ const m=t[4]; if(!groups.has(m)) groups.set(m,[]); groups.get(m).push(t); }
+    const parts=[]; for(const [m,T] of groups){ const V=M.verts; const pos=new Float32Array(T.length*9), col=new Float32Array(T.length*9), uv=new Float32Array(T.length*6);
+      T.forEach((t,i)=>{ for(let j=0;j<3;j++){ const v=V[t[j]]; pos.set([v[0],v[1],v[2]],i*9+j*3); col.set([v[3]/255,v[4]/255,v[5]/255],i*9+j*3); uv.set([v[6],v[7]],i*6+j*2); } });
+      const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3)); g.setAttribute('uv',new THREE.BufferAttribute(uv,2)); g.computeVertexNormals(); g.computeBoundingSphere();
+      parts.push({g,mat:m>=0?M.mats[m]:null}); } return parts; }).catch(()=>null)); }
+async function buildObjects(){ if(objGroup){ scene.remove(objGroup); objGroup=null; } await objsP; const r=room; if(!r) return; const mp=OBJS.maps[r.map]; if(!mp) return;
+  const grp=new THREE.Group(); let n=0, marks=0;
+  for(let i=0;i<mp.objs.length;i++){ const o=mp.objs[i]; const node=new THREE.Group(); node.position.set(o[1],o[2],o[3]); node.rotation.set(o[4]*Math.PI/180,o[5]*Math.PI/180,o[6]*Math.PI/180,'YXZ'); node.scale.setScalar(o[7]||1); node.userData={o,i};
+    const asset=o[0]>=0?'0x'+o[0].toString(16).toUpperCase():null; const meta=asset&&OBJS.models[asset];
+    if(meta){ n++; modelGeo(asset).then(parts=>{ if(!parts) return; for(const p of parts){ const me=new THREE.Mesh(p.g,modelMats($('visTex').checked?p.mat:null)); me.userData.obj=node; node.add(me); } }); }
+    else { marks++; node.userData.mark=true; const me=new THREE.Mesh(markGeo,new THREE.MeshBasicMaterial({color:0xd08a2a,wireframe:true,clippingPlanes:[clipPlane]})); me.userData.obj=node; node.add(me); node.scale.setScalar(1); }
+    grp.add(node); }
+  if(r!==room) return; objGroup=grp; applyObjVis(); scene.add(grp); $('objN').textContent=n?n.toLocaleString():''; $('markN').textContent=marks?marks.toLocaleString():''; }
+function applyObjVis(){ if(!objGroup) return; for(const nd of objGroup.children) nd.visible=nd.userData.mark?$('showMarks').checked:$('showObjs').checked; }
+$('showObjs').onchange=applyObjVis; $('showMarks').onchange=applyObjVis;
+function pickObject(){ if(!objGroup) return null; const h=ray.intersectObjects(objGroup.children.filter(nd=>nd.visible),true).filter(h=>h.point.y<=cutY+0.01)[0]; return h?h.object.userData.obj:null; }
 document.querySelectorAll('#drawSeg button').forEach(b=>b.onclick=()=>{ drawMode=b.dataset.draw; try{ localStorage.setItem('bcl-draw',drawMode); }catch(e){} applyDraw(); buildVis(); });
-$('visTex').onchange=()=>buildVis(); $('visHD').onchange=()=>buildVis();
+$('visTex').onchange=()=>{ buildVis(); buildObjects(); }; $('visHD').onchange=()=>{ buildVis(); buildObjects(); };
 let spotFilter='all', sfRel='any'; try{ spotFilter=localStorage.getItem('bcl-sf')||'all'; sfRel=localStorage.getItem('bcl-sfr')||'any'; }catch(e){}
 $('sfRel').value=sfRel; $('sfRel').hidden=!(spotFilter==='clip'||spotFilter==='holdclip');
 $('sfRel').onchange=()=>{ sfRel=$('sfRel').value; try{localStorage.setItem('bcl-sfr',sfRel);}catch(e){} if(room) buildPoints(); };
@@ -893,7 +920,7 @@ async function loadMap(m){
   $('loading').hidden=false; $('loading').textContent='Loading room…';
   try{localStorage.setItem('bcl-map',m);}catch(e){}
   const visP=fetch(`data/vis/map${m}.gz.wasm`).then(q=>q.ok?q.arrayBuffer():null).then(b=>b?gunzipJSON(b):null).catch(()=>null);
-  room=await fetchRoom(m); room._vis=await visP;
+  room=await fetchRoom(m); room._vis=await visP; buildObjects();
   // animated / moving objects (warp cauldrons, beehives, platforms...) in their rest pose at their spawn point: optional, but on
   // by default so routes can't walk through them (data/pose-0xNN.json from extract-actor-collision-pose.py)
   { const ent=(index||[]).find(e=>e.map===m); room._pose=[]; if(ent&&ent.pose){ try{ const q=await fetch(`data/pose-${m}.json`); if(q.ok) room._pose=await q.json(); }catch(e){} } }
@@ -921,7 +948,8 @@ renderer.domElement.addEventListener('pointerup',e=>{ if(!downAt||Math.hypot(e.c
   if(e.altKey){ const hit=ray.intersectObjects(roomGroup.children.filter(o=>o.isMesh&&o.visible),false).filter(below)[0]; if(hit){ selectSpot({x:hit.point.x,y:hit.point.y,z:hit.point.z,kind:'point'}); } return; }
   // load-in markers and exits first (big targets), then the spot layers, then "inside an exit's box on screen"
   const px=e.clientX-rc.left, py=e.clientY-rc.top; const big=bigPick(px,py,rc,e.pointerType==='touch'?40:28);
-  const h=big||pickPoint(px,py,rc,e.pointerType==='touch'?22:12)||exitBoxPick(px,py,rc); if(!h) return; const k=h.kind; const i=h.index;
+  const h=big||pickPoint(px,py,rc,e.pointerType==='touch'?22:12)||exitBoxPick(px,py,rc);
+  if(!h){ const nd=pickObject(); if(nd){ const o=nd.userData.o; selectSpot({x:o[1],y:o[2],z:o[3],kind:'object',info:{o}}); } return; } const k=h.kind; const i=h.index;
   if(k==='spawn'){ const s=spawnList()[i]; if(!s) return; const sp=spawnStand(s); $('spawnSel').value=String(i); $('spawnSel').dispatchEvent(new Event('change')); selectSpot({x:sp[0],y:sp[1],z:sp[2],kind:'spawn',info:{label:spawnLabel(s),yaw:spawnYaw(s)}}); return; }
   if(k==='exit'){const e=exitList()[i]; selectSpot({x:e[0],y:e[1],z:e[2],kind:'exit',info:{r:e[3],toMap:e[4],toExit:e[5],name:e[6]}});}
   else if(k==='hold'){const d=room.holds[i]; selectSpot({x:d.x,y:d.y,z:d.z,kind:'hold',info:d});}
@@ -973,9 +1001,11 @@ function fmt(v,n=6){return (v==null||v==='')?'—':(+v).toFixed(n);}
 function oddsText(o,what){ const p=o.runs?100*o.clips/o.runs:0; const tag=p>=25?'reliable':p>=5?'sometimes':o.clips>=2?'rare':'one exact setup';
   return `<b>${tag}</b> · ${o.clips} of ${o.runs} ${what} clip (${p<1&&p>0?p.toFixed(1):Math.round(p)}%) · ${o.nolag?`${o.nolag} without lag`:'only with a lag frame'} · ${o.voids===o.clips?'all fall out of the map':o.voids?`${o.voids} fall out of the map, ${o.clips-o.voids} land on ground below`:'all land on ground below'}`; }
 function renderSpot(){ const el=$('spotInfo'); if(!spot){ $('spotCard').hidden=true; el.innerHTML=''; return;}
-  $('spotCard').hidden=false; const VL=(room&&room._shown==='NTSC')?'NTSC':'PAL'; const kinds={crack:'Floor crack',hold:`5-hit hold (${VL} census)`,roof:'Roof crack',padshock:`Shock-pad fall clip (${version})`,padbomb:`Beak bomb clip (${version})`,slope:`Slope clip: beak buster (${VL})`,hit5:'5 collisions on one update',point:'Picked point',exit:'Exit (loading zone)',spawn:'Load-in point'};
-  $('spotTitle').textContent=(spot.kind==='crack'&&spot.info&&spot.info.lower?(String(spot.info.lower[3]).endsWith('/edge')?'Rim crack':'Crack over a lower floor'):kinds[spot.kind])+(spot.kind==='crack'&&spot.info&&spot.info.slope?' (sloped seam)':''); $('spotDot').style.background=css('--'+({crack:'crack',hold:'hold',roof:'roof',slope:'slope',hit5:'hit5',point:'accent',exit:'accent',spawn:'pop'}[spot.kind]));
+  $('spotCard').hidden=false; const VL=(room&&room._shown==='NTSC')?'NTSC':'PAL'; const kinds={crack:'Floor crack',hold:`5-hit hold (${VL} census)`,roof:'Roof crack',padshock:`Shock-pad fall clip (${version})`,padbomb:`Beak bomb clip (${version})`,slope:`Slope clip: beak buster (${VL})`,hit5:'5 collisions on one update',point:'Picked point',exit:'Exit (loading zone)',spawn:'Load-in point',object:'Object'};
+  $('spotTitle').textContent=(spot.kind==='crack'&&spot.info&&spot.info.lower?(String(spot.info.lower[3]).endsWith('/edge')?'Rim crack':'Crack over a lower floor'):kinds[spot.kind])+(spot.kind==='crack'&&spot.info&&spot.info.slope?' (sloped seam)':''); $('spotDot').style.background=css('--'+({crack:'crack',hold:'hold',roof:'roof',slope:'slope',hit5:'hit5',point:'accent',exit:'accent',spawn:'pop',object:'prop'}[spot.kind]));
+  if(spot.kind==='object') $('spotTitle').textContent=objName(spot.info.o);
   let rows=`<dt>Position</dt><dd>${fmt(spot.x,4)}, ${fmt(spot.y,3)}, ${fmt(spot.z,4)}</dd>`;
+  if(spot.kind==='object'){ const o=spot.info.o; rows+=`<dt>Kind</dt><dd>${o[9]===1?'cube prop (setup file)':'actor spawn point (setup file)'} · ${o[9]===1?'asset':'actor id'} 0x${o[8].toString(16).toUpperCase()}</dd><dt>Model</dt><dd>${o[0]>=0?'0x'+o[0].toString(16).toUpperCase():'none (marker)'}</dd><dt>Facing</dt><dd>${o[5]}°${o[6]?`, roll ${o[6]}°`:''}</dd><dt>Scale</dt><dd>${o[7]}</dd><dt>Note</dt><dd>${o[9]===2?'Where the map spawns it (enemies move away from here).':'Placed in the map.'} Objects are drawn only; the collision of static and moving objects is under Room.</dd>`; }
   if(spot.info&&spot.info.seam) rows+=`<dt>Seam (tris)</dt><dd>${spot.info.seam}</dd>`;
   if(spot.kind==='crack'&&spot.info&&spot.info.lower){ const d=spot.info.lower; const V=['did not go through','dropped onto what is below','went under (115+ below the floor)'];
     rows+=(String(d[3]).endsWith('/edge')?`<dt>Where</dt><dd>on the rim of a floor triangle (no other floor triangle shares this edge): inside the triangle, but the game's float floor ray misses it</dd>`:'')+`<dt>Below the crack</dt><dd>${(+d[4])<0?'the floor ray hits nothing below':`the floor ray misses the floor and hits a triangle ${(+d[4]).toFixed(2)} lower`}</dd>`;

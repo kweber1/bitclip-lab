@@ -22,7 +22,9 @@ def setup(data, aid=0):
 
 def walk(data, aid=0):
     """Visible triangles: list of (verts3, tex index or -1, (cms, cmt), uv3, lit); verts = (x, y, z, r, g, b, a)."""
+    if len(data) < 0x38 or struct.unpack_from('>I', data, 0)[0] != 0xB: return [], [], collections.Counter({'not a model': 1})
     vo = struct.unpack_from('>i', data, 16)[0]; go = struct.unpack_from('>i', data, 12)[0]
+    if not (0 < go < len(data) and 0 < vo < len(data)): return [], [], collections.Counter({'no display list': 1})
     n = struct.unpack_from('>I', data, go)[0]; base = go + 8
     nv = struct.unpack_from('>12h', data, vo)[10]
     V = [struct.unpack_from('>3h', data, vo + 24 + 16 * i) + struct.unpack_from('>4B', data, vo + 24 + 16 * i + 12) for i in range(nv)]
