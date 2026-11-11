@@ -394,10 +394,33 @@
    "map_names": [
     "Inside Chuffy's Boiler"
    ],
-   "tris": 1308,
+   "tris": 453,
    "opa": "0x1D20",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 263,
+   "crack_samples": 34549867807,
+   "crack_floats": 93849555,
+   "spots": 207138,
+   "cats": {
+    "wall": 11495,
+    "stuck": 12251,
+    "eject": 180912,
+    "walk": 2280,
+    "lag": 27,
+    "jump": 173
+   },
+   "cats_flat": {
+    "eject": 14373,
+    "walk": 2280,
+    "lag": 27,
+    "jump": 111,
+    "stuck": 296,
+    "wall": 60
+   },
+   "holds": 454,
+   "void": 2225,
+   "bytes": 3904433
   },
   {
    "map": "0xD2",
