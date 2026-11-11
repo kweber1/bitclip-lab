@@ -1892,28 +1892,30 @@
    "opa": "0x1D8A",
    "xlu": null,
    "done": true,
-   "seams": 40,
-   "crack_samples": 5499900924,
-   "crack_floats": 14739034,
-   "spots": 42900,
+   "seams": 136,
+   "crack_samples": 43721188028,
+   "crack_floats": 929090242,
+   "spots": 929090242,
    "cats": {
-    "wall": 1578,
-    "eject": 26994,
-    "stuck": 13798,
-    "walk": 395,
-    "jump": 115,
-    "lag": 20
+    "wall": 9153909,
+    "eject": 916804441,
+    "stuck": 2838770,
+    "walk": 47289,
+    "lag": 44884,
+    "jump": 200949
    },
    "cats_flat": {
-    "eject": 4529,
-    "walk": 384,
-    "wall": 1073,
-    "stuck": 1789
+    "eject": 264232,
+    "walk": 29253,
+    "wall": 64557,
+    "stuck": 32221
    },
-   "holds": 1505,
-   "void": 384,
-   "bytes": 203060,
-   "shown": 9316
+   "holds": 273892,
+   "void": 29253,
+   "bytes": 288799,
+   "shown": 25556,
+   "every": true,
+   "cells": 181960
   },
   {
    "map": "0x10B",
