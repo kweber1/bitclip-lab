@@ -1187,10 +1187,32 @@
    "map_names": [
     "Electric Eels Lair"
    ],
-   "tris": 2368,
+   "tris": 1059,
    "opa": "0x1D4F",
    "xlu": "0x1D50",
-   "done": false
+   "done": true,
+   "seams": 124,
+   "crack_samples": 31124398270,
+   "crack_floats": 9294831,
+   "spots": 56508,
+   "shown": 8585,
+   "cats": {
+    "wall": 9309,
+    "stuck": 25076,
+    "eject": 21490,
+    "water": 132,
+    "walk": 501
+   },
+   "cats_flat": {
+    "water": 132,
+    "wall": 1602,
+    "eject": 1477,
+    "walk": 501,
+    "stuck": 838
+   },
+   "holds": 18,
+   "void": 499,
+   "bytes": 191191
   },
   {
    "map": "0xF7",
