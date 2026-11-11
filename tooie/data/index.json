@@ -2316,10 +2316,33 @@
    "map_names": [
     "Jiggywiggy Temple"
    ],
-   "tris": 1985,
+   "tris": 874,
    "opa": "0x1DC3",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 155,
+   "crack_samples": 36410558296,
+   "crack_floats": 61459906,
+   "spots": 41233,
+   "cats": {
+    "wall": 7241,
+    "walk": 4868,
+    "stuck": 8482,
+    "eject": 20191,
+    "lag": 183,
+    "jump": 268
+   },
+   "cats_flat": {
+    "wall": 3036,
+    "walk": 3586,
+    "eject": 16627,
+    "stuck": 128,
+    "lag": 91,
+    "jump": 199
+   },
+   "holds": 975,
+   "void": 2671,
+   "bytes": 966076
   },
   {
    "map": "0x152",
