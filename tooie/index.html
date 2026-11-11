@@ -83,9 +83,10 @@ code{font-family:var(--f-mono);font-size:.92em}
 <div class="app">
 <header>
   <div class="brand"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="5" fill="var(--accent)"/><path d="M5 14.5 11 8l6 6.5" fill="none" stroke="var(--accent-ink)" stroke-width="2"/><path d="M11 8v9" stroke="var(--accent-ink)" stroke-width="2" stroke-dasharray="2 2"/></svg>
-    <b>Bit-Clip Lab</b><span>Banjo-Tooie (USA) · every level</span></div>
-  <div class="ctl"><label class="lbl" for="gameSel">Game</label><select id="gameSel" aria-label="Game" onchange="if(this.value!=='bt')location.href=this.value"><option value="../">Banjo-Kazooie</option><option value="bt" selected>Banjo-Tooie</option></select></div>
+    <b>Bit-Clip Lab</b><span id="brandSub">Banjo-Tooie (USA) · every level</span></div>
+  <div class="ctl"><label class="lbl" for="gameSel">Game</label><select id="gameSel" aria-label="Game" onchange="if(this.value!=='bt')location.href=this.value+'?v='+VER+location.hash.replace(/^#0x[0-9a-f]+$/i,'')"><option value="../">Banjo-Kazooie</option><option value="bt" selected>Banjo-Tooie</option></select></div>
   <script>addEventListener("pageshow",()=>{const g=document.getElementById("gameSel");if(g)g.value="bt";});</script>
+  <div class="ctl"><label class="lbl" for="verSel">Version</label><select id="verSel" aria-label="Game version" title="Each version's census lives in its own repository"><option value="ntsc">N64 NTSC (USA)</option><option value="pal">N64 PAL</option><option value="xbox">Xbox</option></select></div>
   <div class="ctl"><label class="lbl" for="mapSel">Level</label><select id="mapSel" aria-label="Level"></select></div>
   <div class="ctl"><label class="lbl" for="digSel">Digits</label><select id="digSel" aria-label="Number of digits shown" title="How many digits coordinates show"><option value="0">Normal</option><option value="2">+2 decimals</option><option value="4">+4 decimals</option><option value="exact" title="9 significant figures: every f32 bit">Exact (f32)</option></select></div>
   <div class="ctl"><label class="lbl" for="viewSel">Show</label><select id="viewSel"><option value="all">All crack spots</option><option value="flat">Flat floors only</option><option value="hold">Holds only</option></select></div>
@@ -121,6 +122,19 @@ const $ = (id) => document.getElementById(id);
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const fmt = (n) => (n ?? 0).toLocaleString('en-US');
 let INDEX = null, ROOM = null, show = { walk: 1, lag: 1, jump: 1, eject: 1, stuck: 1, wall: 0, water: 1 };
+// Game versions: each version's census is its own repository's GitHub Pages site on the same kweber1.github.io address
+// (bitclip-lab-tooie-us, -pal, -xbox), so each gets its own 1 GB. Links: ?v=ntsc|pal|xbox#<map>. NTSC falls back to this site's data/.
+const VERS = { ntsc: { name: 'N64 NTSC (USA)', repo: 'bitclip-lab-tooie-us', local: true }, pal: { name: 'N64 PAL', repo: 'bitclip-lab-tooie-pal' }, xbox: { name: 'Xbox', repo: 'bitclip-lab-tooie-xbox' } };
+let VER = (new URLSearchParams(location.search).get('v') || '').toLowerCase(); if (VER === 'us' || VER === 'usa') VER = 'ntsc';
+if (!VERS[VER]) { try { VER = localStorage.getItem('bitclip-version') || ''; } catch (e) { VER = ''; } if (VER === 'us') VER = 'ntsc'; }
+if (!VERS[VER]) VER = 'ntsc';
+async function vfetch(name, opts, v = VER) {
+  let r = null; try { r = await fetch('/' + VERS[v].repo + '/data/' + name, opts); } catch (e) {}
+  if ((!r || !r.ok) && VERS[v].local) { try { r = await fetch('data/' + name, opts); } catch (e) {} }
+  if (!r || !r.ok) throw new Error(r ? String(r.status) : 'offline'); return r;
+}
+async function loadIndex(v) { try { const r = await vfetch('index.json', { cache: 'no-cache' }, v); const j = await r.json(); return j && j.rooms && j.rooms.some(x => x.done) ? j : null; } catch (e) { return null; } }
+function verUrl(m) { return location.pathname + (VER !== 'ntsc' ? '?v=' + VER : '') + (m ? '#' + m : ''); }
 // collision layers (triangle classes from site_build.py: 0 floor, 1 wall, 2 ceiling, 3 water, 4 not solid for Banjo)
 const LAYERS = [['floor', 'Floors', 0], ['wall', 'Walls', 1], ['ceil', 'Ceilings', 2], ['water', 'Water', 3], ['nosolid', 'Not solid for Banjo', 4]];
 let layer = { floor: 1, wall: 1, ceil: 1, water: 1, nosolid: 0, back: 0, opacity: 100, draw: 'game', tex: 1, hd: 1, objs: 1, marks: 1 };   // draw: game (visible model) / coll / both
@@ -202,7 +216,7 @@ function buildVis() {
 }
 // ---- objects and enemies (BizHawk dump of each map's actors + static props; models drawn like the level, lab-made / HD textures)
 const modelCache = {}, matCache = {};
-async function loadObjs() { if (OBJS) return OBJS; try { const r = await fetch('data/objects.gz.wasm'); OBJS = await gunzipJSON(await r.arrayBuffer()); } catch (e) { OBJS = { maps: {}, models: {}, names: {} }; } return OBJS; }
+async function loadObjs() { if (OBJS) return OBJS; try { const r = await vfetch('objects.gz.wasm'); OBJS = await gunzipJSON(await r.arrayBuffer()); } catch (e) { OBJS = { maps: {}, models: {}, names: {} }; } return OBJS; }
 function objName(o) { const p = '0x' + o[8].toString(16).toUpperCase(); return (OBJS.names[p] || (o[9] === 1 ? 'Static prop ' : 'Object ') + p); }
 function modelMats(mat) { const id = mat ? mat.join('/') + (layer.hd ? '/hd' : '') : 'none'; if (matCache[id]) return matCache[id];
   return (matCache[id] = new (mat ? THREE.MeshBasicMaterial : THREE.MeshLambertMaterial)({ vertexColors: true, map: mat ? labTexture(mat[0], mat[1], mat[2]) : null, alphaTest: mat && mat[3] ? 0.5 : 0, side: THREE.DoubleSide, clippingPlanes: [clipPlane] })); }
@@ -368,21 +382,40 @@ function howPane() {
 }
 function tab(t) { for (const [b, p] of [['tRoom', 'pRoom'], ['tAll', 'pAll'], ['tHow', 'pHow']]) { $(b).setAttribute('aria-selected', b === t); $(p).hidden = b !== t; } if (t === 'tAll') allPane(); }
 $('tRoom').onclick = () => tab('tRoom'); $('tAll').onclick = () => tab('tAll'); $('tHow').onclick = () => tab('tHow');
-async function loadRoom(m) {
+async function loadRoom(m, keepCam) {
   $('loading').hidden = false; $('loading').textContent = 'Loading ' + m + '…'; $('spotCard').hidden = true;
-  try { const r = await fetch('data/room-' + m + '.gz.wasm'); if (!r.ok) throw new Error(r.status); ROOM = await gunzipJSON(await r.arrayBuffer()); }
+  try { const r = await vfetch('room-' + m + '.gz.wasm'); ROOM = await gunzipJSON(await r.arrayBuffer()); }
   catch (e) { $('loading').textContent = 'Could not load ' + m + ' (' + e.message + ')'; return; }
-  buildMesh(); buildPoints(); legend(); fitCamera(); roomPane(); buildObjects(); $('loading').hidden = true; try { history.replaceState(null, '', '#' + m); } catch (e) {}
+  buildMesh(); buildPoints(); legend(); if (!keepCam) fitCamera(); roomPane(); buildObjects(); $('loading').hidden = true; try { history.replaceState(null, '', verUrl(m)); } catch (e) {}
+}
+function fillLevels() {
+  const groups = {}; for (const r of INDEX.rooms) (groups[r.group] = groups[r.group] || []).push(r);
+  $('mapSel').innerHTML = Object.keys(groups).map(g => `<optgroup label="${g}">` + groups[g].map(r => `<option value="${r.map}" ${r.done ? '' : 'disabled'}>${r.name} (${r.maps[0]})${r.done ? '' : ' · running'}</option>`).join('') + '</optgroup>').join('');
+  $('brandSub').textContent = 'Banjo-Tooie · ' + VERS[VER].name + ' · every level'; $('verSel').value = VER;
+  if (!$('pAll').hidden) allPane();
+}
+// switching version keeps the level and the camera when the other version has that level
+async function setVer(v) {
+  if (v === VER) return; const prev = VER; $('loading').hidden = false; $('loading').textContent = 'Loading the ' + VERS[v].name + ' level list…';
+  const idx = await loadIndex(v);
+  if (!idx) { $('verSel').value = prev; $('loading').textContent = 'Banjo-Tooie ' + VERS[v].name + ' has not been computed yet.'; setTimeout(() => { if (ROOM) $('loading').hidden = true; }, 2500); return; }
+  VER = v; INDEX = idx; OBJS = null; try { localStorage.setItem('bitclip-version', v); } catch (e) {} fillLevels();
+  const cur = ROOM && ROOM.map, same = INDEX.rooms.find(r => r.done && r.map === cur), first = same || INDEX.rooms.find(r => r.done && r.map === '0x10F') || INDEX.rooms.find(r => r.done);
+  $('mapSel').value = first.map; loadRoom(first.map, !!same);
 }
 (async () => {
   $('digSel').value = DIG; $('digSel').onchange = () => { DIG = $('digSel').value; try { localStorage.setItem('tooie-digits', DIG); } catch (e) {} if (CUR >= 0 && !$('spotCard').hidden) spotCard(CUR, false); };
-  try { const r = await fetch('data/index.json', { cache: 'no-cache' }); INDEX = await r.json(); } catch (e) { $('loading').textContent = 'Could not load the level list.'; return; }
+  INDEX = await loadIndex(VER); let note = '';
+  if (!INDEX && VER !== 'ntsc') { note = 'Banjo-Tooie ' + VERS[VER].name + ' has not been computed yet — showing ' + VERS.ntsc.name + '.'; VER = 'ntsc'; INDEX = await loadIndex(VER); }
+  if (!INDEX) { $('loading').textContent = 'Could not load the level list.'; return; }
+  $('verSel').onchange = () => setVer($('verSel').value);
+  // mark versions that have no census yet (their repositories hold only a README)
+  for (const v of Object.keys(VERS)) if (v !== VER) loadIndex(v).then(j => { const o = $('verSel').querySelector(`option[value="${v}"]`); if (o && !j) o.textContent = VERS[v].name + ' · not yet'; });
   try { const r = await fetch('data/hd.json'); if (r.ok) HD = await r.json(); } catch (e) {}
-  const groups = {}; for (const r of INDEX.rooms) (groups[r.group] = groups[r.group] || []).push(r);
-  $('mapSel').innerHTML = Object.keys(groups).map(g => `<optgroup label="${g}">` + groups[g].map(r => `<option value="${r.map}" ${r.done ? '' : 'disabled'}>${r.name} (${r.maps[0]})${r.done ? '' : ' · running'}</option>`).join('') + '</optgroup>').join('');
+  fillLevels();
   $('mapSel').onchange = () => loadRoom($('mapSel').value); howPane();
   const want = location.hash.slice(1); const first = INDEX.rooms.find(r => r.done && r.map === want) || INDEX.rooms.find(r => r.done && r.map === '0x10F') || INDEX.rooms.find(r => r.done);
-  if (first) { $('mapSel').value = first.map; loadRoom(first.map); } else $('loading').textContent = 'The census is still running — no level is done yet.';
+  if (first) { $('mapSel').value = first.map; await loadRoom(first.map); if (note) { $('loading').hidden = false; $('loading').textContent = note; setTimeout(() => { $('loading').hidden = true; }, 4000); } } else $('loading').textContent = 'The census is still running — no level is done yet.';
 })();
 </script>
 </body></html>
