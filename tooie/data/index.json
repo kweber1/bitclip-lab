@@ -3773,10 +3773,34 @@
    "map_names": [
     "Trashcan"
    ],
-   "tris": 3302,
+   "tris": 1232,
    "opa": "0x1DB1",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 737,
+   "crack_samples": 62750012185,
+   "crack_floats": 173822963,
+   "spots": 385510,
+   "shown": 80143,
+   "cats": {
+    "wall": 54180,
+    "stuck": 175543,
+    "eject": 133973,
+    "lag": 1235,
+    "jump": 3583,
+    "walk": 16996
+   },
+   "cats_flat": {
+    "eject": 23169,
+    "jump": 317,
+    "lag": 132,
+    "walk": 8508,
+    "stuck": 406,
+    "wall": 7059
+   },
+   "holds": 8947,
+   "void": 8358,
+   "bytes": 1535705
   },
   {
    "map": "0x187",
