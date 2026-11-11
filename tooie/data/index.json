@@ -631,10 +631,31 @@
     "Balloon Burst",
     "Hoop Hurry"
    ],
-   "tris": 1093,
+   "tris": 418,
    "opa": "0x1D46",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 289,
+   "crack_samples": 37849015512,
+   "crack_floats": 197188476,
+   "spots": 61498,
+   "cats": {
+    "wall": 2410,
+    "walk": 36193,
+    "lag": 143,
+    "jump": 648,
+    "eject": 22104
+   },
+   "cats_flat": {
+    "wall": 2410,
+    "walk": 36193,
+    "lag": 143,
+    "jump": 648,
+    "eject": 22104
+   },
+   "holds": 94,
+   "void": 36193,
+   "bytes": 809210
   },
   {
    "map": "0xE6",
