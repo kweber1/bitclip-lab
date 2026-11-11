@@ -1280,10 +1280,34 @@
    "map_names": [
     "Trash Compactor"
    ],
-   "tris": 2347,
+   "tris": 907,
    "opa": "0x1D7E",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 368,
+   "crack_samples": 44475725434,
+   "crack_floats": 44236601,
+   "spots": 47711,
+   "shown": 12998,
+   "cats": {
+    "eject": 20807,
+    "walk": 5979,
+    "lag": 19,
+    "jump": 102,
+    "wall": 18608,
+    "stuck": 2196
+   },
+   "cats_flat": {
+    "eject": 18789,
+    "walk": 5979,
+    "lag": 19,
+    "jump": 102,
+    "wall": 16739,
+    "stuck": 75
+   },
+   "holds": 440,
+   "void": 5979,
+   "bytes": 171366
   },
   {
    "map": "0x105",
