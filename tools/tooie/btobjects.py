@@ -74,7 +74,10 @@ def main(site):
     # spawn points (cube grid list 1, pool D_80132DB0, 20-byte records; kind 0x0C = actor): every object and enemy of the map,
     # including the ones not spawned yet. x y z s16, u16 kind, u16 prop id, +12 u8 yaw/2, +14 u16 scale x100.
     ram = json.load(open('/home/claude/btmaps/ram_propmodel.json')) if os.path.exists('/home/claude/btmaps/ram_propmodel.json') else {}
-    for k, v in ram.items(): pm.setdefault(int(k, 16), collections.Counter())[v[0]] += 1
+    for k, v in ram.items(): pm.setdefault(int(k, 16), collections.Counter())[int(v[0], 16) if isinstance(v[0], str) else v[0]] += 1
+    # spawners show the thing they spawn (Jinjo, Jiggy, honeycomb, Glowbo, Cheato page, doubloon, ticket)
+    for sp_, real in {0x1F5: 0x1F4, 0x1F6: 0x21F, 0x1F7: 0x220, 0x1F8: 0x21B, 0x201: 0x136, 0x29D: 0x4E5, 0x4E6: 0x3C6}.items():
+        if real in pm and sp_ not in pm: pm[sp_] = pm[real]
     for f in sorted(glob.glob('/home/claude/btmaps/nodes/nodes*/nodes-0x*.txt')):
         m = None; sp = []
         for l in open(f):

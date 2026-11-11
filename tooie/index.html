@@ -123,7 +123,7 @@ const fmt = (n) => (n ?? 0).toLocaleString('en-US');
 let INDEX = null, ROOM = null, show = { walk: 1, lag: 1, jump: 1, eject: 1, stuck: 1, wall: 0, water: 1 };
 // collision layers (triangle classes from site_build.py: 0 floor, 1 wall, 2 ceiling, 3 water, 4 not solid for Banjo)
 const LAYERS = [['floor', 'Floors', 0], ['wall', 'Walls', 1], ['ceil', 'Ceilings', 2], ['water', 'Water', 3], ['nosolid', 'Not solid for Banjo', 4]];
-let layer = { floor: 1, wall: 1, ceil: 1, water: 1, nosolid: 0, back: 0, opacity: 100, draw: 'game', tex: 1, hd: 1, objs: 1, marks: 0 };   // draw: game (visible model) / coll / both
+let layer = { floor: 1, wall: 1, ceil: 1, water: 1, nosolid: 0, back: 0, opacity: 100, draw: 'game', tex: 1, hd: 1, objs: 1, marks: 1 };   // draw: game (visible model) / coll / both
 try { const l = JSON.parse(localStorage.getItem('tooie-layers') || 'null'); if (l) layer = Object.assign(layer, l); } catch (e) {}
 let DIG = '0'; try { DIG = localStorage.getItem('tooie-digits') || '0'; } catch (e) {}
 const f32b = new DataView(new ArrayBuffer(4));
@@ -203,7 +203,7 @@ function buildVis() {
 // ---- objects and enemies (BizHawk dump of each map's actors + static props; models drawn like the level, lab-made / HD textures)
 const modelCache = {}, matCache = {};
 async function loadObjs() { if (OBJS) return OBJS; try { const r = await fetch('data/objects.gz.wasm'); OBJS = await gunzipJSON(await r.arrayBuffer()); } catch (e) { OBJS = { maps: {}, models: {}, names: {} }; } return OBJS; }
-function objName(o) { const p = '0x' + o[8].toString(16).toUpperCase(); return (OBJS.names[p] || (o[9] ? 'Static prop ' : 'Object ') + p); }
+function objName(o) { const p = '0x' + o[8].toString(16).toUpperCase(); return (OBJS.names[p] || (o[9] === 1 ? 'Static prop ' : 'Object ') + p); }
 function modelMats(mat) { const id = mat ? mat.join('/') + (layer.hd ? '/hd' : '') : 'none'; if (matCache[id]) return matCache[id];
   return (matCache[id] = new (mat ? THREE.MeshBasicMaterial : THREE.MeshLambertMaterial)({ vertexColors: true, map: mat ? labTexture(mat[0], mat[1], mat[2]) : null, alphaTest: mat && mat[3] ? 0.5 : 0, side: THREE.DoubleSide, clippingPlanes: [clipPlane] })); }
 function modelGeo(asset) {
@@ -236,9 +236,9 @@ function objCard(node) {
   $('spotCard').innerHTML = `<h3><span class="sw" style="background:#d08a2a"></span>${objName(o)}<button class="btn mini" id="zoomSpot" style="margin-left:auto">Zoom</button><button class="btn mini" id="closeSpot" style="margin-left:0">Close</button></h3>
     <div class="coords"><div class="ch"><span class="lbl">Position</span><button class="btn mini" id="copyXYZ">Copy</button></div>
       <dl class="kv"><dt>x</dt><dd><b>${o[1]}</b></dd><dt>y</dt><dd><b>${o[2]}</b></dd><dt>z</dt><dd><b>${o[3]}</b></dd></dl></div>
-    <dl class="kv"><dt>kind</dt><dd>${o[9] ? 'static prop (cube grid)' : 'actor'} · prop id 0x${o[8].toString(16).toUpperCase()}</dd><dt>model</dt><dd>${asset}</dd>
+    <dl class="kv"><dt>kind</dt><dd>${o[9] === 1 ? 'static prop (cube grid)' : o[9] === 2 ? 'spawn point (cube grid)' : 'actor (spawned)'} · id 0x${o[8].toString(16).toUpperCase()}</dd><dt>model</dt><dd>${asset}</dd>
       <dt>rotation</dt><dd>${o[4]}°, ${o[5]}°, ${o[6]}° (x, y, z)</dd><dt>scale</dt><dd>${o[7]}</dd></dl>
-    <p class="note" style="margin:6px 0 0">As loaded 8 s after entering from entrance ${(OBJS.maps[ROOM.map] || {}).entrance ?? 1}; enemies may have moved from their start.</p>`;
+    <p class="note" style="margin:6px 0 0">${o[9] === 2 ? 'Where the map spawns it (enemies walk away from here).' : 'As found 8 s after entering from entrance ' + ((OBJS.maps[ROOM.map] || {}).entrance ?? 1) + '.'}</p>`;
   $('spotCard').hidden = false; $('closeSpot').onclick = () => { $('spotCard').hidden = true; if (selObj) { scene.remove(selObj); selObj = null; } };
   $('copyXYZ').onclick = (e) => { (navigator.clipboard ? navigator.clipboard.writeText(`${o[1]} ${o[2]} ${o[3]}`) : Promise.reject()).then(() => { e.target.textContent = 'Copied'; }).catch(() => prompt('Copy:', `${o[1]} ${o[2]} ${o[3]}`)); };
   if (selObj) scene.remove(selObj); selObj = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({ color: css('--accent'), wireframe: true }));
@@ -279,7 +279,7 @@ function legend() {
     + `<label title="Textures painted by the Bit-Clip Lab from each original texture's colours and kind of surface (no game art is used)"><input type="checkbox" data-l="tex" ${layer.tex ? 'checked' : ''}>Textures</label>`
     + `<label title="Where the BT Reloaded HD pack by GhostlyDark has a replacement (matched by GLideN64's texture checksum), use it; loaded from the pack's own GitHub. Elsewhere the lab-made textures."><input type="checkbox" data-l="hd" ${layer.hd ? 'checked' : ''}>HD where available (BT Reloaded)<span class="n">${ROOM.vis && ROOM.vis.mats && HD ? ROOM.vis.mats.filter(m => HD.files[m[0]]).length : 0}</span></label>`
     + `<div class="grp">Objects</div><label title="Every actor and static prop in the map as loaded 8 s after entering (BizHawk dump): collectables, NPCs, enemies, doors, pads… Click one for its position."><input type="checkbox" data-l="objs" ${layer.objs ? 'checked' : ''}>Objects &amp; enemies<span class="n" id="objN">…</span></label>`
-    + `<label title="Actors without a model: triggers, spawn points, camera and warp markers"><input type="checkbox" data-l="marks" ${layer.marks ? 'checked' : ''}>Invisible markers<span class="n" id="markN">…</span></label>`
+    + `<label title="Spawn points and actors whose model is not known (yet) or that have none: some enemies, spawners, triggers, warp and camera points. Click one for its id."><input type="checkbox" data-l="marks" ${layer.marks ? 'checked' : ''}>Other objects (markers)<span class="n" id="markN">…</span></label>`
     + `<div class="grp">Surfaces (both looks)</div>` + LAYERS.map(([k, n, c]) => `<label><input type="checkbox" data-l="${k}" ${layer[k] ? 'checked' : ''}><span class="sw" style="border-radius:2px;background:${['#b4bfb6', '#97a39b', '#8b8f9c', '#73b3cc', '#cc9999'][c]}"></span>${n}<span class="n">${fmt(ROOM.tris.filter(t => t[3] === c).length)}</span></label>`).join('')
     + `<label title="Draw the back of every triangle too (closed rooms then hide their inside)"><input type="checkbox" data-l="back" ${layer.back ? 'checked' : ''}>Back faces</label>`
     + `<div class="grp">See-through <span id="opVal" style="font-family:var(--f-mono);text-transform:none">${layer.opacity}%</span></div><input type="range" id="opac" min="15" max="100" value="${layer.opacity}" style="width:100%;accent-color:var(--accent)">`

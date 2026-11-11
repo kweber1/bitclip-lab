@@ -33,7 +33,7 @@ NPCs, enemies, pads, doors and other props. They come from BizHawk dumps of each
 the cube grid's spawn points (every actor the map can spawn, including enemies that have not spawned yet), the actors present
 8 s after entering, and the static props. Each object with a known model is drawn with that model at its position, yaw and
 scale, with the same lab-made / HD textures; the rest (triggers, spawners, ids whose model is not known yet) are small orange
-markers (layer *Invisible markers*). Click an object for its id, model and exact position. Objects are not part of the crack census.
+markers (layer *Other objects (markers)*, on by default). Click an object for its id, model and exact position. Objects are not part of the crack census.
 
 Floors that the level's display lists never draw (e.g. the Gatehouse mirror floor, drawn by a special effect in game) are filled
 in grey from the collision so the game look has no holes.
