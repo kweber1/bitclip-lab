@@ -2169,10 +2169,33 @@
    "map_names": [
     "Jingaling Throne Room"
    ],
-   "tris": 1950,
+   "tris": 796,
    "opa": "0x1DD1",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 264,
+   "crack_samples": 50342311474,
+   "crack_floats": 153504897,
+   "spots": 129458,
+   "cats": {
+    "wall": 1713,
+    "stuck": 8981,
+    "eject": 40856,
+    "walk": 28549,
+    "lag": 45644,
+    "jump": 3715
+   },
+   "cats_flat": {
+    "stuck": 680,
+    "wall": 1385,
+    "eject": 32432,
+    "walk": 28547,
+    "lag": 45627,
+    "jump": 3699
+   },
+   "holds": 8,
+   "void": 28547,
+   "bytes": 1203966
   },
   {
    "map": "0x145",
