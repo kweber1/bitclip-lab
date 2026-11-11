@@ -828,10 +828,30 @@
    "map_names": [
     "Crazy Castle Lobby"
    ],
-   "tris": 1897,
+   "tris": 724,
    "opa": "0x1D3B",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 476,
+   "crack_samples": 53499997803,
+   "crack_floats": 26899788,
+   "spots": 20650,
+   "cats": {
+    "wall": 2234,
+    "stuck": 6854,
+    "eject": 11195,
+    "walk": 359,
+    "jump": 8
+   },
+   "cats_flat": {
+    "wall": 484,
+    "walk": 359,
+    "eject": 993,
+    "jump": 8
+   },
+   "holds": 7,
+   "void": 359,
+   "bytes": 571959
   },
   {
    "map": "0xE3",
