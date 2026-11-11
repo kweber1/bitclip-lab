@@ -1423,10 +1423,32 @@
     "Inside Chompa Belly",
     "Chompas Belly"
    ],
-   "tris": 1172,
+   "tris": 540,
    "opa": "0x1D73",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 281,
+   "crack_samples": 38166266243,
+   "crack_floats": 116855357,
+   "spots": 100861,
+   "cats": {
+    "wall": 19982,
+    "eject": 32561,
+    "jump": 145,
+    "lag": 59,
+    "walk": 1103,
+    "stuck": 47011
+   },
+   "cats_flat": {
+    "wall": 371,
+    "eject": 3694,
+    "jump": 98,
+    "lag": 23,
+    "walk": 1061
+   },
+   "holds": 1,
+   "void": 1061,
+   "bytes": 2664919
   },
   {
    "map": "0x125",
