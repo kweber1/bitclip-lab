@@ -3065,29 +3065,31 @@
    "xlu": null,
    "done": true,
    "seams": 264,
-   "crack_samples": 50342311474,
-   "crack_floats": 153504897,
-   "spots": 129458,
+   "crack_samples": 50280711474,
+   "crack_floats": 153271212,
+   "spots": 153271212,
    "cats": {
-    "wall": 1713,
-    "stuck": 8981,
-    "eject": 40856,
-    "walk": 28549,
-    "lag": 45644,
-    "jump": 3715
+    "wall": 273345,
+    "stuck": 86789380,
+    "eject": 62667019,
+    "walk": 3297812,
+    "lag": 229561,
+    "jump": 14095
    },
    "cats_flat": {
-    "stuck": 680,
-    "wall": 1385,
-    "eject": 32432,
-    "walk": 28547,
-    "lag": 45627,
-    "jump": 3699
+    "stuck": 920,
+    "wall": 260675,
+    "walk": 3297404,
+    "eject": 671426,
+    "lag": 226207,
+    "jump": 11051
    },
-   "holds": 8,
-   "void": 28547,
-   "bytes": 380842,
-   "shown": 81290
+   "holds": 6277,
+   "void": 3297404,
+   "bytes": 134412,
+   "shown": 8366,
+   "every": true,
+   "cells": 22976
   },
   {
    "map": "0x145",
