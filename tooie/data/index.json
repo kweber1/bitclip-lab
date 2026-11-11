@@ -1073,10 +1073,34 @@
    "map_names": [
     "Basement"
    ],
-   "tris": 5430,
+   "tris": 2359,
    "opa": "0x1D7C",
    "xlu": "0x1D93",
-   "done": false
+   "done": true,
+   "seams": 529,
+   "crack_samples": 39933885495,
+   "crack_floats": 380368735,
+   "spots": 200938,
+   "cats": {
+    "wall": 56355,
+    "eject": 60113,
+    "walk": 45200,
+    "jump": 1209,
+    "stuck": 37506,
+    "lag": 325,
+    "water": 230
+   },
+   "cats_flat": {
+    "wall": 8795,
+    "eject": 52561,
+    "walk": 43196,
+    "jump": 640,
+    "lag": 294,
+    "stuck": 40
+   },
+   "holds": 1315,
+   "void": 42948,
+   "bytes": 3459830
   },
   {
    "map": "0x110",
