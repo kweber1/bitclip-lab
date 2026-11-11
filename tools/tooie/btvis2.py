@@ -54,4 +54,28 @@ def room_vis(room, texdir):
                 if kk not in vidx: vidx[kk] = len(verts); verts.append(list(kk))
                 ids.append(vidx[kk])
             tris.append(ids + [1 if mk == 'xlu' else 0, mat])
-    return {'verts': verts, 'tris': tris, 'mats': mats}
+    # floors that are in the collision but never drawn by the level's display lists (e.g. the Gatehouse's mirror floor, which the
+    # game draws with a special effect): add them as plain fill (mat -2) so the floor is not missing
+    seen = set(tuple(sorted(tuple(verts[i][:3]) for i in t[:3])) for t in tris)
+    fill = 0
+    for mk in ('opa', 'xlu'):
+        m = room[mk]
+        if not m or not m.get('collision'): continue
+        Vc = m['vertices']
+        for t in m['collision']['triangles']:
+            fl = t[5] if len(t) > 5 else t[4]
+            if fl & 0x400005: continue
+            P = [tuple(Vc[j]) for j in t[:3]]
+            ux, uy, uz = (P[1][i] - P[0][i] for i in range(3)); vx, vy, vz = (P[2][i] - P[0][i] for i in range(3))
+            nx, ny, nz = uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx; L = (nx * nx + ny * ny + nz * nz) ** 0.5 or 1
+            if ny / L < 0.3: continue
+            k = tuple(sorted(P))
+            if k in seen: continue
+            seen.add(k); ids = []
+            col = (120, 160, 210) if fl & 0x20020 else (168, 170, 176)
+            for p in P:
+                kk = p + col + (0, 0)
+                if kk not in vidx: vidx[kk] = len(verts); verts.append(list(kk))
+                ids.append(vidx[kk])
+            tris.append(ids + [0, -2]); fill += 1
+    return {'verts': verts, 'tris': tris, 'mats': mats, 'fill': fill}

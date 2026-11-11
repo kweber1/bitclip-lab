@@ -25,3 +25,15 @@ for a texture, the viewer shows it by default (layer *HD where available*). Text
 texture packs: the Rice checksum of the texture data and, for colour-indexed textures, of the used part of the palette
 (`tools/tooie/btrice.py`). The images load straight from the pack's own GitHub repository (pinned commit); nothing from the pack
 is copied into this repository. `tooie/data/hd.json` holds only the texture key -> pack file name list.
+
+## Objects and enemies
+
+Every map's objects are drawn in the view (layer *Objects & enemies*): collectables (notes, nests, Jiggies, Jinjos, honeycombs),
+NPCs, enemies, pads, doors and other props. They come from BizHawk dumps of each map (`bt_objects.lua`, `bt_nodes.lua`):
+the cube grid's spawn points (every actor the map can spawn, including enemies that have not spawned yet), the actors present
+8 s after entering, and the static props. Each object with a known model is drawn with that model at its position, yaw and
+scale, with the same lab-made / HD textures; the rest (triggers, spawners, ids whose model is not known yet) are small orange
+markers (layer *Invisible markers*). Click an object for its id, model and exact position. Objects are not part of the crack census.
+
+Floors that the level's display lists never draw (e.g. the Gatehouse mirror floor, drawn by a special effect in game) are filled
+in grey from the collision so the game look has no holes.
