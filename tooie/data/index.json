@@ -3143,10 +3143,30 @@
    "map_names": [
     "Floor 4 Sewer Entrance"
    ],
-   "tris": 2326,
+   "tris": 1010,
    "opa": "0x1D8E",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 283,
+   "crack_samples": 26305328154,
+   "crack_floats": 2541605,
+   "spots": 13077,
+   "shown": 4084,
+   "cats": {
+    "wall": 3298,
+    "water": 6807,
+    "walk": 2482,
+    "stuck": 158,
+    "jump": 107,
+    "eject": 172,
+    "lag": 53
+   },
+   "cats_flat": {
+    "eject": 1
+   },
+   "holds": 48,
+   "void": 0,
+   "bytes": 96566
   },
   {
    "map": "0x18A",
