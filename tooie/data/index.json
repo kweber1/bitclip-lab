@@ -615,10 +615,35 @@
    "map_names": [
     "Chuffy's Cab"
    ],
-   "tris": 3024,
+   "tris": 1416,
    "opa": "0x1D1F",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 286,
+   "crack_samples": 39013475781,
+   "crack_floats": 348289609,
+   "spots": 348289609,
+   "shown": 22278,
+   "cats": {
+    "wall": 141888787,
+    "eject": 74227972,
+    "walk": 26657176,
+    "lag": 50788102,
+    "jump": 42773035,
+    "stuck": 11954537
+   },
+   "cats_flat": {
+    "wall": 1243409,
+    "eject": 7700725,
+    "walk": 342819,
+    "lag": 5817,
+    "jump": 39040
+   },
+   "holds": 262627680,
+   "void": 548965,
+   "every": true,
+   "cells": 46510,
+   "bytes": 582913
   },
   {
    "map": "0xD1",
