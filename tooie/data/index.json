@@ -1409,10 +1409,33 @@
    "map_names": [
     "Temple Of Fishes"
    ],
-   "tris": 2905,
+   "tris": 1231,
    "opa": "0x1D55",
    "xlu": "0x1D5D",
-   "done": false
+   "done": true,
+   "seams": 178,
+   "crack_samples": 27386698801,
+   "crack_floats": 2423620,
+   "spots": 36480,
+   "shown": 9498,
+   "cats": {
+    "wall": 6301,
+    "stuck": 7119,
+    "eject": 18662,
+    "jump": 249,
+    "lag": 51,
+    "walk": 4098
+   },
+   "cats_flat": {
+    "wall": 1930,
+    "eject": 5494,
+    "jump": 249,
+    "lag": 51,
+    "walk": 4098
+   },
+   "holds": 0,
+   "void": 4098,
+   "bytes": 165705
   },
   {
    "map": "0xFC",
