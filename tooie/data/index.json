@@ -2300,10 +2300,33 @@
    "map_names": [
     "Digger Tunnel"
    ],
-   "tris": 2030,
+   "tris": 1004,
    "opa": "0x1D04",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 478,
+   "crack_samples": 45847620301,
+   "crack_floats": 151038267,
+   "spots": 460668,
+   "shown": 198057,
+   "cats": {
+    "wall": 17434,
+    "eject": 253636,
+    "stuck": 49911,
+    "jump": 5411,
+    "lag": 2339,
+    "walk": 131937
+   },
+   "cats_flat": {
+    "wall": 881,
+    "eject": 173281,
+    "jump": 1835,
+    "lag": 411,
+    "walk": 126551
+   },
+   "holds": 2360,
+   "void": 129092,
+   "bytes": 2689833
   },
   {
    "map": "0x142",
