@@ -302,12 +302,12 @@ function roomPane() {
     <div class="bar">${bar}</div>
     <div class="stats">
       <div class="stat"><b>${fmt(e.crack_floats)}</b><span>crack floats (floor ray misses)</span></div>
-      <div class="stat"><b>${fmt(n)}</b><span>crack spots (one per 0.25 cell per seam)</span></div>
+      <div class="stat"><b>${fmt(e.every ? e.cells : n)}</b><span>${e.every ? 'cells (0.25 × 0.25 per seam); <b>every crack float tested</b> — the counts below are floats' : 'crack spots (one per 0.25 cell per seam; one float tested each)'}</span></div>
       <div class="stat"><b style="color:var(--c-walk)">${fmt(c.walk || 0)}</b><span>fall through walking in${e.void ? ` · ${fmt(e.void)} into the void` : ''}</span></div>
       <div class="stat"><b style="color:var(--c-lag)">${fmt(c.lag || 0)}</b><span>fall through only with a lag frame</span></div>
       <div class="stat"><b style="color:var(--c-jump)">${fmt(c.jump || 0)}</b><span>need a jump onto the crack</span></div>
       <div class="stat"><b style="color:var(--c-eject)">${fmt(c.eject || 0)}</b><span>ejected (no clip)</span></div>
-      <div class="stat"><b>${fmt(e.holds)}</b><span>spots with a 5-pass hold</span></div>
+      <div class="stat"><b>${fmt(e.holds)}</b><span>${e.every ? 'floats' : 'spots'} with a 5-pass hold</span></div>
       <div class="stat"><b style="color:var(--c-wall)">${fmt(c.wall || 0)}</b><span>wall pushes Banjo off</span></div>
     </div>
     <h4>Flat floors only</h4><p class="note">${CATS.map(([k, nn]) => `${nn}: <b>${fmt(cf[k] || 0)}</b>`).join(' · ')}</p>
@@ -321,7 +321,7 @@ function spotCard(i, fromClick) {
     <div class="coords"><div class="ch"><span class="lbl">Crack position (Banjo's feet)</span><button class="btn mini" id="copyXYZ" title="Copy x y z as shown">Copy</button><button class="btn mini" id="copyExact" title="Copy the exact f32 values">Copy exact</button></div>
       <dl class="kv"><dt>x</dt><dd><b>${num(s[0])}</b> <span class="bits">${bitsHex(s[0])}</span></dd><dt>y</dt><dd><b>${num(s[1])}</b> <span class="bits">${bitsHex(s[1])}</span></dd><dt>z</dt><dd><b>${num(s[2])}</b> <span class="bits">${bitsHex(s[2])}</span></dd></dl></div>
     <dl class="kv"><dt>seam</dt><dd>(${se[0]}, ${se[1]}, ${se[2]}) – (${se[3]}, ${se[4]}, ${se[5]}), floor n.y ${se[6]} / ${se[7]}</dd>
-      <dt>crack</dt><dd>${s.length > 15 ? `<b>every float tested</b>: ${s[15]} consecutive crack float${s[15] === 1 ? '' : 's'} along the seam (${s[18] ? (s[18] > 0 ? '+' : '') + s[18] + ' floats across' : 'on the seam line'}), all with these results, from here to x ${num(s[16])}, z ${num(s[17])}` : `${s[4]} float${s[4] === 1 ? '' : 's'} in this 0.25 cell (one tested)`}</dd>
+      <dt>crack</dt><dd>${Array.isArray(s[15]) ? `<b>every float tested</b>: ${fmt(s[15][0])} crack float${s[15][0] === 1 ? '' : 's'} here — ${[['walk-in through', 1], ['into the void', 2], ['lag-frame through', 3], ['need a jump', 4], ['ejected', 5], ['stuck', 6], ['wall pushes off', 7], ['water', 8], ['with a hold', 9]].filter(([, i]) => s[15][i]).map(([t, i]) => `<b>${fmt(s[15][i])}</b> ${t}`).join(', ')}. The position above is one float of the best outcome.` : s.length > 15 ? `<b>every float tested</b>: ${s[15]} consecutive crack float${s[15] === 1 ? '' : 's'} along the seam (${s[18] ? (s[18] > 0 ? '+' : '') + s[18] + ' floats across' : 'on the seam line'}), all with these results, from here to x ${num(s[16])}, z ${num(s[17])}` : `${s[4]} float${s[4] === 1 ? '' : 's'} in this 0.25 cell (one tested)`}</dd>
       <dt>walk in</dt><dd><div class="runs">${runs}</div></dd>
       <dt>jump</dt><dd>${s[11] < 0 ? 'not needed / not tested' : `${s[11]} of 42 jump landings go through${s[12] > 0 ? ` (${s[12]} into the void)` : ''}`}</dd>
       <dt>hold</dt><dd>${s[14] ? 'yes' : 'no'} · ${s[7]} of 9 walk-in runs with a 5-pass hold${s[13] > 0 ? `, ${s[13]} jumps` : ''} · sits up to ${s[8]} update${s[8] === 1 ? '' : 's'}</dd>

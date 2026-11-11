@@ -39,7 +39,7 @@ def build(tc, roomf, outdir):
     except Exception as ex:
         import traceback; traceback.print_exc(); vis = {'verts': [], 'tris': [], 'mats': [], 'error': str(ex)}
     import tempfile
-    seams, seen = [], set(); nshown = 0
+    seams, seen = [], set(); nshown = 0; merged = {}; ncell = 0
     spf = tempfile.TemporaryFile('w+')   # shown spots as JSON text, one per line (rooms with millions of spots)
     head = None
     cnt = collections.Counter(); byseam = collections.Counter(); nsp = 0; nhold = 0; nvoid = 0
@@ -56,6 +56,26 @@ def build(tc, roomf, outdir):
         if a[0] == 'ROOM': head = a
         elif a[0] == 'SEAM':
             seams.append([float(a[4]), float(a[5]), float(a[6]), float(a[7]), float(a[8]), float(a[9]), round(float(a[10]), 4), round(float(a[11]), 4), int(a[12])])
+        elif a[0] == 'CELL':
+            # exhaustive census: every crack float of this 0.25 cell tested; counts per category + one float of the best category
+            bar = a.index('|'); c = [int(v) for v in a[2:bar]]   # n, walk, void, lag, jump, eject, stuck, wall, water, hold
+            r = a[bar + 1:]; seam = int(a[1]); outs = r[3]; hl = [int(v) for v in r[4].split(',')]; sits = [int(v) for v in r[6].split(',')]
+            j = r[9] if len(r) > 9 else '-'
+            jc = [int(v) for v in j[1:].split('/')[1].replace(':', ',').split(',')] if j != '-' else None
+            n, cw, cv, cl, cj, ce, cs, cwa, cwt, ch = c
+            cat = 'walk' if cw else 'lag' if cl else 'jump' if cj else 'stuck' if cs else 'eject' if ce else 'wall' if cwa else 'water'
+            for k_, v_ in (('walk', cw), ('lag', cl), ('jump', cj), ('eject', ce), ('stuck', cs), ('wall', cwa), ('water', cwt)):
+                if v_: cnt[k_] += v_; byseam[(seam, k_)] += v_
+            nsp += n; nhold += ch; nvoid += cv; ncell += 1
+            x, z = float(r[0]), float(r[2]); thru = cat in ('walk', 'lag', 'jump') or ch > 0
+            entry = [x, float(r[1]), z, seam, n, cat, outs, sum(1 for h in hl if h), max(sits), int(r[7]), round(float(r[8]), 2),
+                     (jc[0] if jc else -1), (jc[1] if jc else -1), (jc[5] if jc else -1), 1 if ch else 0, c]
+            if thru: nshown += 1; spf.write(json.dumps(entry, separators=(',', ':')) + '\n')
+            else:   # cells where nothing clips: merged per seam per 2x2-unit cell for drawing (counts summed, nothing dropped)
+                k = (seam, math.floor(x / 2), math.floor(z / 2))
+                if k in merged: m_ = merged[k]; m_[15] = [p_ + q_ for p_, q_ in zip(m_[15], c)]; m_[4] += n
+                else: merged[k] = entry
+            continue
         elif a[0] in ('SPOT', 'RUN'):
             run = None
             if a[0] == 'RUN':   # exhaustive census: n consecutive crack floats with identical outcomes, every one tested
@@ -89,6 +109,11 @@ def build(tc, roomf, outdir):
             nshown += 1; spf.write(json.dumps([x, float(a[3]), z, seam, int(a[5]), cat, outs, sum(1 for h in hl if h), max(sits), int(a[10]), round(float(a[11]), 2),
                           (jc[0] if jc else -1), (jc[1] if jc else -1), (jc[5] if jc else -1), 1 if hold else 0] + (list(run) if run else []), separators=(',', ':')) + '\n')
     fh.close(); seen = None
+    for e_ in merged.values():
+        e_[5] = 'stuck' if e_[15][6] else 'eject' if e_[15][5] else 'wall' if e_[15][7] else 'water'
+        nshown += 1; spf.write(json.dumps(e_, separators=(',', ':')) + '\n')
+    every = ncell > 0
+    if every: thin_txt = 'every crack float tested; each spot is one 0.25 cell with counts per outcome; cells where nothing clips are merged per seam per 2x2-unit cell'
     flatseam = [s[6] > 0.999 and s[7] > 0.999 for s in seams]
     cntflat = collections.Counter()
     for (sm, c), n in byseam.items():
@@ -98,7 +123,7 @@ def build(tc, roomf, outdir):
             'spot_fields': ['x', 'y', 'z', 'seam', 'crack_floats', 'category', 'walk_outcomes_9', 'walk_runs_with_hold', 'max_sit_updates',
                             'decided_update', 'end_y', 'jump_clips_of_42', 'jump_voids_of_42', 'jump_drops_with_hold', 'any_hold',
                             'every_float_run: floats_in_run', 'x_end', 'z_end', 'across_offset'],
-            'thinned': thin_txt, 'counts': dict(cnt), 'spots': '__SPOTS__'}
+            'thinned': thin_txt, 'every': every, 'counts': dict(cnt), 'spots': '__SPOTS__'}
     os.makedirs(os.path.join(outdir, 'data'), exist_ok=True)
     pre, post = json.dumps(data, separators=(',', ':')).split('"__SPOTS__"', 1)
     spf.seek(0)
@@ -111,7 +136,7 @@ def build(tc, roomf, outdir):
     entry = {'map': key, 'name': room['name'], 'group': room['group'], 'maps': room['maps'], 'map_names': room['map_names'],
              'tris': len(tris), 'seams': len(seams), 'crack_samples': int(head[5]) if head else 0, 'crack_floats': int(head[7]) if head else 0,
              'spots': nsp, 'shown': nshown, 'cats': dict(cnt), 'cats_flat': dict(cntflat), 'holds': nhold,
-             'void': nvoid, 'bytes': os.path.getsize(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key))}
+             'void': nvoid, 'every': every, 'cells': ncell, 'bytes': os.path.getsize(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key))}
     return entry
 
 if __name__ == '__main__':
