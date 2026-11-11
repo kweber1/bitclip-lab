@@ -3685,23 +3685,25 @@
    "xlu": null,
    "done": true,
    "seams": 1,
-   "crack_samples": 1319165120,
+   "crack_samples": 1317765120,
    "crack_floats": 25618,
-   "spots": 2256,
+   "spots": 25618,
    "cats": {
-    "walk": 3,
-    "eject": 2239,
-    "wall": 14
+    "walk": 9,
+    "eject": 25594,
+    "wall": 15
    },
    "cats_flat": {
-    "walk": 3,
-    "eject": 2239,
-    "wall": 14
+    "walk": 9,
+    "eject": 25594,
+    "wall": 15
    },
    "holds": 0,
-   "void": 3,
-   "bytes": 10157,
-   "shown": 412
+   "void": 9,
+   "bytes": 10812,
+   "shown": 412,
+   "every": true,
+   "cells": 2256
   },
   {
    "map": "0x19B",
