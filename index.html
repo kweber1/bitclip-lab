@@ -220,11 +220,10 @@ td.tag{text-align:left;font-weight:600}
     <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="5" fill="var(--accent)"/><path d="M5 14.5 11 8l6 6.5" fill="none" stroke="var(--accent-ink)" stroke-width="2"/><path d="M11 8v9" stroke="var(--accent-ink)" stroke-width="1.4" stroke-dasharray="1.6 1.6"/></svg>
     <b>Bit-Clip Lab</b><span class="badge" id="partTag" hidden></span><span>Banjo-Kazooie collision</span>
   </div>
-  <div class="ctl"><label class="lbl" for="gameSel">Game</label><select id="gameSel" aria-label="Game" style="width:auto" onchange="if(this.value!=='bk')location.href=this.value+'?v='+(document.getElementById('vNTSC').getAttribute('aria-pressed')==='true'?'ntsc':'pal')"><option value="bk" selected>Banjo-Kazooie</option><option value="tooie/">Banjo-Tooie</option></select></div>
+  <div class="ctl"><label class="lbl" for="gameSel">Game</label><select id="gameSel" aria-label="Game" style="width:auto" onchange="if(this.value!=='bk')location.href=this.value+'?v='+(document.getElementById('verSel').value==='NTSC'?'ntsc':'pal')"><option value="bk" selected>Banjo-Kazooie</option><option value="tooie/">Banjo-Tooie</option></select></div>
   <script>addEventListener("pageshow",()=>{const g=document.getElementById("gameSel");if(g)g.value="bk";});</script>
   <div class="ctl"><label class="lbl" for="mapSel">Room</label><select id="mapSel" aria-label="Room"></select></div>
-  <div class="ctl"><span class="lbl">Version</span>
-    <div class="seg" role="group" aria-label="Game version"><button id="vPAL" aria-pressed="true">PAL</button><button id="vNTSC" aria-pressed="false">NTSC</button><button id="vXbox" aria-pressed="false" disabled title="Xbox: not computed yet">Xbox</button></div></div>
+  <div class="ctl"><label class="lbl" for="verSel">Version</label><select id="verSel" aria-label="Game version" style="width:auto" title="Each version's results live in their own repository"><option value="NTSC">N64 NTSC (USA)</option><option value="PAL">N64 PAL</option><option value="xbox" disabled>Xbox · not yet</option></select></div>
   <div class="ctl"><label class="lbl" for="digSel">Digits</label><select id="digSel" aria-label="Number of digits shown" title="How many digits every number on the page shows">
     <option value="0">Normal</option><option value="2">+2 decimals</option><option value="4">+4 decimals</option><option value="exact" title="9 significant figures: every f32 bit">Exact (f32)</option></select></div>
   <div id="dtInfo"></div>
@@ -615,7 +614,7 @@ const VREPO={PAL:'bitclip-lab-bk-pal',NTSC:'bitclip-lab-bk-us'};
 async function vget(ver,name){ for(const u of [`/${VREPO[ver]}/data/${name}`,`data/${name}`]){ try{ const q=await fetch(u); if(q.ok) return q.arrayBuffer(); }catch(e){} } throw new Error(name); }
 const START_VER=(()=>{ const v=(new URLSearchParams(location.search).get('v')||'').toLowerCase(); return (v==='ntsc'||v==='us')?'NTSC':'PAL'; })();
 const dtFor=(vi)=>F(Math.min(vi*(1.0/VERS[version].rate),VERS[version].cap));
-function setVersion(v){version=v;$('vPAL').setAttribute('aria-pressed',v==='PAL');$('vNTSC').setAttribute('aria-pressed',v==='NTSC');
+function setVersion(v){version=v;$('verSel').value=v;
   try{ const u=new URL(location.href); if(v==='NTSC') u.searchParams.set('v','ntsc'); else u.searchParams.delete('v'); history.replaceState(history.state,'',u.pathname+u.search+u.hash); }catch(e){}
   $('dtInfo').textContent=`update ${dtFor(2).toPrecision(6)}s · lag ${dtFor(3).toPrecision(6)}s`;
   renderChips(); if(lastRun) runSim(); applyVersionData(); if(typeof fillSpawns==='function') fillSpawns(); }
@@ -633,7 +632,7 @@ async function applyVersionData(){ if(!room) return; const r=room; const ent=(in
   if($('holdsVer')) $('holdsVer').textContent=shown.startsWith('NTSC')?'NTSC':'PAL';
   if(changed){ spot=null; renderSpot(); buildPoints(); renderBest('c'); renderBest('s'); } else if(r.roofs||r.padclips) buildPoints();
   if(shown!=='PAL'&&shown!=='NTSC') $('layerSum').textContent+=` · ${shown}`; else if(shown==='NTSC') $('layerSum').textContent+=' · NTSC dots'; }
-$('vPAL').onclick=()=>setVersion('PAL'); $('vNTSC').onclick=()=>setVersion('NTSC');
+$('verSel').onchange=()=>setVersion($('verSel').value);
 
 // ---- three.js scene
 const view=$('view'); const renderer=new THREE.WebGLRenderer({antialias:true,logarithmicDepthBuffer:true}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));

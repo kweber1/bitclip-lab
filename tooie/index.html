@@ -410,7 +410,7 @@ async function setVer(v) {
   if (!INDEX) { $('loading').textContent = 'Could not load the level list.'; return; }
   $('verSel').onchange = () => setVer($('verSel').value);
   // mark versions that have no census yet (their repositories hold only a README)
-  for (const v of Object.keys(VERS)) if (v !== VER) loadIndex(v).then(j => { const o = $('verSel').querySelector(`option[value="${v}"]`); if (o && !j) o.textContent = VERS[v].name + ' · not yet'; });
+  for (const v of Object.keys(VERS)) if (v !== VER) loadIndex(v).then(j => { const o = $('verSel').querySelector(`option[value="${v}"]`); if (o && !j) { o.textContent = VERS[v].name + ' · not yet'; o.disabled = true; } });
   try { const r = await fetch('data/hd.json'); if (r.ok) HD = await r.json(); } catch (e) {}
   fillLevels();
   $('mapSel').onchange = () => loadRoom($('mapSel').value); howPane();
