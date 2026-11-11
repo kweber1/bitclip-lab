@@ -998,10 +998,31 @@
     "Floor 3 Packing Room",
     "Packing Game"
    ],
-   "tris": 332,
+   "tris": 141,
    "opa": "0x1D8A",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 40,
+   "crack_samples": 5499900924,
+   "crack_floats": 14739034,
+   "spots": 42900,
+   "cats": {
+    "wall": 1578,
+    "eject": 26994,
+    "stuck": 13798,
+    "walk": 395,
+    "jump": 115,
+    "lag": 20
+   },
+   "cats_flat": {
+    "eject": 4529,
+    "walk": 384,
+    "wall": 1073,
+    "stuck": 1789
+   },
+   "holds": 1505,
+   "void": 384,
+   "bytes": 1172539
   },
   {
    "map": "0x10B",
