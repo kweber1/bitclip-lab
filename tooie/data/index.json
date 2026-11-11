@@ -2775,10 +2775,35 @@
    "map_names": [
     "Trashcan"
    ],
-   "tris": 3317,
+   "tris": 1247,
    "opa": "0x1DB1",
    "xlu": "0x1DB2",
-   "done": false
+   "done": true,
+   "seams": 737,
+   "crack_samples": 62750012185,
+   "crack_floats": 163711852,
+   "spots": 359161,
+   "shown": 76545,
+   "cats": {
+    "wall": 48383,
+    "stuck": 172349,
+    "eject": 115767,
+    "lag": 1234,
+    "jump": 3582,
+    "walk": 16459,
+    "water": 1387
+   },
+   "cats_flat": {
+    "eject": 10642,
+    "jump": 316,
+    "lag": 131,
+    "walk": 7971,
+    "stuck": 37,
+    "wall": 1524
+   },
+   "holds": 8374,
+   "void": 7821,
+   "bytes": 1486894
   },
   {
    "map": "0x138",
