@@ -123,7 +123,7 @@ const fmt = (n) => (n ?? 0).toLocaleString('en-US');
 let INDEX = null, ROOM = null, show = { walk: 1, lag: 1, jump: 1, eject: 1, stuck: 1, wall: 0, water: 1 };
 // collision layers (triangle classes from site_build.py: 0 floor, 1 wall, 2 ceiling, 3 water, 4 not solid for Banjo)
 const LAYERS = [['floor', 'Floors', 0], ['wall', 'Walls', 1], ['ceil', 'Ceilings', 2], ['water', 'Water', 3], ['nosolid', 'Not solid for Banjo', 4]];
-let layer = { floor: 1, wall: 1, ceil: 1, water: 1, nosolid: 0, back: 0, opacity: 100, draw: 'game' };   // draw: game (visible model) / coll / both
+let layer = { floor: 1, wall: 1, ceil: 1, water: 1, nosolid: 0, back: 0, opacity: 100, draw: 'game', tex: 1 };   // draw: game (visible model) / coll / both
 try { const l = JSON.parse(localStorage.getItem('tooie-layers') || 'null'); if (l) layer = Object.assign(layer, l); } catch (e) {}
 let DIG = '0'; try { DIG = localStorage.getItem('tooie-digits') || '0'; } catch (e) {}
 const f32b = new DataView(new ArrayBuffer(4));
@@ -171,19 +171,30 @@ function themeColors() { scene.background = new THREE.Color(css('--view')); }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { themeColors(); if (ROOM) { buildMesh(); buildPoints(); } }); themeColors();
 
 async function gunzipJSON(buf) { const ds = new DecompressionStream('gzip'); const s = new Blob([buf]).stream().pipeThrough(ds); return JSON.parse(await new Response(s).text()); }
+// textures: the Bit-Clip Lab's own paintings (tex/<key>.png), made from each original texture's colours and kind of surface only
+const texCache = {};
+function labTexture(key, ws, wt) {
+  const id = key + '/' + ws + wt; if (texCache[id]) return texCache[id];
+  const W = [THREE.RepeatWrapping, THREE.MirroredRepeatWrapping, THREE.ClampToEdgeWrapping];
+  const t = new THREE.TextureLoader().load('tex/' + key + '.png'); t.flipY = false; t.wrapS = W[ws]; t.wrapT = W[wt];
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return (texCache[id] = t);
+}
 function buildVis() {
   if (visObj) { scene.remove(visObj); visObj.traverse(o => o.geometry && o.geometry.dispose()); visObj = null; }
   if (layer.draw === 'coll' || !ROOM.vis || !ROOM.vis.tris.length) return;
-  visObj = new THREE.Group(); const V = ROOM.vis.verts;
+  visObj = new THREE.Group(); const V = ROOM.vis.verts, M = ROOM.vis.mats || [];
   // the floor / wall / ceiling switches apply to the game look too (by each triangle's normal)
   const cls = (t) => { const a = V[t[0]], b = V[t[1]], c = V[t[2]]; const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
     const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const L = Math.hypot(nx, ny, nz) || 1; const y = ny / L; return y > 0.3 ? 'floor' : y < -0.3 ? 'ceil' : 'wall'; };
-  for (const xl of [0, 1]) { const T = ROOM.vis.tris.filter(t => t[3] === xl && layer[cls(t)]); if (!T.length) continue;
-    const pos = new Float32Array(T.length * 9), col = new Float32Array(T.length * 9);
-    T.forEach((t, i) => { for (let j = 0; j < 3; j++) { const v = V[t[j]]; pos.set([v[0], v[1], v[2]], i * 9 + j * 3); col.set([v[3] / 255, v[4] / 255, v[5] / 255], i * 9 + j * 3); } });
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const groups = new Map();
+  for (const t of ROOM.vis.tris) { if (!layer[cls(t)]) continue; const m = layer.tex && t.length > 4 ? t[4] : -1; const k = t[3] + ':' + m; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); }
+  for (const [k, T] of groups) { const [xl, m] = k.split(':').map(Number); const mat = m >= 0 ? M[m] : null;
+    const pos = new Float32Array(T.length * 9), col = new Float32Array(T.length * 9), uv = mat ? new Float32Array(T.length * 6) : null;
+    T.forEach((t, i) => { for (let j = 0; j < 3; j++) { const v = V[t[j]]; pos.set([v[0], v[1], v[2]], i * 9 + j * 3); col.set([v[3] / 255, v[4] / 255, v[5] / 255], i * 9 + j * 3); if (uv) uv.set([v[6], v[7]], i * 6 + j * 2); } });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); if (uv) g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.computeVertexNormals();
     const op = xl ? 0.55 : layer.opacity / 100;
-    visObj.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: layer.back ? THREE.DoubleSide : THREE.FrontSide, clippingPlanes: [clipPlane], transparent: op < 1, opacity: op, depthWrite: op >= 1, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }))); }
+    // textured: texture x vertex shading, unlit like the N64; untextured: lit, so rooms whose colour is all in the textures still show their shape
+    visObj.add(new THREE.Mesh(g, new (mat ? THREE.MeshBasicMaterial : THREE.MeshLambertMaterial)({ vertexColors: true, map: mat ? labTexture(mat[0], mat[1], mat[2]) : null, alphaTest: mat && mat[3] && !xl ? 0.5 : 0, side: layer.back ? THREE.DoubleSide : THREE.FrontSide, clippingPlanes: [clipPlane], transparent: op < 1, opacity: op, depthWrite: op >= 1, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }))); }
   scene.add(visObj);
 }
 function buildMesh() {
@@ -216,6 +227,7 @@ function legend() {
   $('legend').innerHTML = '<div class="lh"><b>Layers</b><button class="btn mini" id="legTog" aria-expanded="true">Hide</button></div><div id="legBody" class="lb"><div class="grp" title="' + (ROOM.thinned ? 'Drawn: every spot that goes through or holds; ' + ROOM.thinned : '') + '">Crack spots · ' + fmt(Object.values(cnt).reduce((a, b) => a + b, 0)) + '</div>' + CATS.map(([k, n, d]) => `<label title="${d}"><input type="checkbox" data-k="${k}" ${show[k] ? 'checked' : ''}><span class="sw" style="background:var(${CVAR[k]})"></span>${n}<span class="n">${fmt(cnt[k] || 0)}</span></label>`).join('')
     + (voids ? `<label title="Walk-in spots whose fall ends in the void (no floor below)"><span style="width:13px"></span><span class="sw" style="background:var(--c-void)"></span>…into the void<span class="n">${fmt(voids)}</span></label>` : '')
     + `<div class="grp">Draw the level as</div><div class="seg" role="group" aria-label="Draw the level as">${[['game', 'Game look'], ['coll', 'Collision'], ['both', 'Both']].map(([k, n]) => `<button data-draw="${k}" aria-pressed="${layer.draw === k}" title="${k === 'game' ? 'The level model as drawn in game (vertex shading), incl. decoration Banjo does not touch' : k === 'coll' ? 'Collision triangles coloured by type' : 'Game look with the collision as a wireframe'}">${n}</button>`).join('')}</div>`
+    + `<label title="Textures painted by the Bit-Clip Lab from each original texture's colours and kind of surface (no game art is used)"><input type="checkbox" data-l="tex" ${layer.tex ? 'checked' : ''}>Textures (lab-made)</label>`
     + `<div class="grp">Surfaces (both looks)</div>` + LAYERS.map(([k, n, c]) => `<label><input type="checkbox" data-l="${k}" ${layer[k] ? 'checked' : ''}><span class="sw" style="border-radius:2px;background:${['#b4bfb6', '#97a39b', '#8b8f9c', '#73b3cc', '#cc9999'][c]}"></span>${n}<span class="n">${fmt(ROOM.tris.filter(t => t[3] === c).length)}</span></label>`).join('')
     + `<label title="Draw the back of every triangle too (closed rooms then hide their inside)"><input type="checkbox" data-l="back" ${layer.back ? 'checked' : ''}>Back faces</label>`
     + `<div class="grp">See-through <span id="opVal" style="font-family:var(--f-mono);text-transform:none">${layer.opacity}%</span></div><input type="range" id="opac" min="15" max="100" value="${layer.opacity}" style="width:100%;accent-color:var(--accent)">`

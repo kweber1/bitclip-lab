@@ -32,23 +32,12 @@ def build(tc, roomf, outdir):
                 if p not in vidx: vidx[p] = len(verts); verts.append(p)
                 ids.append(vidx[p])
             tris.append(ids + [tri_class(V, t, t[5]), t[5]])
-    # visible level model (display lists): what the level looks like in game, incl. decoration Banjo does not collide with
-    vis = {'verts': [], 'tris': []}
+    # visible level model (display lists) with texture coordinates; the textures are the lab's own (btgen.py)
     try:
-        import btassets as BA, btvis
-        vidx2 = {}
-        for mk in ('opa', 'xlu'):
-            m = room[mk]
-            if not m: continue
-            tl, _ = btvis.visible(BA.asset(int(m['asset'], 16)))
-            for t in tl:
-                ids = []
-                for p in t:
-                    k = p[:3] + p[3:6]
-                    if k not in vidx2: vidx2[k] = len(vis['verts']); vis['verts'].append(list(k))
-                    ids.append(vidx2[k])
-                vis['tris'].append(ids + [1 if mk == 'xlu' else 0])
-    except Exception as ex: vis = {'verts': [], 'tris': [], 'error': str(ex)}
+        import btvis2
+        vis = btvis2.room_vis(room, os.path.join(outdir, 'tex')); btvis2.save_descs()
+    except Exception as ex:
+        import traceback; traceback.print_exc(); vis = {'verts': [], 'tris': [], 'mats': [], 'error': str(ex)}
     seams, spots = [], []
     head = None
     for l in open(tc):
@@ -105,7 +94,7 @@ if __name__ == '__main__':
     idxf = os.path.join(sys.argv[3], 'data', 'index.json')
     if os.path.exists(idxf): idx = json.load(open(idxf))
     else:
-        base = json.load(open(os.environ.get('BT_ROOMS_INDEX', 'tooie-lab/rooms-index.json')))
+        base = json.load(open('/home/claude/btmaps/tooie-lab/rooms-index.json'))
         idx = {'game': 'Banjo-Tooie (USA)', 'method': 'tcensus (Tooie collision port, NTSC)', 'rooms': [dict(r, done=False) for r in base]}
     e['done'] = True
     idx['rooms'] = [dict(r, **e) if r['map'] == e['map'] else r for r in idx['rooms']]
