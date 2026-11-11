@@ -281,10 +281,33 @@
    "map_names": [
     "Crushing Shed"
    ],
-   "tris": 1272,
+   "tris": 479,
    "opa": "0x1D1A",
    "xlu": "0x1D28",
-   "done": false
+   "done": true,
+   "seams": 132,
+   "crack_samples": 23873368078,
+   "crack_floats": 59155880,
+   "spots": 77108,
+   "cats": {
+    "walk": 29553,
+    "jump": 930,
+    "eject": 35397,
+    "wall": 6428,
+    "lag": 160,
+    "stuck": 4640
+   },
+   "cats_flat": {
+    "walk": 29325,
+    "jump": 906,
+    "eject": 35397,
+    "wall": 6424,
+    "lag": 154,
+    "stuck": 687
+   },
+   "holds": 4005,
+   "void": 29325,
+   "bytes": 1321370
   },
   {
    "map": "0xCC",
