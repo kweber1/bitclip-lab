@@ -2040,10 +2040,34 @@
    "map_names": [
     "Chilly Willy"
    ],
-   "tris": 2293,
+   "tris": 1052,
    "opa": "0x1DA6",
    "xlu": "0x1DAA",
-   "done": false
+   "done": true,
+   "seams": 356,
+   "crack_samples": 54839491679,
+   "crack_floats": 160512280,
+   "spots": 452966,
+   "shown": 184637,
+   "cats": {
+    "wall": 185419,
+    "walk": 127052,
+    "lag": 3764,
+    "jump": 3192,
+    "eject": 118918,
+    "stuck": 14621
+   },
+   "cats_flat": {
+    "walk": 126520,
+    "lag": 3550,
+    "jump": 2175,
+    "eject": 102930,
+    "stuck": 1391,
+    "wall": 8562
+   },
+   "holds": 1000,
+   "void": 118167,
+   "bytes": 2425422
   },
   {
    "map": "0x12D",
