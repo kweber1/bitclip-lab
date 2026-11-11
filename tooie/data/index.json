@@ -356,10 +356,35 @@
    "map_names": [
     "Water Storage"
    ],
-   "tris": 1702,
+   "tris": 663,
    "opa": "0x1D1C",
    "xlu": "0x1D30",
-   "done": false
+   "done": true,
+   "seams": 214,
+   "crack_samples": 28046141333,
+   "crack_floats": 72044904,
+   "spots": 211900,
+   "cats": {
+    "wall": 35659,
+    "eject": 128746,
+    "jump": 2438,
+    "walk": 21537,
+    "lag": 494,
+    "stuck": 7883,
+    "water": 15143
+   },
+   "cats_flat": {
+    "wall": 24308,
+    "eject": 116380,
+    "jump": 328,
+    "walk": 18478,
+    "lag": 124,
+    "stuck": 66,
+    "water": 10831
+   },
+   "holds": 2718,
+   "void": 17360,
+   "bytes": 4571843
   },
   {
    "map": "0xCE",
