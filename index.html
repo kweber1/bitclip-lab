@@ -88,7 +88,15 @@ main{--side:clamp(400px,32vw,580px);display:grid;grid-template-columns:minmax(0,
 .extnote .btn{margin-left:6px}
 .spotfilter .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
 @media (max-width:900px){.spotfilter{top:58px}.spotfilter .seg button{padding:4px 8px}}
-.layers{left:12px;top:12px;font-size:13px;min-width:0;max-width:calc(100% - 24px)}
+.layers{left:12px;top:12px;font-size:12.5px;min-width:0;max-width:calc(100% - 24px);max-height:calc(100% - 24px);overflow:auto}
+.layers>summary .tog{margin-left:auto;font-size:11.5px;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:1px 8px;color:var(--ink)}
+.layers .body .sum{color:var(--muted);font-family:var(--f-mono);font-size:11px}
+.tabs{flex-wrap:wrap}.timeline.empty{display:none}
+.lvl{display:grid;gap:12px;align-content:start}.lvl h2{margin:0;font-size:16px}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.stat{background:var(--sunk);border:1px solid var(--line-soft);border-radius:8px;padding:7px 9px;min-width:0}
+.stat b{display:block;font-size:17px;font-variant-numeric:tabular-nums}.stat span{font-size:11.5px;color:var(--muted)}
+.lvl table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}.lvl th,.lvl td{padding:4px 6px;text-align:right;border-bottom:1px solid var(--line-soft)}
+.lvl th:first-child,.lvl td:first-child{text-align:left}.lvl tr.world td{font-weight:700;background:var(--sunk)}.lvl tr.room{cursor:pointer}.lvl tr.room:hover td{background:var(--accent-soft)}.lvl tr.cur td{font-weight:700}
 .layers>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 11px;font-weight:600}
 .layers>summary::-webkit-details-marker{display:none}
 .layers>summary .sum{font-weight:400;color:var(--muted);font-family:var(--f-mono);font-size:11.5px}
@@ -209,8 +217,8 @@ td.tag{text-align:left;font-weight:600}
   aside{padding-left:0}
   .act{position:static;box-shadow:none;border-top:0;padding-inline:0;margin-inline:0;padding-top:0}
 }
-@media (max-width:1400px){.brand>span:last-child{display:none}}
-@media (max-width:600px){.layers>summary .sum{display:none}}
+/* the brand line shows like the Tooie viewer; the header wraps instead */
+@media (max-width:600px){}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto;transition:none!important}}
 </style>
 
@@ -218,14 +226,17 @@ td.tag{text-align:left;font-weight:600}
 <header>
   <div class="brand">
     <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="5" fill="var(--accent)"/><path d="M5 14.5 11 8l6 6.5" fill="none" stroke="var(--accent-ink)" stroke-width="2"/><path d="M11 8v9" stroke="var(--accent-ink)" stroke-width="1.4" stroke-dasharray="1.6 1.6"/></svg>
-    <b>Bit-Clip Lab</b><span class="badge" id="partTag" hidden></span><span>Banjo-Kazooie collision</span>
+    <b>Bit-Clip Lab</b><span class="badge" id="partTag" hidden></span><span id="brandSub">Banjo-Kazooie · N64 PAL · every room</span>
   </div>
   <div class="ctl"><label class="lbl" for="gameSel">Game</label><select id="gameSel" aria-label="Game" style="width:auto" onchange="if(this.value!=='bk')location.href=this.value+'?v='+(document.getElementById('verSel').value==='NTSC'?'ntsc':'pal')"><option value="bk" selected>Banjo-Kazooie</option><option value="tooie/">Banjo-Tooie</option></select></div>
   <script>addEventListener("pageshow",()=>{const g=document.getElementById("gameSel");if(g)g.value="bk";});</script>
-  <div class="ctl"><label class="lbl" for="mapSel">Room</label><select id="mapSel" aria-label="Room"></select></div>
   <div class="ctl"><label class="lbl" for="verSel">Version</label><select id="verSel" aria-label="Game version" style="width:auto" title="Each version's results live in their own repository"><option value="NTSC">N64 NTSC (USA)</option><option value="PAL">N64 PAL</option><option value="xbox" disabled>Xbox · not yet</option></select></div>
+  <div class="ctl"><label class="lbl" for="mapSel">Level</label><select id="mapSel" aria-label="Level"></select></div>
   <div class="ctl"><label class="lbl" for="digSel">Digits</label><select id="digSel" aria-label="Number of digits shown" title="How many digits every number on the page shows">
     <option value="0">Normal</option><option value="2">+2 decimals</option><option value="4">+4 decimals</option><option value="exact" title="9 significant figures: every f32 bit">Exact (f32)</option></select></div>
+  <div class="ctl"><label class="lbl" for="sfSel">Show</label><select id="sfSel" aria-label="Which spots to show" style="width:auto"><option value="all" title="Every spot layer">All spots</option><option value="hold" title="Only spots that hold: 5-hit holds and 5-collision spots">Holds only</option><option value="clip" title="Only spots where a clip was found">Clips only</option><option value="holdclip" title="Only holds that then clip (both required)">Hold + clip</option></select></div>
+  <div class="ctl" id="sfRelCtl" hidden><label class="lbl" for="sfRel">Clip</label><select id="sfRel" style="width:auto" aria-label="Clip reliability" title="How reliable the clip has to be. Odds come from re-running every test drop at the spot (with and without a lag frame) and counting how many clip.">
+          <option value="any">Any clip</option><option value="multi">2+ setups clip</option><option value="often">10%+ of tries clip</option><option value="nolag">Clips without lag</option><option value="void">Falls out of the map</option></select></div>
   <div id="dtInfo"></div>
 </header>
 <main>
@@ -233,16 +244,10 @@ td.tag{text-align:left;font-weight:600}
     <div id="view">
       <div id="loading">Loading room…</div>
       <div class="float extnote" id="extNote" role="status" hidden></div>
-      <div class="float spotfilter" role="group" aria-label="Spot filter"><span class="lbl">Show</span><div class="seg">
-        <button data-sf="all" aria-pressed="true" title="Every spot layer">All spots</button>
-        <button data-sf="hold" aria-pressed="false" title="Only spots that hold: 5-hit holds and 5-collision spots">Holds</button>
-        <button data-sf="clip" aria-pressed="false" title="Only spots where a clip was found: holds that clip, beak-buster clips, and cracks / 5-collision spots at those positions">Clips</button>
-        <button data-sf="holdclip" aria-pressed="false" title="Only holds that then clip (both required)">Hold + clip</button></div>
-        <select id="sfRel" hidden aria-label="Clip reliability" title="How reliable the clip has to be. Odds come from re-running every test drop at the spot (with and without a lag frame) and counting how many clip.">
-          <option value="any">Any clip</option><option value="multi">2+ setups clip</option><option value="often">10%+ of tries clip</option><option value="nolag">Clips without lag</option><option value="void">Falls out of the map</option></select></div>
-      <details class="float layers" id="legend">
-        <summary><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1 13 4.5 7 8 1 4.5Z M1 7.5 7 11l6-3.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>Layers <span class="sum" id="layerSum"></span></summary>
-        <div class="body">
+      
+      <details class="float layers" id="legend" open>
+        <summary><b>Layers</b><span class="tog" id="legTog">Hide</span></summary>
+        <div class="body"><div class="sum" id="layerSum"></div>
           <div class="grp">Spots</div>
           <label><input type="checkbox" id="showCracks" checked> <span class="sw" style="background:var(--crack)"></span> Floor cracks <span class="n" id="nCracks"></span></label>
           <label><input type="checkbox" id="showSCracks" checked> <span class="sw" style="background:var(--crack);opacity:.6"></span> Slope cracks <span class="n" id="nSCracks"></span></label>
@@ -280,7 +285,7 @@ td.tag{text-align:left;font-weight:600}
         </div>
       </details>
       <div class="float spot" id="spotCard" hidden>
-        <h3><span class="k" id="spotDot"></span><span id="spotTitle">Selected spot</span><button class="btn ghost mini" id="spotClose" aria-label="Close">✕</button></h3>
+        <h3><span class="k" id="spotDot"></span><span id="spotTitle">Selected spot</span><button class="btn mini" id="zoomSpot2" style="margin-left:auto">Zoom</button><button class="btn mini" id="spotClose" aria-label="Close">Close</button></h3>
         <div id="spotInfo"></div>
         <div class="row"><button class="btn mini" id="setStart">Set as start</button><button class="btn mini" id="setTarget">Set as target</button><button class="btn mini" id="zoomSpot">Zoom</button></div>
       </div>
@@ -322,16 +327,20 @@ td.tag{text-align:left;font-weight:600}
         <p class="note" style="margin-top:6px">Directions are world yaw: 0 = +z, 90 = +x. Banjo starts standing still. Type a target or pick a crack in the room and press Set as target; a typed target within 0.5 of a crack takes that crack's seam (paste the exact floats for an exact spot).</p>
       </details>
     </div>
-    <div class="tabs" role="tablist" aria-label="Tools">
-      <button role="tab" data-tab="moves" aria-selected="true">Moves</button>
+    <div class="tabs" role="tablist" aria-label="Panels">
+      <button role="tab" data-tab="room" aria-selected="true">This level</button>
+      <button role="tab" data-tab="all" aria-selected="false">All levels</button>
+      <button role="tab" data-tab="data" aria-selected="false">How it was found</button>
+      <button role="tab" data-tab="moves" aria-selected="false">Moves</button>
       <button role="tab" data-tab="setup" aria-selected="false">Clip setup</button>
       <button role="tab" data-tab="search" aria-selected="false">Route search</button>
       <button role="tab" data-tab="drop" aria-selected="false">Drop test</button>
-      <button role="tab" data-tab="data" aria-selected="false">Data</button>
     </div>
     <div class="panes">
+      <section class="pane" data-pane="room" role="tabpanel"><div id="pRoom" class="lvl"></div></section>
+      <section class="pane" data-pane="all" role="tabpanel" hidden><div id="pAll" class="lvl"></div></section>
       <!-- Moves -->
-      <section class="pane" data-pane="moves" role="tabpanel">
+      <section class="pane" data-pane="moves" role="tabpanel" hidden>
         <div class="sec">
           <h4>Add moves</h4>
           <div class="macros" id="macros"></div>
@@ -621,7 +630,7 @@ const VREPO={PAL:'bitclip-lab-bk-pal',NTSC:'bitclip-lab-bk-us'};
 async function vget(ver,name){ for(const u of [`/${VREPO[ver]}/data/${name}`,`data/${name}`]){ try{ const q=await fetch(u); if(q.ok) return q.arrayBuffer(); }catch(e){} } throw new Error(name); }
 const START_VER=(()=>{ const v=(new URLSearchParams(location.search).get('v')||'').toLowerCase(); return (v==='ntsc'||v==='us')?'NTSC':'PAL'; })();
 const dtFor=(vi)=>F(Math.min(vi*(1.0/VERS[version].rate),VERS[version].cap));
-function setVersion(v){version=v;$('verSel').value=v;
+function setVersion(v){version=v;$('verSel').value=v; if($('brandSub')) $('brandSub').textContent='Banjo-Kazooie · '+(v==='NTSC'?'N64 NTSC (USA)':'N64 PAL')+' · every room'; setTimeout(()=>{ roomPane(); if($('pAll')&&!$('pAll').closest('.pane').hidden) allPane(); },0);
   try{ const u=new URL(location.href); if(v==='NTSC') u.searchParams.set('v','ntsc'); else u.searchParams.delete('v'); history.replaceState(history.state,'',u.pathname+u.search+u.hash); }catch(e){}
   $('dtInfo').textContent=`update ${dtFor(2).toPrecision(6)}s · lag ${dtFor(3).toPrecision(6)}s`;
   renderChips(); if(lastRun) runSim(); applyVersionData(); if(typeof fillSpawns==='function') fillSpawns(); }
@@ -863,14 +872,16 @@ async function buildObjects(){ if(objGroup){ scene.remove(objGroup); objGroup=nu
   if(r!==room) return; objGroup=grp; applyObjVis(); scene.add(grp); $('objN').textContent=n?n.toLocaleString():''; $('markN').textContent=marks?marks.toLocaleString():''; }
 function applyObjVis(){ if(!objGroup) return; for(const nd of objGroup.children) nd.visible=nd.userData.mark?$('showMarks').checked:$('showObjs').checked; }
 $('showObjs').onchange=applyObjVis; $('showMarks').onchange=applyObjVis;
+$('legend').addEventListener('toggle',()=>{ $('legTog').textContent=$('legend').open?'Hide':'Show'; });
+$('zoomSpot2').onclick=()=>{ if(spot) flyTo(spot,120); };
 function pickObject(){ if(!objGroup) return null; const h=ray.intersectObjects(objGroup.children.filter(nd=>nd.visible),true).filter(h=>h.point.y<=cutY+0.01)[0]; return h?h.object.userData.obj:null; }
 document.querySelectorAll('#drawSeg button').forEach(b=>b.onclick=()=>{ drawMode=b.dataset.draw; try{ localStorage.setItem('bcl-draw',drawMode); }catch(e){} applyDraw(); buildVis(); });
 $('visTex').onchange=()=>{ buildVis(); buildObjects(); }; $('visHD').onchange=()=>{ buildVis(); buildObjects(); };
 let spotFilter='all', sfRel='any'; try{ spotFilter=localStorage.getItem('bcl-sf')||'all'; sfRel=localStorage.getItem('bcl-sfr')||'any'; }catch(e){}
-$('sfRel').value=sfRel; $('sfRel').hidden=!(spotFilter==='clip'||spotFilter==='holdclip');
+$('sfRel').value=sfRel; $('sfRelCtl').hidden=!(spotFilter==='clip'||spotFilter==='holdclip');
 $('sfRel').onchange=()=>{ sfRel=$('sfRel').value; try{localStorage.setItem('bcl-sfr',sfRel);}catch(e){} if(room) buildPoints(); };
-document.querySelectorAll('[data-sf]').forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.sf===spotFilter); b.onclick=()=>{ spotFilter=b.dataset.sf; try{localStorage.setItem('bcl-sf',spotFilter);}catch(e){}
-  document.querySelectorAll('[data-sf]').forEach(q=>q.setAttribute('aria-pressed',q===b)); $('sfRel').hidden=!(spotFilter==='clip'||spotFilter==='holdclip'); if(room) buildPoints(); }; });
+$('sfSel').value=spotFilter; $('sfRelCtl').hidden=!(spotFilter==='clip'||spotFilter==='holdclip');
+$('sfSel').onchange=()=>{ spotFilter=$('sfSel').value; try{localStorage.setItem('bcl-sf',spotFilter);}catch(e){} $('sfRelCtl').hidden=!(spotFilter==='clip'||spotFilter==='holdclip'); if(room) buildPoints(); };
 $('usePose').onchange=()=>{ if(!room) return; world=new BK.World(world.opa,world.xlu,BK.load_props(activeProps()),parseInt(room.map,16)); buildRoomMeshes(); if(lastRun&&lastRun.mode!=='move') runSim(); };
 $('showXlu').onchange=applyRoomVis; $('showProps').onchange=applyRoomVis; $('hideCeil').onchange=applyRoomVis; $('showSphere').onchange=()=>drawSim(); $('showBanjo').onchange=()=>{ try{localStorage.setItem('bcl-banjo',$('showBanjo').checked?'1':'0');}catch(e){} drawSim(); }; try{ if(localStorage.getItem('bcl-banjo')==='0') $('showBanjo').checked=false; }catch(e){} $('floorTint').onchange=()=>{ if(room) buildRoomMeshes(); };
 $('cutY').oninput=e=>setCut(+e.target.value,true);
@@ -935,7 +946,7 @@ async function loadMap(m){
   setupSlicer(box);
   const R=Math.max(s.x,s.z,s.y)||1000; fly=null; controls.target.copy(c); camera.position.set(c.x+R*0.55,c.y+R*0.7,c.z+R*0.75); camera.far=R*20; controls.maxDistance=R*6; lastNear=0; camera.updateProjectionMatrix();
   $('aboutNote').textContent=(room.about||$('aboutNote').textContent)+(room.lower_note?' '+room.lower_note:'');
-  $('loading').hidden=true;
+  $('loading').hidden=true; roomPane(); if(!$('pAll').closest('.pane').hidden) allPane();
 }
 
 // ---- picking
@@ -1469,9 +1480,32 @@ async function sSearch(keep,secs){ if(searching) return; const st=readStart(); i
   searching=false; $('sRun').disabled=false; $('sBestRun').disabled=false; $('sStop').disabled=true; }
 
 // ---- tabs (remembered per viewer)
-function showTab(t){ document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t)); document.querySelectorAll('.pane').forEach(p=>p.hidden=p.dataset.pane!==t); try{localStorage.setItem('bcl-tab',t);}catch(e){} }
+const TOOLTABS=['moves','setup','search','drop'];
+function showTab(t){ if(!document.querySelector(`.tabs [data-tab="${t}"]`)) t='room'; document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t)); document.querySelectorAll('.pane').forEach(p=>p.hidden=p.dataset.pane!==t);
+  $('banjoCard').hidden=!TOOLTABS.includes(t); if(t==='room') roomPane(); if(t==='all') allPane(); try{localStorage.setItem('bcl-tab',t);}catch(e){} }
+// ---- This level / All levels (the same panes as the Tooie viewer)
+function roomPane(){ const el=$('pRoom'); if(!el||!room||$('pRoom').closest('.pane').hidden) return; const e=(index||[]).find(x=>x.map===room.map)||{}; const N=version==='NTSC';
+  const tri=(room.opa&&room.opa.collision?room.opa.collision.triangles.length:0)+(room.xlu&&room.xlu.collision?room.xlu.collision.triangles.length:0);
+  const roofClip=room.roofs?room.roofs.rows.filter(r=>(N?r[7]+r[8]:r[5]+r[6])>0).length:0; const P=room.padclips&&room.padclips[N?'NTSC':'PAL'];
+  const st=(v,t,c)=>`<div class="stat"><b${c?` style="color:var(--${c})"`:''}>${(+v||0).toLocaleString()}</b><span>${t}</span></div>`;
+  const nobj=OBJS&&OBJS.maps[room.map]?OBJS.maps[room.map].objs.length:0;
+  el.innerHTML=`<h2>${e.name||room.map} <span style="color:var(--muted);font-weight:500">· ${e.group||''}</span></h2>
+    <p class="note">Map ${room.map}. ${tri.toLocaleString()} collision triangles${e.props?`, ${e.props} static objects with collision`:''}. ${N?'NTSC':'PAL'} results${N&&!e.ntsc?' (NTSC not computed for this room yet: PAL shown)':''}.</p>
+    <div class="stats">${st(room.cracks.length,'floor cracks (floor ray misses the seam)','crack')}${st(room.slopecracks_total||(room.slopecracks||[]).length,'slope cracks')}
+      ${st(room.lowercracks_total||(room.lowercracks||[]).length,'cracks over a lower floor / rim cracks')}${st(room.holds.length,`5-hit holds (${room._shown==='NTSC'?'NTSC':'PAL'} census)`,'hold')}
+      ${st(room.hit5_total||(room.hit5||[]).length,'5 collisions on one update','hit5')}${st(room.slopeclips_total||(room.slopeclips||[]).length,'slope clips (beak buster)','slope')}
+      ${st(roofClip,`roof cracks that clip upward (of ${room.roofcracks.length.toLocaleString()})`,'roof')}${P?st(P.shock.length+P.bomb.length,'pad clips (shock jump + beak bomb)','pop'):''}${st(nobj,'objects and enemies in the setup file')}</div>
+    <p class="note">Click a spot in the view for its exact position and every test. The tool tabs (Moves, Clip setup, Route search, Drop test) simulate Banjo with the game's own movement and collision.</p>`; }
+function allPane(){ const el=$('pAll'); if(!el||!index) return; const N=version==='NTSC'; const groups={}; for(const r of index) (groups[r.group]=groups[r.group]||[]).push(r);
+  const tot=k=>index.reduce((a,r)=>a+(+r[k]||0),0);
+  let h=`<h2>All levels</h2><p class="note">${index.length} rooms. Totals: <b>${tot('cracks').toLocaleString()}</b> floor cracks, <b>${tot(N?'ntsc_holds':'holds').toLocaleString()}</b> 5-hit holds (${N?'NTSC':'PAL'}), <b>${tot(N?'ntsc_slopeclips':'slopeclips').toLocaleString()}</b> slope clips.</p>
+    <table><thead><tr><th>Level</th><th>Cracks</th><th>Holds</th><th>5-coll</th><th>Slope clips</th></tr></thead><tbody>`;
+  for(const g of Object.keys(groups)){ h+=`<tr class="world"><td colspan="5">${g}</td></tr>`;
+    for(const r of groups[g]) h+=`<tr class="room${room&&room.map===r.map?' cur':''}" data-m="${r.map}"><td>${r.name} <span style="color:var(--muted)">${r.map}</span></td><td>${(+r.cracks||0).toLocaleString()}</td><td>${(+(N&&r.ntsc?r.ntsc_holds:r.holds)||0).toLocaleString()}</td><td>${(+r.hit5||0).toLocaleString()}</td><td>${(+(N&&r.ntsc?r.ntsc_slopeclips:r.slopeclips)||0).toLocaleString()}</td></tr>`; }
+  el.innerHTML=h+'</tbody></table>';
+  el.querySelectorAll('tr.room').forEach(tr=>tr.onclick=()=>{ $('mapSel').value=tr.dataset.m; $('mapSel').dispatchEvent(new Event('change')); }); }
 document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
-{ let t='moves'; try{ t=localStorage.getItem('bcl-tab')||t; }catch(e){} const h=(location.hash||'').slice(1); if(['moves','setup','search','drop','data'].includes(h)) t=h; showTab(t); }
+{ let t='room'; try{ t=localStorage.getItem('bcl-tab')||t; }catch(e){} const h=(location.hash||'').slice(1); if(['room','all','moves','setup','search','drop','data'].includes(h)) t=h; showTab(t); }
 
 // ---- clip setup: exact standing start + lag pattern for a move onto the target crack
 const parseList=(t,lo,hi)=>{ const out=[]; for(const part of String(t).split(',')){ const m=part.trim().match(/^(\d+)(?:\s*-\s*(\d+))?$/); if(!m) continue; const a=+m[1], b=m[2]?+m[2]:a; for(let v=Math.min(a,b); v<=Math.max(a,b); v++) if(v>=lo&&v<=hi&&!out.includes(v)) out.push(v); } return out; };
