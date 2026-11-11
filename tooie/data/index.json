@@ -1284,10 +1284,25 @@
    "map_names": [
     "Lord Woo Fak Fak"
    ],
-   "tris": 2187,
+   "tris": 902,
    "opa": "0x1D58",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 272,
+   "crack_samples": 43972322121,
+   "crack_floats": 14348987,
+   "spots": 385213,
+   "shown": 30815,
+   "cats": {
+    "wall": 42812,
+    "eject": 310228,
+    "stuck": 32172,
+    "walk": 1
+   },
+   "cats_flat": {},
+   "holds": 20,
+   "void": 0,
+   "bytes": 619136
   },
   {
    "map": "0xFF",
