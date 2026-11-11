@@ -252,6 +252,10 @@ td.tag{text-align:left;font-weight:600}
           <label><input type="checkbox" id="showSlope" checked> <span class="sw" style="background:var(--slope)"></span> Slope clips (buster) <span class="n" id="nSlope"></span></label>
           <label title="Ceiling seams where the upward ray slips through. A ringed spot clips straight up in the full model: the bee flying up (4 flaps) or Banjo flying up with one lag update (the ring follows the PAL / NTSC switch)."><input type="checkbox" id="showRoof" checked> <span class="sw" style="background:var(--roof)"></span> Roof cracks <span class="n" id="nRoof"></span></label>
           <label title="No-lag clips from pads in the full model (GPU scan): orange = falling from a shock-pad jump (heights the jump reaches from a pad in range), purple = beak bomb from a flight pad (straight line at 4200, approach checked clear). Follows the PAL / NTSC switch."><input type="checkbox" id="showPad" checked> <span class="sw" style="background:var(--pop)"></span> Pad clips (shock / bomb) <span class="n" id="nPad"></span></label>
+          <div class="grp">Draw the level as</div>
+          <div class="seg" role="group" aria-label="Draw the level as" id="drawSeg"><button data-draw="game" title="The level model as drawn in game (its own vertex shading), with the lab's textures">Game look</button><button data-draw="coll" title="The collision Banjo stands on (what every census uses)">Collision</button><button data-draw="both" title="Game look and collision together">Both</button></div>
+          <label title="Textures painted by the Bit-Clip Lab from each original texture's colours and kind of surface (no game art is used)"><input type="checkbox" id="visTex" checked> Textures</label>
+          <label title="Where the BK Reloaded HD pack by GhostlyDark has a replacement (matched by GLideN64's texture checksum), use it; loaded from the pack's own GitHub. Elsewhere the lab-made textures."><input type="checkbox" id="visHD" checked> HD where available (BK Reloaded) <span class="n" id="nHD"></span></label>
           <div class="grp">Room</div>
           <label><input type="checkbox" id="showSpawns" checked> <span class="sw" style="background:var(--pop)"></span> Load-in points <span class="n" id="nSpawns"></span></label>
           <label title="Loading zones: the boxes that send Banjo to another room when his position is inside them. Click the dot in the middle to select one."><input type="checkbox" id="showExits" checked> <span class="sw" style="background:var(--accent)"></span> Exits (loading zones) <span class="n" id="nExits"></span></label>
@@ -742,8 +746,8 @@ function buildRoomMeshes(){
     for(const [name,P] of Object.entries(parts)){ if(!P.pos.length) continue;
       const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(P.pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(P.col,3)); g.computeVertexNormals();
       const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:xlu,opacity:xlu?0.35:1,depthWrite:!xlu,clippingPlanes:[clipPlane]}));
-      m.userData={xlu,ceil:name==='ceil'}; roomGroup.add(m);
-      if(!xlu){ const e=new THREE.LineSegments(new THREE.WireframeGeometry(g),new THREE.LineBasicMaterial({color:new THREE.Color(css('--line')),transparent:true,opacity:.35,clippingPlanes:[clipPlane]})); e.userData={ceil:name==='ceil'}; roomGroup.add(e);} } };
+      m.userData={xlu,ceil:name==='ceil',level:true}; roomGroup.add(m);
+      if(!xlu){ const e=new THREE.LineSegments(new THREE.WireframeGeometry(g),new THREE.LineBasicMaterial({color:new THREE.Color(css('--line')),transparent:true,opacity:.35,clippingPlanes:[clipPlane]})); e.userData={ceil:name==='ceil',level:true}; roomGroup.add(e);} } };
   add(room.opa,false); add(room.xlu,true);
   // static objects: model-space collision moved into the world with the game's own matrix
   if(world&&world.props&&world.props.length){ const pos=[]; const cp=new THREE.Color(css('--prop'));
@@ -810,7 +814,31 @@ function buildPoints(){
   if(spot) markSpot();
 }
 ['showCracks','showHolds','showRoof','showSlope','showHit5','showSCracks','showLower','showPad'].forEach(id=>$(id).onchange=()=>{pointsGroup.children.forEach(o=>{const k=o.userData.kind||(o.userData.ring?'hold':''); if(k==='padS'||k==='padB')o.visible=$('showPad').checked; if(k==='lower')o.visible=$('showLower').checked; if(k==='crack')o.visible=$('showCracks').checked; if(k==='scrack')o.visible=$('showSCracks').checked; if(k==='slope')o.visible=$('showSlope').checked; if(k==='hit5')o.visible=$('showHit5').checked; if(k==='hold')o.visible=$('showHolds').checked; if(k==='roof')o.visible=$('showRoof').checked;});});
-function applyRoomVis(){ roomGroup.children.forEach(o=>{ let v=true; if(o.userData.xlu&&!$('showXlu').checked) v=false; if(o.userData.prop&&!$('showProps').checked) v=false; if(o.userData.ceil&&$('hideCeil').checked) v=false; o.visible=v; }); }
+function applyRoomVis(){ roomGroup.children.forEach(o=>{ let v=true; if(o.userData.xlu&&!$('showXlu').checked) v=false; if(o.userData.prop&&!$('showProps').checked) v=false; if(o.userData.ceil&&$('hideCeil').checked) v=false; o.visible=v; }); applyDraw(); buildVis(); }
+// ---- game look (same as the Tooie viewer): the level model's display lists with its vertex shading and the lab's textures
+// (data/vis/map0xNN.gz.wasm, tex/<key>.png from tools/bk/bkvis.py; HD from BK Reloaded where data/hd.json matches one)
+let drawMode='game'; try{ drawMode=localStorage.getItem('bcl-draw')||'game'; }catch(e){}
+let HD=null; fetch('data/hd.json').then(r=>r.ok?r.json():null).then(j=>{ HD=j; if(room) buildVis(); }).catch(()=>{});
+const visGroup=new THREE.Group(); scene.add(visGroup); const texCache={};
+function labTexture(key,ws,wt){ const hd=$('visHD').checked&&HD&&HD.files[key]; const id=key+'/'+ws+wt+(hd?'/hd':''); if(texCache[id]) return texCache[id];
+  const W=[THREE.RepeatWrapping,THREE.MirroredRepeatWrapping,THREE.ClampToEdgeWrapping]; const t=new THREE.Texture(); t.flipY=false; t.wrapS=W[ws]; t.wrapT=W[wt]; t.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  const L=new THREE.ImageLoader(); L.setCrossOrigin('anonymous'); const lab='tex/'+key+'.png';
+  const load=(url,fb)=>L.load(url,img=>{ t.image=img; t.needsUpdate=true; },undefined,()=>{ if(fb) load(fb,null); });
+  load(hd?HD.base+hd.split('/').map(encodeURIComponent).join('/'):lab,hd?lab:null); return (texCache[id]=t); }
+function applyDraw(){ roomGroup.children.forEach(o=>{ if(o.userData.level&&o.material) o.material.visible=drawMode!=='game'; });
+  document.querySelectorAll('#drawSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.draw===drawMode)); }
+function buildVis(){ disposeGroup(visGroup); const vis=room&&room._vis; if(drawMode==='coll'||!vis||!vis.tris.length) return;
+  const V=vis.verts, M=vis.mats||[]; const tex=$('visTex').checked; let nhd=0; if(HD) for(const m of M) if(HD.files[m[0]]) nhd++; $('nHD').textContent=nhd?nhd:'';
+  const cls=t=>{ const a=V[t[0]],b=V[t[1]],c=V[t[2]]; const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2]; const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx; const L=Math.hypot(nx,ny,nz)||1; return ny/L<-0.3?'ceil':'other'; };
+  const groups=new Map();
+  for(const t of vis.tris){ if(t[3]&&!$('showXlu').checked) continue; if($('hideCeil').checked&&cls(t)==='ceil') continue; const m=tex?t[4]:-1; const k=t[3]+':'+m; if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(t); }
+  for(const [k,T] of groups){ const [xl,m]=k.split(':').map(Number); const mat=m>=0?M[m]:null;
+    const pos=new Float32Array(T.length*9), col=new Float32Array(T.length*9), uv=mat?new Float32Array(T.length*6):null;
+    T.forEach((t,i)=>{ for(let j=0;j<3;j++){ const v=V[t[j]]; pos.set([v[0],v[1],v[2]],i*9+j*3); col.set([v[3]/255,v[4]/255,v[5]/255],i*9+j*3); if(uv) uv.set([v[6],v[7]],i*6+j*2); } });
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3)); if(uv) g.setAttribute('uv',new THREE.BufferAttribute(uv,2)); g.computeVertexNormals();
+    visGroup.add(new THREE.Mesh(g,new (mat?THREE.MeshBasicMaterial:THREE.MeshLambertMaterial)({vertexColors:true,map:mat?labTexture(mat[0],mat[1],mat[2]):null,alphaTest:mat&&mat[3]&&!xl?0.5:0,side:THREE.FrontSide,clippingPlanes:[clipPlane],transparent:!!xl,opacity:xl?0.6:1,depthWrite:!xl,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1}))); } }
+document.querySelectorAll('#drawSeg button').forEach(b=>b.onclick=()=>{ drawMode=b.dataset.draw; try{ localStorage.setItem('bcl-draw',drawMode); }catch(e){} applyDraw(); buildVis(); });
+$('visTex').onchange=()=>buildVis(); $('visHD').onchange=()=>buildVis();
 let spotFilter='all', sfRel='any'; try{ spotFilter=localStorage.getItem('bcl-sf')||'all'; sfRel=localStorage.getItem('bcl-sfr')||'any'; }catch(e){}
 $('sfRel').value=sfRel; $('sfRel').hidden=!(spotFilter==='clip'||spotFilter==='holdclip');
 $('sfRel').onchange=()=>{ sfRel=$('sfRel').value; try{localStorage.setItem('bcl-sfr',sfRel);}catch(e){} if(room) buildPoints(); };
@@ -864,7 +892,8 @@ function activeProps(){ return (room.props||[]).concat($('usePose')&&$('usePose'
 async function loadMap(m){
   $('loading').hidden=false; $('loading').textContent='Loading room…';
   try{localStorage.setItem('bcl-map',m);}catch(e){}
-  room=await fetchRoom(m);
+  const visP=fetch(`data/vis/map${m}.gz.wasm`).then(q=>q.ok?q.arrayBuffer():null).then(b=>b?gunzipJSON(b):null).catch(()=>null);
+  room=await fetchRoom(m); room._vis=await visP;
   // animated / moving objects (warp cauldrons, beehives, platforms...) in their rest pose at their spawn point: optional, but on
   // by default so routes can't walk through them (data/pose-0xNN.json from extract-actor-collision-pose.py)
   { const ent=(index||[]).find(e=>e.map===m); room._pose=[]; if(ent&&ent.pose){ try{ const q=await fetch(`data/pose-${m}.json`); if(q.ok) room._pose=await q.json(); }catch(e){} } }

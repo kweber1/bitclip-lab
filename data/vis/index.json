@@ -1,0 +1,1276 @@
+{
+ "0x01": {
+  "opa": {
+   "asset": "0xd2d",
+   "tris": 3136,
+   "textures": 77,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd2e",
+   "tris": 369,
+   "textures": 10,
+   "unknown": {}
+  },
+  "bytes": 58126,
+  "mats": 87
+ },
+ "0x93": {
+  "opa": {
+   "asset": "0xd6d",
+   "tris": 4373,
+   "textures": 61,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd71",
+   "tris": 72,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 63123,
+  "mats": 62
+ },
+ "0x8C": {
+  "opa": {
+   "asset": "0xd00",
+   "tris": 654,
+   "textures": 18,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd02",
+   "tris": 12,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 9497,
+  "mats": 19
+ },
+ "0x02": {
+  "opa": {
+   "asset": "0xd08",
+   "tris": 2155,
+   "textures": 58,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd09",
+   "tris": 168,
+   "textures": 6,
+   "unknown": {}
+  },
+  "bytes": 39177,
+  "mats": 69
+ },
+ "0x0C": {
+  "opa": {
+   "asset": "0xd0a",
+   "tris": 606,
+   "textures": 6,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd0b",
+   "tris": 78,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 10459,
+  "mats": 8
+ },
+ "0x0E": {
+  "opa": {
+   "asset": "0xd0c",
+   "tris": 3700,
+   "textures": 40,
+   "unknown": {}
+  },
+  "bytes": 18171,
+  "mats": 40
+ },
+ "0x05": {
+  "opa": {
+   "asset": "0xccd",
+   "tris": 426,
+   "textures": 11,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcce",
+   "tris": 20,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 8571,
+  "mats": 13
+ },
+ "0x06": {
+  "opa": {
+   "asset": "0xccb",
+   "tris": 490,
+   "textures": 6,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xccc",
+   "tris": 188,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 8948,
+  "mats": 8
+ },
+ "0x07": {
+  "opa": {
+   "asset": "0xcc9",
+   "tris": 2665,
+   "textures": 51,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcca",
+   "tris": 113,
+   "textures": 3,
+   "unknown": {}
+  },
+  "bytes": 53216,
+  "mats": 54
+ },
+ "0x0A": {
+  "opa": {
+   "asset": "0xccf",
+   "tris": 254,
+   "textures": 35,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcd0",
+   "tris": 10,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 4938,
+  "mats": 37
+ },
+ "0x8F": {
+  "opa": {
+   "asset": "0xcd1",
+   "tris": 616,
+   "textures": 7,
+   "unknown": {}
+  },
+  "bytes": 7266,
+  "mats": 7
+ },
+ "0x0B": {
+  "opa": {
+   "asset": "0xd4b",
+   "tris": 4054,
+   "textures": 71,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd4c",
+   "tris": 374,
+   "textures": 6,
+   "unknown": {}
+  },
+  "bytes": 72093,
+  "mats": 77
+ },
+ "0x21": {
+  "opa": {
+   "asset": "0xd4d",
+   "tris": 1050,
+   "textures": 12,
+   "unknown": {}
+  },
+  "bytes": 12374,
+  "mats": 12
+ },
+ "0x22": {
+  "opa": {
+   "asset": "0xd4e",
+   "tris": 1495,
+   "textures": 24,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd4f",
+   "tris": 8,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 25448,
+  "mats": 24
+ },
+ "0x23": {
+  "opa": {
+   "asset": "0xd50",
+   "tris": 578,
+   "textures": 12,
+   "unknown": {}
+  },
+  "bytes": 6965,
+  "mats": 12
+ },
+ "0x0D": {
+  "opa": {
+   "asset": "0xd2f",
+   "tris": 3574,
+   "textures": 48,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd30",
+   "tris": 1497,
+   "textures": 10,
+   "unknown": {}
+  },
+  "bytes": 78116,
+  "mats": 57
+ },
+ "0x10": {
+  "opa": {
+   "asset": "0xd31",
+   "tris": 1522,
+   "textures": 7,
+   "unknown": {}
+  },
+  "bytes": 15504,
+  "mats": 7
+ },
+ "0x11": {
+  "opa": {
+   "asset": "0xd32",
+   "tris": 739,
+   "textures": 7,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd33",
+   "tris": 28,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 9176,
+  "mats": 8
+ },
+ "0x27": {
+  "opa": {
+   "asset": "0xd26",
+   "tris": 3072,
+   "textures": 40,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd27",
+   "tris": 138,
+   "textures": 4,
+   "unknown": {}
+  },
+  "bytes": 59981,
+  "mats": 44
+ },
+ "0x41": {
+  "opa": {
+   "asset": "0xd28",
+   "tris": 499,
+   "textures": 18,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd2c",
+   "tris": 138,
+   "textures": 3,
+   "unknown": {}
+  },
+  "bytes": 9866,
+  "mats": 21
+ },
+ "0x53": {
+  "opa": {
+   "asset": "0xd29",
+   "tris": 946,
+   "textures": 13,
+   "unknown": {}
+  },
+  "bytes": 11036,
+  "mats": 13
+ },
+ "0x7F": {
+  "opa": {
+   "asset": "0xd2a",
+   "tris": 2258,
+   "textures": 13,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd2b",
+   "tris": 268,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 32231,
+  "mats": 15
+ },
+ "0x12": {
+  "opa": {
+   "asset": "0xcd2",
+   "tris": 1582,
+   "textures": 33,
+   "unknown": {
+    "img seg 15": 8
+   }
+  },
+  "xlu": {
+   "asset": "0xcd3",
+   "tris": 11,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 33704,
+  "mats": 38
+ },
+ "0x13": {
+  "opa": {
+   "asset": "0xcd4",
+   "tris": 464,
+   "textures": 32,
+   "unknown": {}
+  },
+  "bytes": 5518,
+  "mats": 32
+ },
+ "0x14": {
+  "opa": {
+   "asset": "0xcd6",
+   "tris": 1858,
+   "textures": 21,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcd7",
+   "tris": 1,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 26792,
+  "mats": 22
+ },
+ "0x15": {
+  "opa": {
+   "asset": "0xcd8",
+   "tris": 240,
+   "textures": 24,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcd9",
+   "tris": 10,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 4140,
+  "mats": 26
+ },
+ "0x16": {
+  "opa": {
+   "asset": "0xcda",
+   "tris": 343,
+   "textures": 8,
+   "unknown": {}
+  },
+  "bytes": 5714,
+  "mats": 8
+ },
+ "0x1A": {
+  "opa": {
+   "asset": "0xcdb",
+   "tris": 399,
+   "textures": 9,
+   "unknown": {}
+  },
+  "bytes": 4753,
+  "mats": 9
+ },
+ "0x92": {
+  "opa": {
+   "asset": "0xcdc",
+   "tris": 450,
+   "textures": 6,
+   "unknown": {}
+  },
+  "bytes": 6884,
+  "mats": 6
+ },
+ "0x1B": {
+  "opa": {
+   "asset": "0xcdd",
+   "tris": 4831,
+   "textures": 45,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcde",
+   "tris": 291,
+   "textures": 12,
+   "unknown": {}
+  },
+  "bytes": 84019,
+  "mats": 57
+ },
+ "0x1C": {
+  "opa": {
+   "asset": "0xce4",
+   "tris": 2344,
+   "textures": 28,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xce5",
+   "tris": 67,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 31051,
+  "mats": 30
+ },
+ "0x1D": {
+  "opa": {
+   "asset": "0xce0",
+   "tris": 1922,
+   "textures": 11,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcf9",
+   "tris": 35,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 24704,
+  "mats": 13
+ },
+ "0x24": {
+  "opa": {
+   "asset": "0xce6",
+   "tris": 1130,
+   "textures": 27,
+   "unknown": {}
+  },
+  "bytes": 15856,
+  "mats": 27
+ },
+ "0x25": {
+  "opa": {
+   "asset": "0xcf3",
+   "tris": 950,
+   "textures": 7,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcf4",
+   "tris": 42,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 10095,
+  "mats": 8
+ },
+ "0x26": {
+  "opa": {
+   "asset": "0xce3",
+   "tris": 2321,
+   "textures": 20,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcf8",
+   "tris": 307,
+   "textures": 3,
+   "unknown": {}
+  },
+  "bytes": 35473,
+  "mats": 23
+ },
+ "0x28": {
+  "opa": {
+   "asset": "0xce7",
+   "tris": 668,
+   "textures": 8,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xce8",
+   "tris": 59,
+   "textures": 3,
+   "unknown": {}
+  },
+  "bytes": 8042,
+  "mats": 11
+ },
+ "0x29": {
+  "opa": {
+   "asset": "0xce9",
+   "tris": 582,
+   "textures": 10,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcea",
+   "tris": 54,
+   "textures": 3,
+   "unknown": {}
+  },
+  "bytes": 7664,
+  "mats": 13
+ },
+ "0x2A": {
+  "opa": {
+   "asset": "0xceb",
+   "tris": 699,
+   "textures": 15,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcec",
+   "tris": 21,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 8861,
+  "mats": 17
+ },
+ "0x2B": {
+  "opa": {
+   "asset": "0xce1",
+   "tris": 470,
+   "textures": 5,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xce2",
+   "tris": 130,
+   "textures": 4,
+   "unknown": {}
+  },
+  "bytes": 5998,
+  "mats": 9
+ },
+ "0x2C": {
+  "opa": {
+   "asset": "0xced",
+   "tris": 978,
+   "textures": 10,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcee",
+   "tris": 75,
+   "textures": 6,
+   "unknown": {}
+  },
+  "bytes": 12582,
+  "mats": 16
+ },
+ "0x2D": {
+  "opa": {
+   "asset": "0xcef",
+   "tris": 1040,
+   "textures": 16,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcf0",
+   "tris": 92,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 14386,
+  "mats": 18
+ },
+ "0x2E": {
+  "opa": {
+   "asset": "0xcf1",
+   "tris": 620,
+   "textures": 8,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcf2",
+   "tris": 76,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 8299,
+  "mats": 10
+ },
+ "0x2F": {
+  "opa": {
+   "asset": "0xcdf",
+   "tris": 250,
+   "textures": 3,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcf5",
+   "tris": 69,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 3957,
+  "mats": 4
+ },
+ "0x8D": {
+  "opa": {
+   "asset": "0xcf6",
+   "tris": 471,
+   "textures": 12,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xcf7",
+   "tris": 42,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 6617,
+  "mats": 13
+ },
+ "0x31": {
+  "opa": {
+   "asset": "0xd0e",
+   "tris": 3419,
+   "textures": 72,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd0f",
+   "tris": 346,
+   "textures": 16,
+   "unknown": {}
+  },
+  "bytes": 59433,
+  "mats": 92
+ },
+ "0x34": {
+  "opa": {
+   "asset": "0xd10",
+   "tris": 1793,
+   "textures": 29,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd11",
+   "tris": 166,
+   "textures": 4,
+   "unknown": {}
+  },
+  "bytes": 27370,
+  "mats": 33
+ },
+ "0x35": {
+  "opa": {
+   "asset": "0xd12",
+   "tris": 613,
+   "textures": 20,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd13",
+   "tris": 97,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 9566,
+  "mats": 22
+ },
+ "0x36": {
+  "opa": {
+   "asset": "0xd14",
+   "tris": 602,
+   "textures": 13,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd15",
+   "tris": 230,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 9131,
+  "mats": 15
+ },
+ "0x37": {
+  "opa": {
+   "asset": "0xd16",
+   "tris": 451,
+   "textures": 12,
+   "unknown": {}
+  },
+  "bytes": 5975,
+  "mats": 12
+ },
+ "0x38": {
+  "opa": {
+   "asset": "0xd18",
+   "tris": 363,
+   "textures": 10,
+   "unknown": {}
+  },
+  "bytes": 4188,
+  "mats": 10
+ },
+ "0x39": {
+  "opa": {
+   "asset": "0xd1b",
+   "tris": 1240,
+   "textures": 21,
+   "unknown": {}
+  },
+  "bytes": 14521,
+  "mats": 21
+ },
+ "0x3A": {
+  "opa": {
+   "asset": "0xd1c",
+   "tris": 304,
+   "textures": 8,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd1d",
+   "tris": 18,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 3815,
+  "mats": 9
+ },
+ "0x3B": {
+  "opa": {
+   "asset": "0xd1f",
+   "tris": 1252,
+   "textures": 11,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd20",
+   "tris": 24,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 16606,
+  "mats": 12
+ },
+ "0x3C": {
+  "opa": {
+   "asset": "0xd21",
+   "tris": 934,
+   "textures": 27,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd22",
+   "tris": 40,
+   "textures": 3,
+   "unknown": {}
+  },
+  "bytes": 12937,
+  "mats": 30
+ },
+ "0x3D": {
+  "opa": {
+   "asset": "0xd1e",
+   "tris": 1089,
+   "textures": 30,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd25",
+   "tris": 56,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 14598,
+  "mats": 31
+ },
+ "0x3E": {
+  "opa": {
+   "asset": "0xd17",
+   "tris": 412,
+   "textures": 8,
+   "unknown": {}
+  },
+  "bytes": 6053,
+  "mats": 8
+ },
+ "0x3F": {
+  "opa": {
+   "asset": "0xd19",
+   "tris": 528,
+   "textures": 15,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd1a",
+   "tris": 34,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 7531,
+  "mats": 17
+ },
+ "0x8B": {
+  "opa": {
+   "asset": "0xd23",
+   "tris": 1266,
+   "textures": 14,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd24",
+   "tris": 85,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 13776,
+  "mats": 15
+ },
+ "0x40": {
+  "opa": {
+   "asset": "0xd36",
+   "tris": 3712,
+   "textures": 90,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd41",
+   "tris": 80,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 50233,
+  "mats": 89
+ },
+ "0x43": {
+  "opa": {
+   "asset": "0xd37",
+   "tris": 3997,
+   "textures": 71,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd42",
+   "tris": 271,
+   "textures": 5,
+   "unknown": {}
+  },
+  "bytes": 67391,
+  "mats": 77
+ },
+ "0x44": {
+  "opa": {
+   "asset": "0xd38",
+   "tris": 4240,
+   "textures": 78,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd43",
+   "tris": 263,
+   "textures": 5,
+   "unknown": {}
+  },
+  "bytes": 71958,
+  "mats": 83
+ },
+ "0x45": {
+  "opa": {
+   "asset": "0xd39",
+   "tris": 4384,
+   "textures": 75,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd44",
+   "tris": 271,
+   "textures": 5,
+   "unknown": {}
+  },
+  "bytes": 74841,
+  "mats": 82
+ },
+ "0x46": {
+  "opa": {
+   "asset": "0xd3a",
+   "tris": 4485,
+   "textures": 84,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd45",
+   "tris": 585,
+   "textures": 7,
+   "unknown": {}
+  },
+  "bytes": 82052,
+  "mats": 92
+ },
+ "0x5A": {
+  "opa": {
+   "asset": "0xd3b",
+   "tris": 876,
+   "textures": 18,
+   "unknown": {}
+  },
+  "bytes": 11432,
+  "mats": 18
+ },
+ "0x5E": {
+  "opa": {
+   "asset": "0xd3c",
+   "tris": 738,
+   "textures": 13,
+   "unknown": {}
+  },
+  "bytes": 10049,
+  "mats": 13
+ },
+ "0x62": {
+  "opa": {
+   "asset": "0xd3e",
+   "tris": 420,
+   "textures": 11,
+   "unknown": {}
+  },
+  "bytes": 6027,
+  "mats": 11
+ },
+ "0x63": {
+  "opa": {
+   "asset": "0xd3f",
+   "tris": 164,
+   "textures": 7,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd40",
+   "tris": 79,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 3161,
+  "mats": 9
+ },
+ "0x65": {
+  "opa": {
+   "asset": "0xd3d",
+   "tris": 752,
+   "textures": 8,
+   "unknown": {}
+  },
+  "bytes": 9909,
+  "mats": 8
+ },
+ "0x69": {
+  "opa": {
+   "asset": "0xd51",
+   "tris": 1900,
+   "textures": 71,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd69",
+   "tris": 8,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 28038,
+  "mats": 72
+ },
+ "0x6A": {
+  "opa": {
+   "asset": "0xd52",
+   "tris": 2393,
+   "textures": 82,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd6a",
+   "tris": 40,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 33498,
+  "mats": 84
+ },
+ "0x6B": {
+  "opa": {
+   "asset": "0xd53",
+   "tris": 3787,
+   "textures": 66,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd6e",
+   "tris": 122,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 48246,
+  "mats": 68
+ },
+ "0x6C": {
+  "opa": {
+   "asset": "0xd54",
+   "tris": 696,
+   "textures": 15,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd6b",
+   "tris": 202,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 12596,
+  "mats": 17
+ },
+ "0x6D": {
+  "opa": {
+   "asset": "0xd55",
+   "tris": 1294,
+   "textures": 27,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd70",
+   "tris": 171,
+   "textures": 3,
+   "unknown": {}
+  },
+  "bytes": 21090,
+  "mats": 30
+ },
+ "0x6E": {
+  "opa": {
+   "asset": "0xd56",
+   "tris": 1239,
+   "textures": 27,
+   "unknown": {
+    "img seg 15": 1
+   }
+  },
+  "xlu": {
+   "asset": "0xd06",
+   "tris": 24,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 20684,
+  "mats": 26
+ },
+ "0x6F": {
+  "opa": {
+   "asset": "0xd57",
+   "tris": 2195,
+   "textures": 72,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd58",
+   "tris": 38,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 35064,
+  "mats": 74
+ },
+ "0x70": {
+  "opa": {
+   "asset": "0xd59",
+   "tris": 2747,
+   "textures": 56,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd65",
+   "tris": 178,
+   "textures": 3,
+   "unknown": {}
+  },
+  "bytes": 38458,
+  "mats": 59
+ },
+ "0x71": {
+  "opa": {
+   "asset": "0xd5e",
+   "tris": 2117,
+   "textures": 34,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd6c",
+   "tris": 77,
+   "textures": 4,
+   "unknown": {}
+  },
+  "bytes": 32827,
+  "mats": 38
+ },
+ "0x72": {
+  "opa": {
+   "asset": "0xd5f",
+   "tris": 3446,
+   "textures": 62,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd6f",
+   "tris": 308,
+   "textures": 4,
+   "unknown": {}
+  },
+  "bytes": 48270,
+  "mats": 68
+ },
+ "0x74": {
+  "opa": {
+   "asset": "0xd5b",
+   "tris": 2142,
+   "textures": 36,
+   "unknown": {}
+  },
+  "bytes": 31037,
+  "mats": 36
+ },
+ "0x75": {
+  "opa": {
+   "asset": "0xd5c",
+   "tris": 2144,
+   "textures": 32,
+   "unknown": {}
+  },
+  "bytes": 36754,
+  "mats": 32
+ },
+ "0x76": {
+  "opa": {
+   "asset": "0xd60",
+   "tris": 1151,
+   "textures": 24,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd66",
+   "tris": 45,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 16859,
+  "mats": 25
+ },
+ "0x77": {
+  "opa": {
+   "asset": "0xd61",
+   "tris": 1662,
+   "textures": 47,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd67",
+   "tris": 72,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 26056,
+  "mats": 50
+ },
+ "0x78": {
+  "opa": {
+   "asset": "0xd62",
+   "tris": 4527,
+   "textures": 80,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd68",
+   "tris": 91,
+   "textures": 1,
+   "unknown": {}
+  },
+  "bytes": 55210,
+  "mats": 85
+ },
+ "0x79": {
+  "opa": {
+   "asset": "0xd63",
+   "tris": 2149,
+   "textures": 47,
+   "unknown": {}
+  },
+  "bytes": 31168,
+  "mats": 48
+ },
+ "0x7A": {
+  "opa": {
+   "asset": "0xd5d",
+   "tris": 1159,
+   "textures": 16,
+   "unknown": {}
+  },
+  "bytes": 15493,
+  "mats": 16
+ },
+ "0x80": {
+  "opa": {
+   "asset": "0xd64",
+   "tris": 488,
+   "textures": 16,
+   "unknown": {
+    "img seg 15": 1
+   }
+  },
+  "xlu": {
+   "asset": "0xd72",
+   "tris": 50,
+   "textures": 2,
+   "unknown": {}
+  },
+  "bytes": 6920,
+  "mats": 18
+ },
+ "0x8E": {
+  "opa": {
+   "asset": "0xd46",
+   "tris": 1682,
+   "textures": 65,
+   "unknown": {
+    "img seg 15": 4
+   }
+  },
+  "bytes": 24449,
+  "mats": 66
+ },
+ "0x90": {
+  "opa": {
+   "asset": "0xd5a",
+   "tris": 692,
+   "textures": 10,
+   "unknown": {}
+  },
+  "xlu": {
+   "asset": "0xd73",
+   "tris": 24,
+   "textures": 4,
+   "unknown": {
+    "img seg 15": 4
+   }
+  },
+  "bytes": 10408,
+  "mats": 13
+ }
+}
