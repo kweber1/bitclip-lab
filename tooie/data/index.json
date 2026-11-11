@@ -2053,10 +2053,32 @@
     "Zubba Nest",
     "Bee Hive"
    ],
-   "tris": 1902,
+   "tris": 692,
    "opa": "0x1DB5",
    "xlu": "0x1DB7",
-   "done": false
+   "done": true,
+   "seams": 220,
+   "crack_samples": 34821415069,
+   "crack_floats": 142853863,
+   "spots": 380216,
+   "cats": {
+    "wall": 22188,
+    "eject": 206557,
+    "stuck": 140257,
+    "jump": 991,
+    "lag": 1119,
+    "walk": 9104
+   },
+   "cats_flat": {
+    "eject": 14592,
+    "jump": 92,
+    "lag": 29,
+    "walk": 6531,
+    "wall": 1193
+   },
+   "holds": 994,
+   "void": 6531,
+   "bytes": 9912855
   },
   {
    "map": "0x13A",
