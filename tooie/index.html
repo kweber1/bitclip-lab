@@ -123,7 +123,7 @@ const fmt = (n) => (n ?? 0).toLocaleString('en-US');
 let INDEX = null, ROOM = null, show = { walk: 1, lag: 1, jump: 1, eject: 1, stuck: 1, wall: 0, water: 1 };
 // collision layers (triangle classes from site_build.py: 0 floor, 1 wall, 2 ceiling, 3 water, 4 not solid for Banjo)
 const LAYERS = [['floor', 'Floors', 0], ['wall', 'Walls', 1], ['ceil', 'Ceilings', 2], ['water', 'Water', 3], ['nosolid', 'Not solid for Banjo', 4]];
-let layer = { floor: 1, wall: 1, ceil: 1, water: 1, nosolid: 0, back: 0, opacity: 100, draw: 'game', tex: 1 };   // draw: game (visible model) / coll / both
+let layer = { floor: 1, wall: 1, ceil: 1, water: 1, nosolid: 0, back: 0, opacity: 100, draw: 'game', tex: 1, hd: 1 };   // draw: game (visible model) / coll / both
 try { const l = JSON.parse(localStorage.getItem('tooie-layers') || 'null'); if (l) layer = Object.assign(layer, l); } catch (e) {}
 let DIG = '0'; try { DIG = localStorage.getItem('tooie-digits') || '0'; } catch (e) {}
 const f32b = new DataView(new ArrayBuffer(4));
@@ -172,12 +172,15 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { th
 
 async function gunzipJSON(buf) { const ds = new DecompressionStream('gzip'); const s = new Blob([buf]).stream().pipeThrough(ds); return JSON.parse(await new Response(s).text()); }
 // textures: the Bit-Clip Lab's own paintings (tex/<key>.png), made from each original texture's colours and kind of surface only
-const texCache = {};
+const texCache = {}; let HD = null;   // HD: BT Reloaded (GhostlyDark) replacements, matched by GLideN64's texture checksum, loaded from the pack's repo
 function labTexture(key, ws, wt) {
-  const id = key + '/' + ws + wt; if (texCache[id]) return texCache[id];
+  const hd = layer.hd && HD && HD.files[key]; const id = key + '/' + ws + wt + (hd ? '/hd' : ''); if (texCache[id]) return texCache[id];
   const W = [THREE.RepeatWrapping, THREE.MirroredRepeatWrapping, THREE.ClampToEdgeWrapping];
-  const t = new THREE.TextureLoader().load('tex/' + key + '.png'); t.flipY = false; t.wrapS = W[ws]; t.wrapT = W[wt];
-  t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return (texCache[id] = t);
+  const t = new THREE.Texture(); t.flipY = false; t.wrapS = W[ws]; t.wrapT = W[wt]; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const L = new THREE.ImageLoader(); L.setCrossOrigin('anonymous'); const lab = 'tex/' + key + '.png';
+  const load = (url, fb) => L.load(url, (img) => { t.image = img; t.needsUpdate = true; }, undefined, () => { if (fb) load(fb, null); });
+  load(hd ? HD.base + hd.split('/').map(encodeURIComponent).join('/') : lab, hd ? lab : null);
+  return (texCache[id] = t);
 }
 function buildVis() {
   if (visObj) { scene.remove(visObj); visObj.traverse(o => o.geometry && o.geometry.dispose()); visObj = null; }
@@ -227,7 +230,8 @@ function legend() {
   $('legend').innerHTML = '<div class="lh"><b>Layers</b><button class="btn mini" id="legTog" aria-expanded="true">Hide</button></div><div id="legBody" class="lb"><div class="grp" title="' + (ROOM.thinned ? 'Drawn: every spot that goes through or holds; ' + ROOM.thinned : '') + '">Crack spots · ' + fmt(Object.values(cnt).reduce((a, b) => a + b, 0)) + '</div>' + CATS.map(([k, n, d]) => `<label title="${d}"><input type="checkbox" data-k="${k}" ${show[k] ? 'checked' : ''}><span class="sw" style="background:var(${CVAR[k]})"></span>${n}<span class="n">${fmt(cnt[k] || 0)}</span></label>`).join('')
     + (voids ? `<label title="Walk-in spots whose fall ends in the void (no floor below)"><span style="width:13px"></span><span class="sw" style="background:var(--c-void)"></span>…into the void<span class="n">${fmt(voids)}</span></label>` : '')
     + `<div class="grp">Draw the level as</div><div class="seg" role="group" aria-label="Draw the level as">${[['game', 'Game look'], ['coll', 'Collision'], ['both', 'Both']].map(([k, n]) => `<button data-draw="${k}" aria-pressed="${layer.draw === k}" title="${k === 'game' ? 'The level model as drawn in game (vertex shading), incl. decoration Banjo does not touch' : k === 'coll' ? 'Collision triangles coloured by type' : 'Game look with the collision as a wireframe'}">${n}</button>`).join('')}</div>`
-    + `<label title="Textures painted by the Bit-Clip Lab from each original texture's colours and kind of surface (no game art is used)"><input type="checkbox" data-l="tex" ${layer.tex ? 'checked' : ''}>Textures (lab-made)</label>`
+    + `<label title="Textures painted by the Bit-Clip Lab from each original texture's colours and kind of surface (no game art is used)"><input type="checkbox" data-l="tex" ${layer.tex ? 'checked' : ''}>Textures</label>`
+    + `<label title="Where the BT Reloaded HD pack by GhostlyDark has a replacement (matched by GLideN64's texture checksum), use it; loaded from the pack's own GitHub. Elsewhere the lab-made textures."><input type="checkbox" data-l="hd" ${layer.hd ? 'checked' : ''}>HD where available (BT Reloaded)<span class="n">${ROOM.vis && ROOM.vis.mats && HD ? ROOM.vis.mats.filter(m => HD.files[m[0]]).length : 0}</span></label>`
     + `<div class="grp">Surfaces (both looks)</div>` + LAYERS.map(([k, n, c]) => `<label><input type="checkbox" data-l="${k}" ${layer[k] ? 'checked' : ''}><span class="sw" style="border-radius:2px;background:${['#b4bfb6', '#97a39b', '#8b8f9c', '#73b3cc', '#cc9999'][c]}"></span>${n}<span class="n">${fmt(ROOM.tris.filter(t => t[3] === c).length)}</span></label>`).join('')
     + `<label title="Draw the back of every triangle too (closed rooms then hide their inside)"><input type="checkbox" data-l="back" ${layer.back ? 'checked' : ''}>Back faces</label>`
     + `<div class="grp">See-through <span id="opVal" style="font-family:var(--f-mono);text-transform:none">${layer.opacity}%</span></div><input type="range" id="opac" min="15" max="100" value="${layer.opacity}" style="width:100%;accent-color:var(--accent)">`
@@ -307,7 +311,8 @@ function howPane() {
   <p class="note"><b>Falling in.</b> Banjo stands still on each crack. Then 90 updates (3 s) of falling run with Tooie's own player collision, ported from the ROM: resolver <code>func_800D4584</code>, sphere tests <code>func_800AC638/800AC978</code>, floor tracker. Timing is NTSC (1/30 s updates). One run has no lag, and eight more each have a 3-VI update on update 1 to 8. Spots that never go through also get 42 jump landings, from the apex of a tap jump (92 units) up to a full jump (174 units).</p>
   <p class="note"><b>Checked against the game.</b> In BizHawk 625 cracks in GI Basement were fallen into (bt_fallin.lua). Spots where something else moved Banjo were left out: fans, sliding on steep slopes, props. On the rest the model gives the same result update by update on 346 of 350, and the same outcome on all of them. The graphics-card build gives identical output to the CPU build.</p>
   <p class="note"><b>Not modelled.</b> Fans, conveyors and currents. Sliding on slopes steeper than about 45° (Banjo can't stand still there). Swimming. Moving platforms and props. Lag patterns other than a single 3-VI update.</p>
-  <p class="note">Source: <code>tools/tooie/</code> in this repository (tcol.h, tcensus.cu).</p>`;
+  <p class="note"><b>Textures.</b> The game look uses the HD replacements from <a href="https://github.com/GhostlyDark/BT-Reloaded" target="_blank" rel="noopener">BT Reloaded</a> by GhostlyDark and contributors where the pack has one (matched by GLideN64's Rice texture checksum and palette checksum; the images load from the pack's own repository). Everywhere else the textures are painted by the lab from each original texture's colours and kind of surface only — no game art is published here.</p>
+  <p class="note">Source: <code>tools/tooie/</code> in this repository (tcol.h, tcensus.cu, bttex.py, btgen.py, btrice.py).</p>`;
 }
 function tab(t) { for (const [b, p] of [['tRoom', 'pRoom'], ['tAll', 'pAll'], ['tHow', 'pHow']]) { $(b).setAttribute('aria-selected', b === t); $(p).hidden = b !== t; } if (t === 'tAll') allPane(); }
 $('tRoom').onclick = () => tab('tRoom'); $('tAll').onclick = () => tab('tAll'); $('tHow').onclick = () => tab('tHow');
@@ -320,6 +325,7 @@ async function loadRoom(m) {
 (async () => {
   $('digSel').value = DIG; $('digSel').onchange = () => { DIG = $('digSel').value; try { localStorage.setItem('tooie-digits', DIG); } catch (e) {} if (CUR >= 0 && !$('spotCard').hidden) spotCard(CUR, false); };
   try { const r = await fetch('data/index.json', { cache: 'no-cache' }); INDEX = await r.json(); } catch (e) { $('loading').textContent = 'Could not load the level list.'; return; }
+  try { const r = await fetch('data/hd.json'); if (r.ok) HD = await r.json(); } catch (e) {}
   const groups = {}; for (const r of INDEX.rooms) (groups[r.group] = groups[r.group] || []).push(r);
   $('mapSel').innerHTML = Object.keys(groups).map(g => `<optgroup label="${g}">` + groups[g].map(r => `<option value="${r.map}" ${r.done ? '' : 'disabled'}>${r.name} (${r.maps[0]})${r.done ? '' : ' · running'}</option>`).join('') + '</optgroup>').join('');
   $('mapSel').onchange = () => loadRoom($('mapSel').value); howPane();

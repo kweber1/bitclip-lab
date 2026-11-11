@@ -33,3 +33,24 @@ def palcrc(pal, cm, swap):
     p = pal + b'\0' * 8
     if swap: p = b''.join(p[i + 2:i + 4] + p[i:i + 2] for i in range(0, len(p) - 3, 4))
     return rice(p, 0, cm + 1, 1, 2, 512)
+
+import re
+_PACK = None
+def pack_index(listfile='/home/claude/btmaps/btr-files.txt'):
+    """BT-Reloaded file list (paths under 'BANJO TOOIE/') -> {(crc, fmt, size): [(palette crc or None, path)]}."""
+    global _PACK
+    if _PACK is None:
+        _PACK = {}
+        for f in open(listfile):
+            f = f.strip(); m = re.search(r'#([0-9A-F]{8})#(\d)#(\d)(?:#([0-9A-F]{8}))?_(\w+)\.png$', f)
+            if m: _PACK.setdefault((m.group(1), int(m.group(2)), int(m.group(3))), []).append((m.group(4), f))
+    return _PACK
+def hd_path(e):
+    """The BT-Reloaded replacement for a bttex.setup() entry, matched the way GLideN64 does (texture + palette checksum)."""
+    c = checksums(e)
+    if not c: return None
+    crc, fm, sz, pal, cm = c
+    for pc, path in pack_index().get(('%08X' % crc, fm, sz), []):
+        if pal is None and pc is None: return path
+        if pal is not None and pc is not None and '%08X' % palcrc(pal, cm, False) == pc: return path
+    return None

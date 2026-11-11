@@ -1,0 +1,367 @@
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#0DD3C221#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#3420320A#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#46A23B95#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#5182DDB4#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#577A3418#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#5CC30DCA#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#649B30F8#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#6649764F#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#7BAD901B#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#7DCF1B15#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#8161E615#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#8226B955#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#827E65A2#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#84351313#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#9E746271#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#9F3D8CDC#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#9FE1280E#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#A137EBC9#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#AFE272BC#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#B111130A#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#C20B08C9#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#CACA4C28#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#E6D674FA#0#2_all.png
+BANJO TOOIE/Areas/Cauldron Keep/Tower of Tragedy/BANJO TOOIE#FFE0D6FB#0#2_all.png
+BANJO TOOIE/Areas/Glitter Gulch Mine/BANJO TOOIE#10CBAFAE#2#0#451A9876_ciByRGBA.png
+BANJO TOOIE/Areas/Glitter Gulch Mine/BANJO TOOIE#9C2F4810#2#0#5E994FF0_ciByRGBA.png
+BANJO TOOIE/Areas/Glitter Gulch Mine/BANJO TOOIE#9EAC8E3E#2#0#BD30A7A2_ciByRGBA.png
+BANJO TOOIE/Areas/Glitter Gulch Mine/BANJO TOOIE#ABE184DF#2#0#CCA63A95_ciByRGBA.png
+BANJO TOOIE/Areas/Grunty Industries/BANJO TOOIE#3D298F7F#2#0#3AD5E8E8_ciByRGBA.png
+BANJO TOOIE/Areas/Grunty Industries/BANJO TOOIE#5A9384B4#2#0#9761EC4E_ciByRGBA.png
+BANJO TOOIE/Areas/Grunty Industries/BANJO TOOIE#68BFAA9F#2#0#DB0555E4_ciByRGBA.png
+BANJO TOOIE/Areas/Grunty Industries/BANJO TOOIE#B717A6B9#2#0#25589E84_ciByRGBA.png
+BANJO TOOIE/Areas/Grunty Industries/BANJO TOOIE#C644017C#2#0#3395AE67_ciByRGBA.png
+BANJO TOOIE/Areas/Grunty Industries/BANJO TOOIE#F9421662#2#0#32540ED9_ciByRGBA.png
+BANJO TOOIE/Areas/Hailfire Peaks/Boggy's Igloo/BANJO TOOIE#12A2F7C2#2#0#318BCFDB_ciByRGBA.png
+BANJO TOOIE/Areas/Hailfire Peaks/Boggy's Igloo/BANJO TOOIE#614891A9#2#0#FB363DF4_ciByRGBA.png
+BANJO TOOIE/Areas/Hailfire Peaks/Boggy's Igloo/BANJO TOOIE#7067BF99#2#0#44D27B25_ciByRGBA.png
+BANJO TOOIE/Areas/Hailfire Peaks/Boggy's Igloo/BANJO TOOIE#83517958#2#0#0FE4840D_ciByRGBA.png
+BANJO TOOIE/Areas/Hailfire Peaks/Boggy's Igloo/BANJO TOOIE#A280D93A#2#0#D60725F5_ciByRGBA.png
+BANJO TOOIE/Areas/Hailfire Peaks/Fire Side/BANJO TOOIE#34F3AA43#2#0#34EE266D_ciByRGBA.png
+BANJO TOOIE/Areas/Hailfire Peaks/Fire Side/BANJO TOOIE#464D827B#2#0#543BD1AB_ciByRGBA.png
+BANJO TOOIE/Areas/Hailfire Peaks/Fire Side/BANJO TOOIE#484B0D17#2#0#31CCF72B_ciByRGBA.png
+BANJO TOOIE/Areas/Hailfire Peaks/Icy Side/BANJO TOOIE#6B88883E#2#0#84EE030D_ciByRGBA.png
+BANJO TOOIE/Areas/Hailfire Peaks/Icy Side/BANJO TOOIE#6D5550CA#2#0#C6265B9D_ciByRGBA.png
+BANJO TOOIE/Areas/Hailfire Peaks/Icy Side/BANJO TOOIE#C0090E40#2#0#3BB46E2F_ciByRGBA.png
+BANJO TOOIE/Areas/Isle O' Hags/BANJO TOOIE#20E32EA8#2#0#24F0BB6D_ciByRGBA.png
+BANJO TOOIE/Areas/Isle O' Hags/Bottles' House/BANJO TOOIE#02043B0E#2#0#5B8D2CAE_ciByRGBA.png
+BANJO TOOIE/Areas/Isle O' Hags/Bottles' House/BANJO TOOIE#1CA27A96#2#0#967FBB85_ciByRGBA.png
+BANJO TOOIE/Areas/Isle O' Hags/Bottles' House/BANJO TOOIE#3AB4A971#2#0#EC573C82_ciByRGBA.png
+BANJO TOOIE/Areas/Isle O' Hags/Bottles' House/BANJO TOOIE#6FFDFC5C#2#0#8D1B840C_ciByRGBA.png
+BANJO TOOIE/Areas/Isle O' Hags/Bottles' House/BANJO TOOIE#757D89E6#2#0#88C8AC14_ciByRGBA.png
+BANJO TOOIE/Areas/Isle O' Hags/Bottles' House/BANJO TOOIE#8B986598#2#0#E7F20143_ciByRGBA.png
+BANJO TOOIE/Areas/Isle O' Hags/Bottles' House/BANJO TOOIE#99206962#2#0#902ADC50_ciByRGBA.png
+BANJO TOOIE/Areas/Isle O' Hags/Bottles' House/BANJO TOOIE#B33BF02B#2#0#FAC26B1B_ciByRGBA.png
+BANJO TOOIE/Areas/Isle O' Hags/Bottles' House/BANJO TOOIE#C56F90F7#2#0#EE9DA364_ciByRGBA.png
+BANJO TOOIE/Areas/Isle O' Hags/Bottles' House/BANJO TOOIE#C9B9D43B#2#0#140BBC88_ciByRGBA.png
+BANJO TOOIE/Areas/Jolly Roger's Lagoon/BANJO TOOIE#41E3C609#2#0#E7F4D09B_ciByRGBA.png
+BANJO TOOIE/Areas/Jolly Roger's Lagoon/BANJO TOOIE#95F78D90#2#0#261EC676_ciByRGBA.png
+BANJO TOOIE/Areas/Jolly Roger's Lagoon/BANJO TOOIE#D4B0E697#2#0#78D42C1E_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#06F3FBCE#2#0#1D954DBA_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#0D101D2E#2#0#690F2242_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#1F71A06B#2#0#B9B37BE2_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#23381EB6#2#0#D46930E8_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#29E84FFE#2#0#AD6771DD_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#43DF69A9#2#0#E3809D09_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#5C562559#2#0#0A6539B4_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#5D040AA4#2#0#EE77CF3F_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#5D150A17#2#0#D677273D_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#62EC1B10#2#0#15D03D40_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#7107DCEF#2#0#4DFDFFBC_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#7D5E26D6#2#0#D95C0218_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#7FB90CC8#2#0#DC6C0E93_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#8039AAF4#2#0#388E59DE_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#9B845F69#2#0#083C301C_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#A300DE0A#2#0#7850703A_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#A52F296A#2#0#1E5FB4F4_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#ABDAF0DB#2#0#41C7027D_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#B19E9A9A#2#0#13D6CE6E_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#C19BEBEC#2#0#040C7B93_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#D72C37CE#2#0#06C221E0_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#E8B71934#2#0#28A27D3E_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#EEF5F0C7#2#0#00FC39F6_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#F869DFBF#2#0#22181977_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#F8D8FCF2#2#0#80236F0E_ciByRGBA.png
+BANJO TOOIE/Areas/Mayahem Temple/Code Chamber/BANJO TOOIE#F9A4E548#2#0#C53C0B4D_ciByRGBA.png
+BANJO TOOIE/Areas/Spiral Mountain/BANJO TOOIE#032409D0#2#0#374A46BC_ciByRGBA.png
+BANJO TOOIE/Areas/Spiral Mountain/BANJO TOOIE#7C989D54#2#0#70874463_ciByRGBA.png
+BANJO TOOIE/Areas/Spiral Mountain/BANJO TOOIE#842D5CD0#2#0#333A0E11_ciByRGBA.png
+BANJO TOOIE/Areas/Spiral Mountain/BANJO TOOIE#9195A2AC#2#0#54713333_ciByRGBA.png
+BANJO TOOIE/Areas/Spiral Mountain/BANJO TOOIE#DA0F37EE#2#0#C230250B_ciByRGBA.png
+BANJO TOOIE/Areas/Terrydactyland/BANJO TOOIE#04139771#2#0#0D1B206C_ciByRGBA.png
+BANJO TOOIE/Areas/Terrydactyland/BANJO TOOIE#060531E8#2#0#08D5226D_ciByRGBA.png
+BANJO TOOIE/Areas/Terrydactyland/BANJO TOOIE#3B0F9AD6#2#0#C8718755_ciByRGBA.png
+BANJO TOOIE/Areas/Terrydactyland/BANJO TOOIE#D6823258#2#0#130BA7C9_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#33B56317#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#3B54EE49#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#3F0709CC#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#4098DAA7#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#423A6F8E#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#6AD6286F#2#1#F0746596_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#6F39D36A#2#1#646FBABE_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#7C80E14F#2#1#1DEB061A_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#8548DF73#2#1#8FB4AADB_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#896C68BB#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#92D518F1#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#931D079B#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#9762A669#2#1#667CC6D9_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#9DC17158#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#A291BB04#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#A426028F#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#A6AE38D0#2#1#0F86FCD2_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#B32A37EA#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#B6443395#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#B72DB25B#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#B7331938#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#C44E15C9#2#1#294B1780_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#C8062D54#2#1#759DFAD7_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#D9CB0544#2#1#E926E3E7_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#DA04AB32#2#1#D4FBB0EE_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#DAE30CA2#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#DBFAE57D#2#1#BF148AE5_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#DF8083FB#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#EC6D494C#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#ECE43978#2#1#7DDD1BC4_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#EE7B564F#2#1#929637A3_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#F1718A34#0#2_all.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#F2B9FAEA#2#1#4C80E967_ciByRGBA.png
+BANJO TOOIE/Areas/Witchyworld/Crazy Castle/BANJO TOOIE#F761EBE1#0#2_all.png
+BANJO TOOIE/Areas/Wumba's Wigwam/BANJO TOOIE#549B7C58#2#0#7F1F0007_ciByRGBA.png
+BANJO TOOIE/Areas/Wumba's Wigwam/BANJO TOOIE#690EF210#2#0#A1276C93_ciByRGBA.png
+BANJO TOOIE/Characters/Kazooie/BANJO TOOIE#9E367F7A#2#0#C0B9644E_ciByRGBA.png
+BANJO TOOIE/Characters/Kazooie/BANJO TOOIE#C7059BBD#2#0#44BDEF8F_ciByRGBA.png
+BANJO TOOIE/Characters/Kazooie/Multiplayer (FPS)/BANJO TOOIE#02412EA2#2#0#D838693F_ciByRGBA.png
+BANJO TOOIE/Effects/Bubble/BANJO TOOIE#157E4E3A#4#1_all.png
+BANJO TOOIE/Effects/Character Shadow/BANJO TOOIE#22CDBA1A#0#3_all.png
+BANJO TOOIE/Effects/Grunty Transition/BANJO TOOIE#219529DF#3#1_all.png
+BANJO TOOIE/Effects/Grunty Transition/BANJO TOOIE#431E9395#3#1_all.png
+BANJO TOOIE/Effects/Grunty Transition/BANJO TOOIE#7AF8E301#3#1_all.png
+BANJO TOOIE/Effects/Grunty Transition/BANJO TOOIE#B688DE7A#3#1_all.png
+BANJO TOOIE/Effects/Intro Transition/BANJO TOOIE#7C255199#0#3_all.png
+BANJO TOOIE/Effects/Puzzle Transition/BANJO TOOIE#0F954DDD#3#1_all.png
+BANJO TOOIE/Effects/Puzzle Transition/BANJO TOOIE#60C4D2F6#3#1_all.png
+BANJO TOOIE/Effects/Puzzle Transition/BANJO TOOIE#9180E620#3#1_all.png
+BANJO TOOIE/Effects/Puzzle Transition/BANJO TOOIE#ACDCBE82#3#1_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Blue/BANJO TOOIE#43D5D396#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Blue/BANJO TOOIE#4B2E10A8#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Blue/BANJO TOOIE#58E20B6D#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Blue/BANJO TOOIE#5CA82C79#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Blue/BANJO TOOIE#77143137#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Blue/BANJO TOOIE#96D165B9#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Blue/BANJO TOOIE#9767B000#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Blue/BANJO TOOIE#C0633360#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Blue/BANJO TOOIE#C734C005#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Blue/BANJO TOOIE#E537ED52#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Clockwork/BANJO TOOIE#09A2A298#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Clockwork/BANJO TOOIE#352BB8E1#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Clockwork/BANJO TOOIE#4BE4933B#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Clockwork/BANJO TOOIE#640CA85C#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Clockwork/BANJO TOOIE#891C7F5C#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Clockwork/BANJO TOOIE#A29BA3B1#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Clockwork/BANJO TOOIE#AD14B5C5#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Clockwork/BANJO TOOIE#C504F1F1#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Clockwork/BANJO TOOIE#DE29D730#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Clockwork/BANJO TOOIE#E4AA03F2#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Fire/BANJO TOOIE#28C19ACD#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Fire/BANJO TOOIE#48847944#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Fire/BANJO TOOIE#90B19DD3#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Fire/BANJO TOOIE#94A81C56#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Fire/BANJO TOOIE#9526CC2B#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Fire/BANJO TOOIE#A013F5CC#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Fire/BANJO TOOIE#BBF635EE#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Fire/BANJO TOOIE#BE78E4C3#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Fire/BANJO TOOIE#D1242AB1#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Fire/BANJO TOOIE#E8D67E09#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Gold/BANJO TOOIE#00D0B77D#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Gold/BANJO TOOIE#229F6B12#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Gold/BANJO TOOIE#4C78D3ED#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Gold/BANJO TOOIE#53AE501D#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Gold/BANJO TOOIE#753B8590#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Gold/BANJO TOOIE#824759EA#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Gold/BANJO TOOIE#8BD83EB5#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Gold/BANJO TOOIE#C1B14703#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Gold/BANJO TOOIE#CD564655#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Gold/BANJO TOOIE#E2E4FE21#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Grenade/BANJO TOOIE#1A5F5A1C#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Grenade/BANJO TOOIE#3D9528AC#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Grenade/BANJO TOOIE#4250DFA1#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Grenade/BANJO TOOIE#51C4DC02#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Grenade/BANJO TOOIE#6D47D9D6#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Grenade/BANJO TOOIE#76832C89#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Grenade/BANJO TOOIE#78443BA9#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Grenade/BANJO TOOIE#7AC57733#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Grenade/BANJO TOOIE#C0BD987F#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Grenade/BANJO TOOIE#E56E94C7#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Ice/BANJO TOOIE#1647B2C4#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Ice/BANJO TOOIE#232B47EE#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Ice/BANJO TOOIE#430441D3#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Ice/BANJO TOOIE#4EF91B78#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Ice/BANJO TOOIE#548A711F#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Ice/BANJO TOOIE#6A379419#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Ice/BANJO TOOIE#96C49EE4#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Ice/BANJO TOOIE#AC229980#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Ice/BANJO TOOIE#E24F2B03#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Ice/BANJO TOOIE#E4B405B9#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Proximity/BANJO TOOIE#0C812BB1#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Proximity/BANJO TOOIE#140025DF#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Proximity/BANJO TOOIE#2CD2CA6D#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Proximity/BANJO TOOIE#4F1603CC#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Proximity/BANJO TOOIE#6FAB9399#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Proximity/BANJO TOOIE#843EAB6F#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Proximity/BANJO TOOIE#A8065326#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Proximity/BANJO TOOIE#B8352B4D#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Proximity/BANJO TOOIE#C43B74D6#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Proximity/BANJO TOOIE#CCFD1F8C#0#2_all.png
+BANJO TOOIE/Objects/Eggs (Thrown)/Proximity/BANJO TOOIE#E34D8734#0#2_all.png
+BANJO TOOIE/Objects/Eggs/BANJO TOOIE#77556460#2#0#8309E7C9_ciByRGBA.png
+BANJO TOOIE/Objects/Eggs/BANJO TOOIE#86A10965#0#2_all.png
+BANJO TOOIE/Objects/Eggs/BANJO TOOIE#91D21D77#0#2_all.png
+BANJO TOOIE/Objects/Eggs/BANJO TOOIE#A8BF6E7E#0#2_all.png
+BANJO TOOIE/Objects/Eggs/BANJO TOOIE#D1C24981#0#2_all.png
+BANJO TOOIE/Objects/Eggs/BANJO TOOIE#DC943341#0#2_all.png
+BANJO TOOIE/Objects/Eggs/BANJO TOOIE#DEB12F41#0#2_all.png
+BANJO TOOIE/Objects/Eggs/BANJO TOOIE#F0C6845A#0#2_all.png
+BANJO TOOIE/Objects/Jump Shock Pad/BANJO TOOIE#28FC0D43#0#3_all.png
+BANJO TOOIE/Objects/Jump Shock Pad/BANJO TOOIE#71034A84#0#3_all.png
+BANJO TOOIE/Objects/Jump Shock Pad/BANJO TOOIE#B35A6C25#0#3_all.png
+BANJO TOOIE/Objects/Jump Shock Pad/BANJO TOOIE#DE500CEF#0#3_all.png
+BANJO TOOIE/Objects/Mumbo Pad/BANJO TOOIE#465792D4#0#3_all.png
+BANJO TOOIE/Objects/Mystery Egg/BANJO TOOIE#A485B0F3#2#0#21A469A9_ciByRGBA.png
+BANJO TOOIE/Objects/Puzzle Piece/BANJO TOOIE#39297FC8#2#0#F16E935D_ciByRGBA.png
+BANJO TOOIE/Objects/Warp Pad/BANJO TOOIE#0FF45212#2#1#022B7265_ciByRGBA.png
+BANJO TOOIE/Objects/Warp Pad/BANJO TOOIE#15040033#2#1#606353F0_ciByRGBA.png
+BANJO TOOIE/Objects/Warp Pad/BANJO TOOIE#2C1B555F#2#1#36D3F24F_ciByRGBA.png
+BANJO TOOIE/Objects/Warp Pad/BANJO TOOIE#7DD6DE84#2#1#EE774D0B_ciByRGBA.png
+BANJO TOOIE/Objects/Warp Pad/BANJO TOOIE#9B823624#2#1#7DB6D21D_ciByRGBA.png
+BANJO TOOIE/Objects/Warp Pad/BANJO TOOIE#CAA7407B#2#1#DE761474_ciByRGBA.png
+BANJO TOOIE/Objects/Warp Pad/BANJO TOOIE#D349478B#2#1#A31AD881_ciByRGBA.png
+BANJO TOOIE/Objects/Warp Pad/BANJO TOOIE#D4278AE9#2#1#17F524C8_ciByRGBA.png
+BANJO TOOIE/Objects/Warp Pad/BANJO TOOIE#DF613B76#2#1#66D1CD0B_ciByRGBA.png
+BANJO TOOIE/Skybox/Cloud Cuckooland/BANJO TOOIE#0E903588#3#1_all.png
+BANJO TOOIE/Skybox/Cloud Cuckooland/BANJO TOOIE#3A14AF6A#3#1_all.png
+BANJO TOOIE/Skybox/Cloud Cuckooland/BANJO TOOIE#6B2E2C74#3#1_all.png
+BANJO TOOIE/Skybox/Cloud Cuckooland/BANJO TOOIE#745AA3E9#3#1_all.png
+BANJO TOOIE/Skybox/Cloud Cuckooland/BANJO TOOIE#79BE7290#3#1_all.png
+BANJO TOOIE/Skybox/Cloud Cuckooland/BANJO TOOIE#D70B1BDE#3#1_all.png
+BANJO TOOIE/Skybox/Cloud Cuckooland/BANJO TOOIE#FB4E9895#3#1_all.png
+BANJO TOOIE/Skybox/Grunty Industries/BANJO TOOIE#0A8B82D3#3#1_all.png
+BANJO TOOIE/Skybox/Grunty Industries/BANJO TOOIE#0C845397#3#1_all.png
+BANJO TOOIE/Skybox/Grunty Industries/BANJO TOOIE#11D82919#0#3_all.png
+BANJO TOOIE/Skybox/Grunty Industries/BANJO TOOIE#C27B1EC8#3#1_all.png
+BANJO TOOIE/Skybox/Grunty Industries/BANJO TOOIE#E70325F8#3#1_all.png
+BANJO TOOIE/Skybox/Hailfire Peaks/BANJO TOOIE#06AB8833#3#1_all.png
+BANJO TOOIE/Skybox/Hailfire Peaks/BANJO TOOIE#3C1D3B6F#3#1_all.png
+BANJO TOOIE/Skybox/Hailfire Peaks/BANJO TOOIE#D4E339A2#3#1_all.png
+BANJO TOOIE/Skybox/Isle O' Hags/BANJO TOOIE#3C1842E9#0#3_all.png
+BANJO TOOIE/Skybox/Isle O' Hags/BANJO TOOIE#42D27352#0#3_all.png
+BANJO TOOIE/Skybox/Isle O' Hags/BANJO TOOIE#5B9D680C#0#3_all.png
+BANJO TOOIE/Skybox/Isle O' Hags/BANJO TOOIE#610AE99B#0#3_all.png
+BANJO TOOIE/Skybox/Isle O' Hags/BANJO TOOIE#72321102#0#3_all.png
+BANJO TOOIE/Skybox/Isle O' Hags/BANJO TOOIE#77D5532E#0#3_all.png
+BANJO TOOIE/Skybox/Isle O' Hags/BANJO TOOIE#857E7CEC#0#3_all.png
+BANJO TOOIE/Skybox/Isle O' Hags/BANJO TOOIE#8BAAC2F0#0#3_all.png
+BANJO TOOIE/Skybox/Isle O' Hags/BANJO TOOIE#B90AF1C8#0#3_all.png
+BANJO TOOIE/Skybox/Isle O' Hags/BANJO TOOIE#E93441AD#0#3_all.png
+BANJO TOOIE/Skybox/Isle O' Hags/BANJO TOOIE#EC62C35B#0#3_all.png
+BANJO TOOIE/Skybox/Isle O' Hags/BANJO TOOIE#F1661726#0#3_all.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#0742E5AA#2#1#2EB32E88_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#0944424D#2#1#DEC0D860_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#155858E0#2#1#FDC0D36E_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#1847B7C1#2#1#9D9F2B39_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#1EB0AAD4#2#1#000031FA_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#34216C88#2#1#06A7C662_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#482EC477#2#1#CDB2C41D_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#49840002#2#1#F2BC8D84_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#5A124ACF#2#1#F99214CD_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#5DED5F95#2#1#BBF8A51B_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#671EA6EE#2#1#D8CC9E51_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#6B75A7B9#2#1#6372B48B_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#7D28DC7E#2#1#0A4F5096_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#918C1887#2#1#AFB60D45_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#923F9847#2#1#EADE5ACD_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#95E5B6CD#2#1#753E1EDD_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#9E62E839#2#1#F3297A7E_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#A81D20DA#2#1#47C84672_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#BF928644#2#1#DF2A16F9_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#CBEFADC5#2#1#FE169B98_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#CCB2A911#2#1#20CA5AE1_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#CD409C16#2#1#573FE169_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#CF7335CE#2#1#540DA876_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#D15CA49C#2#1#40EDF961_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#DB62E0FF#2#1#79FC18B1_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#E5BCF1AB#2#1#5BE32D36_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#F5AE5AB3#2#1#DF099234_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/BANJO TOOIE#F8C788E8#2#1#88FD0BC5_ciByRGBA.png
+BANJO TOOIE/Skybox/Jolly Roger's Lagoon/Top/BANJO TOOIE#25211D19#2#0#DE800002_ciByRGBA.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#0981110D#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#135AA5FF#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#23E196AC#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#2F405BAE#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#499466C4#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#5632B206#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#5E1B2EE1#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#6058EAF3#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#7006A427#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#71A3A325#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#74C014C9#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#927FBC81#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#A0FF82B9#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#AAA9F159#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#B01661A2#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#B0F81B7C#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#B3021498#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#B4675BE6#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#C681C179#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#C6FDD8DB#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#CB5C28CA#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#EC113912#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#F239FDFA#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/BANJO TOOIE#F89A4DB6#0#2_all.png
+BANJO TOOIE/Skybox/Mayahem Temple/Top/BANJO TOOIE#25211D19#2#0#8DEC0002_ciByRGBA.png
+BANJO TOOIE/Skybox/Terrydactyland/BANJO TOOIE#42591602#0#2_all.png
+BANJO TOOIE/Skybox/Terrydactyland/BANJO TOOIE#5B2F632A#0#2_all.png
+BANJO TOOIE/Skybox/Terrydactyland/BANJO TOOIE#733BF74A#0#2_all.png
+BANJO TOOIE/Skybox/Terrydactyland/BANJO TOOIE#744809B5#0#2_all.png
+BANJO TOOIE/Skybox/Terrydactyland/BANJO TOOIE#7D66208D#0#2_all.png
+BANJO TOOIE/Skybox/Terrydactyland/BANJO TOOIE#CD8C1CF6#0#2_all.png
+BANJO TOOIE/Skybox/Terrydactyland/BANJO TOOIE#EE4EF88D#0#2_all.png
+BANJO TOOIE/Skybox/Terrydactyland/BANJO TOOIE#EEA8C349#0#2_all.png
+BANJO TOOIE/Skybox/Witchyworld/Crazy Castle/BANJO TOOIE#0ED8F999#3#1_all.png
+BANJO TOOIE/Skybox/Witchyworld/Crazy Castle/BANJO TOOIE#25F17172#3#1_all.png
+BANJO TOOIE/Skybox/Witchyworld/Crazy Castle/BANJO TOOIE#27D52F01#3#1_all.png
+BANJO TOOIE/Skybox/Witchyworld/Crazy Castle/BANJO TOOIE#466FFF5C#3#1_all.png
+BANJO TOOIE/Skybox/Witchyworld/Crazy Castle/BANJO TOOIE#65C31A5B#3#1_all.png
+BANJO TOOIE/Skybox/Witchyworld/Crazy Castle/BANJO TOOIE#778AB190#3#1_all.png
+BANJO TOOIE/Skybox/Witchyworld/Crazy Castle/BANJO TOOIE#B930AFDF#3#1_all.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#0B06E7CE#2#1#82EDCF02_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#21EFCD98#2#1#D01D2251_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#264E8046#2#1#304B003A_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#2DF15FFF#2#1#0692B4CA_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#411B99E6#2#1#2074B4F1_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#4A30E760#2#1#0FD45C42_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#4AF7F0EA#2#1#D3F2C4E4_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#4D3EB133#2#1#693FA013_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#555E8603#2#1#E0D9B677_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#5896E1B5#2#1#BFBCE383_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#6074060B#2#1#FE2E19BA_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#65A8FCDC#2#1#6CC20410_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#691C6F5B#2#1#3F86F4DE_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#6E22D303#2#1#9914A09F_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#7E4C3520#2#1#6F21DFCA_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#81D88BED#2#1#00B6EA15_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#82A5AB5B#2#1#064E75E4_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#8B0CB42B#2#1#D8F069BF_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#9DB72F91#2#1#B6CD1259_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#BF66C651#2#1#2743DD3B_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#C500370F#2#1#28FA20E6_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#CAD8169C#2#1#E75109E3_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#CE4A5F56#2#1#75E68741_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#CE784299#2#1#90122C70_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#D51B2F0C#2#1#D23DC72D_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#D71FE0E3#2#1#5FA59E10_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#E2B862FC#2#1#09972E12_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#E3AD5808#2#1#E392B7BF_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#E52EAD24#2#1#A123DCC7_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#F82201AF#2#1#403BCBFF_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#F89C739D#2#1#73CEDE66_ciByRGBA.png
+BANJO TOOIE/Skybox/Witchyworld/Main/BANJO TOOIE#FA3DCF9B#2#1#7F832AFF_ciByRGBA.png

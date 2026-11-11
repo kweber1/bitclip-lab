@@ -17,3 +17,11 @@ keep their tones), contrast, transparency coverage, which way its lines run and 
 new texture from that description, seeded by the texture id, at the original's size and tiling, so it sits on the level with the
 game's own texture coordinates. Signs, faces and pictures come out as plain material. Untick *Textures (lab-made)* to see the
 level with its vertex shading only.
+
+### HD textures (BT Reloaded)
+
+Where the [BT Reloaded](https://github.com/GhostlyDark/BT-Reloaded) HD pack by GhostlyDark and contributors has a replacement
+for a texture, the viewer shows it by default (layer *HD where available*). Textures are matched the way GLideN64 matches
+texture packs: the Rice checksum of the texture data and, for colour-indexed textures, of the used part of the palette
+(`tools/tooie/btrice.py`). The images load straight from the pack's own GitHub repository (pinned commit); nothing from the pack
+is copied into this repository. `tooie/data/hd.json` holds only the texture key -> pack file name list.
