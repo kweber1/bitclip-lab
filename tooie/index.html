@@ -87,7 +87,7 @@ code{font-family:var(--f-mono);font-size:.92em}
   <div id="view"><div id="loading">Loading the level list…</div>
     <div class="float legend" id="legend" hidden></div>
     <div class="float spot" id="spotCard" hidden></div>
-    <div class="float hint">Drag to orbit · right-drag to pan · wheel to zoom · click a spot</div>
+    <div class="float hint">Drag to orbit · right-drag to pan · wheel zooms to the cursor · click a spot to fly to it · double-click to centre</div>
   </div>
   <aside>
     <div class="tabs" role="tablist"><button role="tab" id="tRoom" aria-selected="true">This level</button><button role="tab" id="tAll" aria-selected="false">All levels</button><button role="tab" id="tHow" aria-selected="false">How it was found</button></div>
@@ -117,14 +117,39 @@ let INDEX = null, ROOM = null, show = { walk: 1, lag: 1, jump: 1, eject: 1, stuc
 try { const s = JSON.parse(localStorage.getItem('tooie-show') || 'null'); if (s) show = Object.assign(show, s); } catch (e) {}
 
 // ---- three.js scene
-const view = $('view'); const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(2, devicePixelRatio)); view.prepend(renderer.domElement);
-const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(50, 1, 5, 400000); camera.position.set(0, 8000, 8000);
-const controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true;
+const view = $('view'); const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true }); renderer.setPixelRatio(Math.min(2, devicePixelRatio)); view.prepend(renderer.domElement);
+renderer.localClippingEnabled = true; const clipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e9);   // height cut: keeps y <= cut
+const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(50, 1, 1, 600000); camera.position.set(0, 8000, 8000);
+const controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.enableZoom = false; controls.minDistance = 0.5; controls.screenSpacePanning = true;
+// smooth fly-to (same as the Kazooie lab): moves the orbit centre to p, the camera keeps its direction at distance dist
+let fly = null;
+function flyTo(p, dist, above) { const tgt = new THREE.Vector3(p.x, p.y, p.z); const dir = camera.position.clone().sub(controls.target); if (dir.lengthSq() < 1e-6) dir.set(1, 1, 1);
+  if (above) { const h = Math.hypot(dir.x, dir.z) || 1; const L = dir.length(); dir.set(dir.x / h * L * 0.6, L * 0.8, dir.z / h * L * 0.6); }   // look down at the spot from above
+  const d = dist ?? dir.length(); const camEnd = tgt.clone().add(dir.normalize().multiplyScalar(d));
+  fly = { t0: performance.now(), dur: matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 450, fromT: controls.target.clone(), toT: tgt, fromC: camera.position.clone(), toC: camEnd }; }
+function stepFly() { if (!fly) return; const k = Math.min(1, (performance.now() - fly.t0) / fly.dur); const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+  controls.target.lerpVectors(fly.fromT, fly.toT, e); camera.position.lerpVectors(fly.fromC, fly.toC, e); if (k >= 1) fly = null; }
+// what is under the cursor (mesh or spot), for zoom and double-click
+function underCursor(e) { const rc = renderer.domElement.getBoundingClientRect(); const m = new THREE.Vector2(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1);
+  const rr = new THREE.Raycaster(); rr.setFromCamera(m, camera); const td = camera.position.distanceTo(controls.target); rr.params.Points.threshold = Math.max(0.05, td / 400);
+  const objs = [meshObj, ptsObj].filter(Boolean); const hit = rr.intersectObjects(objs, false).filter(h => h.point.y <= cutY + 0.01).sort((a, b) => a.distance - b.distance)[0];
+  return { hit, ray: rr.ray, td }; }
+// mouse wheel zooms toward whatever is under the cursor (camera and orbit centre scale around that point)
+view.addEventListener('wheel', (e) => { if (e.target !== renderer.domElement) return; e.preventDefault(); fly = null;
+  const { hit, ray: rr, td } = underCursor(e); const P = hit ? hit.point.clone() : rr.at(td, new THREE.Vector3());
+  let dy = e.deltaY; if (e.deltaMode === 1) dy *= 33; else if (e.deltaMode === 2) dy *= 400; dy = Math.max(-600, Math.min(600, dy));
+  let k = Math.pow(1.0018, dy); const d = camera.position.distanceTo(P); if (d * k < 0.3) k = 0.3 / d; if (d * k > 500000) k = 500000 / d;
+  camera.position.sub(P).multiplyScalar(k).add(P); controls.target.sub(P).multiplyScalar(k).add(P); controls.update(); }, { passive: false, capture: true });
+// pinch zoom on touch screens: OrbitControls' own dolly (wheel zoom above replaces it for the mouse)
+renderer.domElement.addEventListener('touchstart', (e) => { controls.enableZoom = e.touches.length > 1; }, { passive: true });
+// double-click: fly to the point under the cursor and make it the orbit centre
+renderer.domElement.addEventListener('dblclick', (e) => { const { hit, td } = underCursor(e); if (hit) flyTo(hit.point, Math.min(td, Math.max(60, td * 0.45))); });
+let cutY = 1e9;
 scene.add(new THREE.HemisphereLight(0xffffff, 0x445550, 0.62)); const dl = new THREE.DirectionalLight(0xffffff, 0.38); dl.position.set(0.4, 1, 0.3); scene.add(dl);
 let meshObj = null, ptsObj = null, selObj = null, ptsIdx = [];
 function resize() { const r = view.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); }
 new ResizeObserver(resize).observe(view); resize();
-(function loop() { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+(function loop() { stepFly(); controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
 function themeColors() { scene.background = new THREE.Color(css('--view')); }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { themeColors(); if (ROOM) { buildMesh(); buildPoints(); } }); themeColors();
 
@@ -137,7 +162,7 @@ function buildMesh() {
   T.forEach((t, i) => { for (let j = 0; j < 3; j++) { const v = V[t[j]]; pos.set([v[0], v[1], v[2]], i * 9 + j * 3); col.set(C[t[3]] || C[1], i * 9 + j * 3); } });
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
   // front faces only: indoor rooms face inward, so from outside you look through the walls and roof into the room
-  meshObj = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide })); scene.add(meshObj);
+  meshObj = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, clippingPlanes: [clipPlane] })); scene.add(meshObj);
 }
 function visible(s) { const m = $('viewSel').value; if (!show[s[5]]) return false; if (m === 'flat') { const se = ROOM.seams[s[3]]; if (!(se[6] > 0.999 && se[7] > 0.999)) return false; } if (m === 'hold' && !s[14]) return false; return true; }
 function buildPoints() {
@@ -146,18 +171,22 @@ function buildPoints() {
   const pos = new Float32Array(ptsIdx.length * 3), col = new Float32Array(ptsIdx.length * 3); const cc = {}; for (const k in CVAR) cc[k] = new THREE.Color(css(CVAR[k]));
   ptsIdx.forEach((i, j) => { const s = S[i]; pos[j * 3] = s[0]; pos[j * 3 + 1] = s[1] + 3; pos[j * 3 + 2] = s[2]; const c = s[5] === 'walk' && s[6][0] === '1' ? new THREE.Color(css('--c-void')) : cc[s[5]]; col[j * 3] = c.r; col[j * 3 + 1] = c.g; col[j * 3 + 2] = c.b; });
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  ptsObj = new THREE.Points(g, new THREE.PointsMaterial({ size: 7, sizeAttenuation: false, vertexColors: true, depthTest: true })); scene.add(ptsObj);
+  ptsObj = new THREE.Points(g, new THREE.PointsMaterial({ size: 7, sizeAttenuation: false, vertexColors: true, depthTest: true, clippingPlanes: [clipPlane] })); scene.add(ptsObj);
 }
 function fitCamera() { const V = ROOM.verts; const mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9]; for (const v of V) for (let i = 0; i < 3; i++) { if (v[i] < mn[i]) mn[i] = v[i]; if (v[i] > mx[i]) mx[i] = v[i]; }
   const c = new THREE.Vector3((mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, (mn[2] + mx[2]) / 2); const r = Math.max(mx[0] - mn[0], mx[2] - mn[2], 1000);
-  controls.target.copy(c); camera.position.set(c.x + r * 0.35, c.y + r * 0.75, c.z + r * 0.75); camera.near = r / 2000; camera.far = r * 20; camera.updateProjectionMatrix(); }
+  controls.target.copy(c); camera.position.set(c.x + r * 0.35, c.y + r * 0.75, c.z + r * 0.75); camera.near = 1; camera.far = Math.max(600000, r * 20); camera.updateProjectionMatrix();
+  const s = $('cutY'); if (s) { s.min = Math.floor(mn[1]) - 1; s.max = Math.ceil(mx[1]) + 1; s.value = s.max; setCut(+s.max); } }
 function legend() {
   const cnt = {}; for (const s of ROOM.spots) cnt[s[5]] = (cnt[s[5]] || 0) + 1; const voids = ROOM.spots.filter(s => s[5] === 'walk' && s[6][0] === '1').length;
   $('legend').innerHTML = '<div class="grp">Crack spots · ' + fmt(ROOM.spots.length) + '</div>' + CATS.map(([k, n, d]) => `<label title="${d}"><input type="checkbox" data-k="${k}" ${show[k] ? 'checked' : ''}><span class="sw" style="background:var(${CVAR[k]})"></span>${n}<span class="n">${fmt(cnt[k] || 0)}</span></label>`).join('')
-    + (voids ? `<label title="Walk-in spots whose fall ends in the void (no floor below)"><span style="width:13px"></span><span class="sw" style="background:var(--c-void)"></span>…into the void<span class="n">${fmt(voids)}</span></label>` : '');
+    + (voids ? `<label title="Walk-in spots whose fall ends in the void (no floor below)"><span style="width:13px"></span><span class="sw" style="background:var(--c-void)"></span>…into the void<span class="n">${fmt(voids)}</span></label>` : '')
+    + `<div class="grp">Cut away above y <span id="cutVal" style="font-family:var(--f-mono);text-transform:none">off</span></div><input type="range" id="cutY" style="width:100%;accent-color:var(--accent)">`;
   $('legend').hidden = false;
-  $('legend').querySelectorAll('input').forEach(b => b.onchange = () => { show[b.dataset.k] = b.checked ? 1 : 0; try { localStorage.setItem('tooie-show', JSON.stringify(show)); } catch (e) {} buildPoints(); });
+  $('legend').querySelectorAll('input[type=checkbox]').forEach(b => b.onchange = () => { show[b.dataset.k] = b.checked ? 1 : 0; try { localStorage.setItem('tooie-show', JSON.stringify(show)); } catch (e) {} buildPoints(); });
 }
+function setCut(y) { const s = $('cutY'); const off = !s || y >= +s.max; cutY = off ? 1e9 : y; clipPlane.constant = cutY; if ($('cutVal')) $('cutVal').textContent = off ? 'off' : Math.round(y); }
+document.addEventListener('input', (e) => { if (e.target.id === 'cutY') setCut(+e.target.value); });
 function roomPane() {
   const e = INDEX.rooms.find(r => r.map === ROOM.map); const c = e.cats || {}; const cf = e.cats_flat || {}; const n = e.spots || 0;
   const bar = CATS.map(([k]) => `<i style="width:${100 * (c[k] || 0) / Math.max(1, n)}%;background:var(${CVAR[k]})" title="${k}: ${fmt(c[k] || 0)}"></i>`).join('');
@@ -177,10 +206,10 @@ function roomPane() {
     <h4>Flat floors only</h4><p class="note">${CATS.map(([k, nn]) => `${nn}: <b>${fmt(cf[k] || 0)}</b>`).join(' · ')}</p>
     <p class="note">Click a spot in the view for its exact floats and every run. “Hold” = all 5 resolver passes hit in one update (the Kazooie-style hold); “sitting” = Banjo’s feet are under the floor with his collision sphere resting on it.</p>`;
 }
-function spotCard(i) {
+function spotCard(i, fromClick) {
   const s = ROOM.spots[i]; const se = ROOM.seams[s[3]]; const cat = CATS.find(c => c[0] === s[5]);
   const runs = [...s[6]].map((o, k) => `<span class="run" title="${k ? 'lag (3-VI update) on update ' + k : 'no lag'}: ${OUT[o]}" style="border-color:var(${o === '0' || o === '1' ? '--c-walk' : o === '2' ? '--c-eject' : '--line'})">${k ? 'L' + k : '—'} ${o === '0' ? 'thru' : o === '1' ? 'void' : o === '2' ? 'eject' : o === '3' ? 'stuck' : o === '4' ? 'water' : 'wall'}</span>`).join('');
-  $('spotCard').innerHTML = `<h3><span class="sw" style="background:var(${CVAR[s[5]]})"></span>${cat[1]}<button class="btn mini" id="closeSpot">Close</button></h3>
+  $('spotCard').innerHTML = `<h3><span class="sw" style="background:var(${CVAR[s[5]]})"></span>${cat[1]}<button class="btn mini" id="zoomSpot" style="margin-left:auto">Zoom</button><button class="btn mini" id="closeSpot" style="margin-left:0">Close</button></h3>
     <dl class="kv"><dt>x</dt><dd>${s[15]}</dd><dt>y</dt><dd>${s[16]}</dd><dt>z</dt><dd>${s[17]}</dd>
       <dt>seam</dt><dd>(${se[0]}, ${se[1]}, ${se[2]}) – (${se[3]}, ${se[4]}, ${se[5]}), floor n.y ${se[6]} / ${se[7]}</dd>
       <dt>crack</dt><dd>${s[4]} float${s[4] === 1 ? '' : 's'} in this 0.25 cell</dd>
@@ -191,12 +220,14 @@ function spotCard(i) {
   $('spotCard').hidden = false; $('closeSpot').onclick = () => { $('spotCard').hidden = true; if (selObj) { scene.remove(selObj); selObj = null; } };
   if (selObj) scene.remove(selObj); const g = new THREE.SphereGeometry(1, 16, 12); selObj = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: css('--accent'), wireframe: true }));
   selObj.scale.setScalar(35); selObj.position.set(s[0], s[1] + 80, s[2]); scene.add(selObj);
+  if (fromClick !== false) flyTo({ x: s[0], y: s[1] + 40, z: s[2] }, Math.max(120, Math.min(camera.position.distanceTo(controls.target), 450)), true);
+  $('zoomSpot').onclick = () => flyTo({ x: s[0], y: s[1] + 40, z: s[2] }, 150, true);
 }
 const ray = new THREE.Raycaster(); let down = null;
 renderer.domElement.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
 renderer.domElement.addEventListener('pointerup', (e) => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4 || !ptsObj) return;
   const r = renderer.domElement.getBoundingClientRect(); const m = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-  ray.setFromCamera(m, camera); ray.params.Points.threshold = camera.position.distanceTo(controls.target) / 300; const hit = ray.intersectObject(ptsObj)[0]; if (hit) spotCard(ptsIdx[hit.index]); });
+  ray.setFromCamera(m, camera); ray.params.Points.threshold = camera.position.distanceTo(controls.target) / 300; const hit = ray.intersectObjects([ptsObj], false).filter(h => h.point.y <= cutY + 0.01)[0]; if (hit) spotCard(ptsIdx[hit.index]); });
 $('viewSel').onchange = () => { if (ROOM) buildPoints(); };
 
 function allPane() {
@@ -225,7 +256,7 @@ async function loadRoom(m) {
   $('loading').hidden = false; $('loading').textContent = 'Loading ' + m + '…'; $('spotCard').hidden = true;
   try { const r = await fetch('data/room-' + m + '.gz.wasm'); if (!r.ok) throw new Error(r.status); ROOM = await gunzipJSON(await r.arrayBuffer()); }
   catch (e) { $('loading').textContent = 'Could not load ' + m + ' (' + e.message + ')'; return; }
-  buildMesh(); buildPoints(); fitCamera(); legend(); roomPane(); $('loading').hidden = true; try { history.replaceState(null, '', '#' + m); } catch (e) {}
+  buildMesh(); buildPoints(); legend(); fitCamera(); roomPane(); $('loading').hidden = true; try { history.replaceState(null, '', '#' + m); } catch (e) {}
 }
 (async () => {
   try { const r = await fetch('data/index.json', { cache: 'no-cache' }); INDEX = await r.json(); } catch (e) { $('loading').textContent = 'Could not load the level list.'; return; }
