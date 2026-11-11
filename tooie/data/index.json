@@ -828,10 +828,33 @@
     "Star Spinner",
     "Star Spinner SoP"
    ],
-   "tris": 1533,
+   "tris": 694,
    "opa": "0x1D40",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 571,
+   "crack_samples": 57123891797,
+   "crack_floats": 288242300,
+   "spots": 529796,
+   "cats": {
+    "wall": 11473,
+    "eject": 282338,
+    "stuck": 230926,
+    "walk": 3814,
+    "jump": 1053,
+    "lag": 192
+   },
+   "cats_flat": {
+    "wall": 2574,
+    "eject": 30854,
+    "stuck": 4,
+    "lag": 35,
+    "walk": 3468,
+    "jump": 150
+   },
+   "holds": 332,
+   "void": 3464,
+   "bytes": 14003299
   },
   {
    "map": "0xE7",
