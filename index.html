@@ -278,7 +278,7 @@ td.tag{text-align:left;font-weight:600}
           <div class="grp">Camera</div>
           <div class="grp" style="display:flex;justify-content:space-between;margin-top:0"><label for="camSpeed" style="cursor:default">Fly speed (WASD)</label><span id="camSpeedVal" style="font-family:var(--f-mono);text-transform:none;letter-spacing:0">1×</span></div>
           <input type="range" id="camSpeed" min="-3" max="3" step="0.1" value="0" aria-label="Camera fly speed">
-          <label><input type="checkbox" id="camGlide" checked> Glide after moving (off = stop instantly)</label>
+          <label><input type="checkbox" id="camGlide"> Glide after moving (off = stop instantly)</label>
           <div class="grp slice" style="display:flex;justify-content:space-between"><label for="cutY" style="cursor:default">Slice above y</label><span id="cutVal" style="font-family:var(--f-mono);text-transform:none;letter-spacing:0">off</span></div>
           <div class="slice"><input type="range" id="cutY" min="0" max="1" step="1" value="1" aria-label="Slice height"></div>
           <div class="row"><button class="btn mini" id="cutSpot" title="Slice just above the selected spot or Banjo">At spot</button><button class="btn mini" id="cutOff">Off</button></div>
@@ -289,7 +289,7 @@ td.tag{text-align:left;font-weight:600}
         <div id="spotInfo"></div>
         <div class="row"><button class="btn mini" id="setStart">Set as start</button><button class="btn mini" id="setTarget">Set as target</button><button class="btn mini" id="zoomSpot">Zoom</button></div>
       </div>
-      <details class="float hint" id="hint" open><summary>Mouse and keys</summary><div class="keys"><kbd>drag</kbd> orbit · <kbd>right-drag</kbd> pan · <kbd>scroll</kbd> zoom · <kbd>double-click</kbd> zoom to point · <kbd>click</kbd> a spot · <kbd>Alt+click</kbd> any floor point · <kbd>WASD</kbd>/<kbd>arrows</kbd> fly where the camera looks, then <kbd>drag</kbd> to look around (<kbd>Q</kbd>/<kbd>E</kbd> down/up, <kbd>Shift</kbd> faster)</div></details>
+      <details class="float hint" id="hint" open><summary>Mouse and keys</summary><div class="keys"><kbd>drag</kbd> orbit · <kbd>right-drag</kbd> pan · <kbd>scroll</kbd> zoom · <kbd>double-click</kbd> zoom to point · <kbd>click</kbd> a spot · <kbd>Alt+click</kbd> any floor point · <kbd>WASD</kbd>/<kbd>arrows</kbd> fly where the camera looks (<kbd>Q</kbd>/<kbd>E</kbd> down/up, <kbd>Shift</kbd> faster); <kbd>drag</kbd> still orbits the point ahead</div></details>
     </div>
     <div class="timeline empty" id="timeline">
       <div class="trow">
@@ -707,7 +707,7 @@ function applyTheme(){scene.background=new THREE.Color(css('--view')); if(room) 
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);
 new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 // keyboard flying: W/S or up/down arrows move along the camera's view (look down to go down), A/D or left/right strafe;
-// once flying, dragging turns the view in place (like a first-person camera). Double-click a point or zoom to a spot to orbit again.
+// the orbit point moves along with the camera, so dragging keeps orbiting the point ahead (as in the Tooie viewer).
 // Q/E straight down/up, Shift = 4x faster. Speed follows the orbit distance, so it is slow close in and fast far out.
 const keys=new Set(); let lastKeyT=performance.now();
 const KEYMAP={KeyW:'f',ArrowUp:'f',KeyS:'b',ArrowDown:'b',KeyA:'l',ArrowLeft:'l',KeyD:'r',ArrowRight:'r',KeyE:'u',KeyQ:'d'};
@@ -720,16 +720,16 @@ function stepKeys(shift){ const now=performance.now(), dt=Math.min(0.1,(now-last
   camera.getWorldDirection(_fw); _rt.crossVectors(_fw,camera.up).normalize(); _mv.set(0,0,0);
   if(keys.has('f')) _mv.add(_fw); if(keys.has('b')) _mv.sub(_fw); if(keys.has('r')) _mv.add(_rt); if(keys.has('l')) _mv.sub(_rt); if(keys.has('u')) _mv.y+=1; if(keys.has('d')) _mv.y-=1;
   if(_mv.lengthSq()===0) return; const dist=camera.position.distanceTo(controls.target);
-  // first key press: switch to looking around in place, so dragging turns the view instead of orbiting a far point.
-  // The orbit point is put 1 unit in front of the camera; the flying speed keeps the old orbit distance.
-  if(dist>2){ flyRef=dist; controls.target.copy(camera.position).addScaledVector(_fw,1); }
+  // the orbit point flies along with the camera at the same distance, so dragging keeps orbiting and right-drag keeps panning
+  // at full speed after flying (the orbit feel of the Tooie viewer); the flying speed follows that distance
+  flyRef=dist;
   _mv.normalize().multiplyScalar(Math.max(40,flyRef*1.2)*(shift?4:1)*camSpeedMul*dt); camera.position.add(_mv); controls.target.add(_mv); }
 let flyRef=500;
 // camera settings: fly speed multiplier (slider is log2 scale, 1/8x to 8x) and glide (orbit damping) on/off; remembered per browser
 let camSpeedMul=1;
 function applyCam(){ const v=+$('camSpeed').value; camSpeedMul=Math.pow(2,v); $('camSpeedVal').textContent=(camSpeedMul<1?camSpeedMul.toFixed(2):camSpeedMul.toFixed(1)).replace(/\.0$/,'')+'×';
-  controls.enableDamping=$('camGlide').checked; try{localStorage.setItem('bcl-cam',JSON.stringify({s:v,g:$('camGlide').checked}));}catch(e){} }
-try{ const c=JSON.parse(localStorage.getItem('bcl-cam')||'null'); if(c){ $('camSpeed').value=c.s; $('camGlide').checked=!!c.g; } }catch(e){}
+  controls.enableDamping=true; controls.dampingFactor=$('camGlide').checked?0.05:0.3;   /* a short smoothing keeps orbiting fluid; Glide adds the long drift */ try{localStorage.setItem('bcl-cam2',JSON.stringify({s:v,g:$('camGlide').checked}));}catch(e){} }
+try{ const c=JSON.parse(localStorage.getItem('bcl-cam2')||'null'), o=JSON.parse(localStorage.getItem('bcl-cam')||'null'); if(c){ $('camSpeed').value=c.s; $('camGlide').checked=!!c.g; } else if(o) $('camSpeed').value=o.s; }catch(e){}   // bcl-cam2: Glide is off by default now (the speed carries over)
 $('camSpeed').oninput=applyCam; $('camGlide').onchange=applyCam; applyCam();
 let shiftDown=false; addEventListener('keydown',e=>{ if(e.key==='Shift') shiftDown=true; }); addEventListener('keyup',e=>{ if(e.key==='Shift') shiftDown=false; });
 (function loop(){requestAnimationFrame(loop); stepFly(); stepKeys(shiftDown); controls.update(); updateNearFar(); renderer.render(scene,camera);})();
