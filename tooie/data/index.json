@@ -2001,10 +2001,34 @@
    "map_names": [
     "Chilli Billi"
    ],
-   "tris": 2348,
+   "tris": 1094,
    "opa": "0x1DA5",
    "xlu": "0x1DA9",
-   "done": false
+   "done": true,
+   "seams": 428,
+   "crack_samples": 63307737703,
+   "crack_floats": 197961703,
+   "spots": 507201,
+   "shown": 207761,
+   "cats": {
+    "wall": 185441,
+    "walk": 145269,
+    "lag": 2657,
+    "jump": 4587,
+    "eject": 154563,
+    "stuck": 14684
+   },
+   "cats_flat": {
+    "walk": 144737,
+    "lag": 2443,
+    "jump": 3570,
+    "eject": 138575,
+    "stuck": 1456,
+    "wall": 8587
+   },
+   "holds": 1538,
+   "void": 142034,
+   "bytes": 2706319
   },
   {
    "map": "0x12C",
