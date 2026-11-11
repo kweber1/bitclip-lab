@@ -2553,22 +2553,24 @@
    "xlu": null,
    "done": true,
    "seams": 544,
-   "crack_samples": 45588980773,
-   "crack_floats": 422760875,
-   "spots": 311996,
-   "shown": 101977,
+   "crack_samples": 45526680773,
+   "crack_floats": 422190337,
+   "spots": 422190337,
+   "shown": 49660,
    "cats": {
-    "wall": 127608,
-    "stuck": 155438,
-    "eject": 13935,
-    "jump": 12278,
-    "lag": 348,
-    "walk": 2389
+    "wall": 138714718,
+    "stuck": 204184338,
+    "eject": 24796059,
+    "jump": 47238041,
+    "lag": 6679017,
+    "walk": 578164
    },
    "cats_flat": {},
-   "holds": 74663,
-   "void": 1628,
-   "bytes": 1465549
+   "holds": 92026247,
+   "void": 201565,
+   "bytes": 1252905,
+   "every": true,
+   "cells": 206111
   },
   {
    "map": "0x126",
