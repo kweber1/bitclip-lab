@@ -220,13 +220,14 @@ td.tag{text-align:left;font-weight:600}
     <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="5" fill="var(--accent)"/><path d="M5 14.5 11 8l6 6.5" fill="none" stroke="var(--accent-ink)" stroke-width="2"/><path d="M11 8v9" stroke="var(--accent-ink)" stroke-width="1.4" stroke-dasharray="1.6 1.6"/></svg>
     <b>Bit-Clip Lab</b><span class="badge" id="partTag" hidden></span><span>Banjo-Kazooie collision</span>
   </div>
+  <div class="ctl"><label class="lbl" for="gameSel">Game</label><select id="gameSel" aria-label="Game" style="width:auto" onchange="if(this.value!=='bk')location.href=this.value"><option value="bk" selected>Banjo-Kazooie</option><option value="tooie/">Banjo-Tooie</option></select></div>
+  <script>addEventListener("pageshow",()=>{const g=document.getElementById("gameSel");if(g)g.value="bk";});</script>
   <div class="ctl"><label class="lbl" for="mapSel">Room</label><select id="mapSel" aria-label="Room"></select></div>
   <div class="ctl"><span class="lbl">Version</span>
     <div class="seg" role="group" aria-label="Game version"><button id="vPAL" aria-pressed="true">PAL</button><button id="vNTSC" aria-pressed="false">NTSC</button></div></div>
   <div class="ctl"><label class="lbl" for="digSel">Digits</label><select id="digSel" aria-label="Number of digits shown" title="How many digits every number on the page shows">
     <option value="0">Normal</option><option value="2">+2 decimals</option><option value="4">+4 decimals</option><option value="exact" title="9 significant figures: every f32 bit">Exact (f32)</option></select></div>
   <div id="dtInfo"></div>
-  <a class="btn mini" href="tooie/" title="Every Banjo-Tooie level: cracks, fall-through / eject / jump needed, holds">Banjo-Tooie →</a>
 </header>
 <main>
   <div class="stage">
