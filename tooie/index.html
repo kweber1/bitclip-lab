@@ -47,12 +47,17 @@ main{display:grid;grid-template-columns:minmax(0,1fr) clamp(360px,30vw,520px);mi
 .legend .n{margin-left:auto;padding-left:10px;color:var(--muted);font-family:var(--f-mono);font-size:11.5px}
 .sw{width:10px;height:10px;border-radius:50%;flex:none}
 .legend .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600;margin-top:4px}
-.spot{left:12px;bottom:12px;width:min(380px,calc(100% - 24px));padding:10px 12px;display:grid;gap:8px}
+.spot{right:12px;top:12px;width:min(380px,calc(100% - 24px));max-height:calc(100% - 60px);overflow:auto;padding:10px 12px;display:grid;gap:8px}
 .spot h3{margin:0;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px} .spot h3 button{margin-left:auto}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12.5px;margin:0}
 .kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--f-mono);font-size:11.5px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .runs{display:flex;gap:3px;flex-wrap:wrap}
 .run{font-family:var(--f-mono);font-size:10.5px;border:1px solid var(--line);border-radius:5px;padding:1px 5px;background:var(--sunk)}
+.coords{background:var(--sunk);border:1px solid var(--line-soft);border-radius:8px;padding:6px 8px;display:grid;gap:4px}
+.coords .ch{display:flex;gap:6px;align-items:center}.coords .ch .lbl{margin-right:auto}
+.coords dd b{font-size:13px;color:var(--ink)} .bits{color:var(--muted);font-size:10.5px}
+.legend{max-height:calc(100% - 24px);overflow:auto}
+.legend .lh{display:flex;align-items:center;gap:8px}.legend .lh b{margin-right:auto;font-size:13px}.legend .lb{display:grid;gap:5px}
 .hint{right:12px;bottom:12px;font-size:11.5px;color:var(--muted);padding:5px 9px}
 aside{border-left:1px solid var(--line);background:var(--panel);display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;min-width:0}
 .tabs{display:flex;gap:4px;padding:8px 12px 0;border-bottom:1px solid var(--line)}
@@ -72,7 +77,7 @@ tr.world td{font-weight:700;background:var(--panel);text-align:left;padding-top:
 td.pend{color:var(--muted);text-align:left}
 .bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--line-soft)} .bar i{display:block;height:100%}
 code{font-family:var(--f-mono);font-size:.92em}
-@media (max-width:900px){main{grid-template-columns:1fr;grid-template-rows:minmax(320px,55vh) auto}aside{border-left:0;border-top:1px solid var(--line)}.pane{overflow:visible}.legend{font-size:12px}.hint{display:none}}
+@media (max-width:900px){.spot{top:auto;bottom:12px;right:12px;max-height:55%}main{grid-template-columns:1fr;grid-template-rows:minmax(320px,55vh) auto}aside{border-left:0;border-top:1px solid var(--line)}.pane{overflow:visible}.legend{font-size:12px}.hint{display:none}}
 </style></head><body>
 <div class="app">
 <header>
@@ -81,6 +86,7 @@ code{font-family:var(--f-mono);font-size:.92em}
   <div class="ctl"><label class="lbl" for="gameSel">Game</label><select id="gameSel" aria-label="Game" onchange="if(this.value!=='bt')location.href=this.value"><option value="../">Banjo-Kazooie</option><option value="bt" selected>Banjo-Tooie</option></select></div>
   <script>addEventListener("pageshow",()=>{const g=document.getElementById("gameSel");if(g)g.value="bt";});</script>
   <div class="ctl"><label class="lbl" for="mapSel">Level</label><select id="mapSel" aria-label="Level"></select></div>
+  <div class="ctl"><label class="lbl" for="digSel">Digits</label><select id="digSel" aria-label="Number of digits shown" title="How many digits coordinates show"><option value="0">Normal</option><option value="2">+2 decimals</option><option value="4">+4 decimals</option><option value="exact" title="9 significant figures: every f32 bit">Exact (f32)</option></select></div>
   <div class="ctl"><label class="lbl" for="viewSel">Show</label><select id="viewSel"><option value="all">All crack spots</option><option value="flat">Flat floors only</option><option value="hold">Holds only</option></select></div>
 </header>
 <main>
@@ -114,6 +120,15 @@ const $ = (id) => document.getElementById(id);
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const fmt = (n) => (n ?? 0).toLocaleString('en-US');
 let INDEX = null, ROOM = null, show = { walk: 1, lag: 1, jump: 1, eject: 1, stuck: 1, wall: 0, water: 1 };
+// collision layers (triangle classes from site_build.py: 0 floor, 1 wall, 2 ceiling, 3 water, 4 not solid for Banjo)
+const LAYERS = [['floor', 'Floors', 0], ['wall', 'Walls', 1], ['ceil', 'Ceilings', 2], ['water', 'Water', 3], ['nosolid', 'Not solid for Banjo', 4]];
+let layer = { floor: 1, wall: 1, ceil: 1, water: 1, nosolid: 0, back: 0, opacity: 100 };
+try { const l = JSON.parse(localStorage.getItem('tooie-layers') || 'null'); if (l) layer = Object.assign(layer, l); } catch (e) {}
+let DIG = '0'; try { DIG = localStorage.getItem('tooie-digits') || '0'; } catch (e) {}
+const f32b = new DataView(new ArrayBuffer(4));
+function bitsHex(v) { f32b.setFloat32(0, v); return '0x' + f32b.getUint32(0).toString(16).toUpperCase().padStart(8, '0'); }
+// a coordinate in the chosen precision; exact = the f32's shortest 9-significant-digit form (the census strings)
+function num(v, exactStr) { if (DIG === 'exact') return exactStr ?? String(+Math.fround(v).toPrecision(9)); const d = 2 + (+DIG); return (+v).toFixed(d); }
 try { const s = JSON.parse(localStorage.getItem('tooie-show') || 'null'); if (s) show = Object.assign(show, s); } catch (e) {}
 
 // ---- three.js scene
@@ -158,11 +173,11 @@ function buildMesh() {
   if (meshObj) { scene.remove(meshObj); meshObj.geometry.dispose(); }
   const dark = matchMedia('(prefers-color-scheme: dark)').matches;
   const C = dark ? [[0.29, 0.34, 0.31], [0.21, 0.25, 0.23], [0.23, 0.24, 0.29], [0.1, 0.3, 0.38], [0.3, 0.2, 0.2]] : [[0.71, 0.75, 0.71], [0.59, 0.64, 0.61], [0.55, 0.56, 0.61], [0.45, 0.7, 0.8], [0.8, 0.6, 0.6]];
-  const V = ROOM.verts, T = ROOM.tris; const pos = new Float32Array(T.length * 9), col = new Float32Array(T.length * 9);
+  const on = LAYERS.map(L => !!layer[L[0]]); const V = ROOM.verts, T = ROOM.tris.filter(t => on[t[3]]); const pos = new Float32Array(T.length * 9), col = new Float32Array(T.length * 9);
   T.forEach((t, i) => { for (let j = 0; j < 3; j++) { const v = V[t[j]]; pos.set([v[0], v[1], v[2]], i * 9 + j * 3); col.set(C[t[3]] || C[1], i * 9 + j * 3); } });
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
   // front faces only: indoor rooms face inward, so from outside you look through the walls and roof into the room
-  meshObj = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, clippingPlanes: [clipPlane] })); scene.add(meshObj);
+  const op = layer.opacity / 100; meshObj = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: layer.back ? THREE.DoubleSide : THREE.FrontSide, clippingPlanes: [clipPlane], transparent: op < 1, opacity: op, depthWrite: op >= 1 })); scene.add(meshObj);
 }
 function visible(s) { const m = $('viewSel').value; if (!show[s[5]]) return false; if (m === 'flat') { const se = ROOM.seams[s[3]]; if (!(se[6] > 0.999 && se[7] > 0.999)) return false; } if (m === 'hold' && !s[14]) return false; return true; }
 function buildPoints() {
@@ -179,11 +194,18 @@ function fitCamera() { const V = ROOM.verts; const mn = [1e9, 1e9, 1e9], mx = [-
   const s = $('cutY'); if (s) { s.min = Math.floor(mn[1]) - 1; s.max = Math.ceil(mx[1]) + 1; s.value = s.max; setCut(+s.max); } }
 function legend() {
   const cnt = {}; for (const s of ROOM.spots) cnt[s[5]] = (cnt[s[5]] || 0) + 1; const voids = ROOM.spots.filter(s => s[5] === 'walk' && s[6][0] === '1').length;
-  $('legend').innerHTML = '<div class="grp">Crack spots · ' + fmt(ROOM.spots.length) + '</div>' + CATS.map(([k, n, d]) => `<label title="${d}"><input type="checkbox" data-k="${k}" ${show[k] ? 'checked' : ''}><span class="sw" style="background:var(${CVAR[k]})"></span>${n}<span class="n">${fmt(cnt[k] || 0)}</span></label>`).join('')
+  $('legend').innerHTML = '<div class="lh"><b>Layers</b><button class="btn mini" id="legTog" aria-expanded="true">Hide</button></div><div id="legBody" class="lb"><div class="grp">Crack spots · ' + fmt(ROOM.spots.length) + '</div>' + CATS.map(([k, n, d]) => `<label title="${d}"><input type="checkbox" data-k="${k}" ${show[k] ? 'checked' : ''}><span class="sw" style="background:var(${CVAR[k]})"></span>${n}<span class="n">${fmt(cnt[k] || 0)}</span></label>`).join('')
     + (voids ? `<label title="Walk-in spots whose fall ends in the void (no floor below)"><span style="width:13px"></span><span class="sw" style="background:var(--c-void)"></span>…into the void<span class="n">${fmt(voids)}</span></label>` : '')
-    + `<div class="grp">Cut away above y <span id="cutVal" style="font-family:var(--f-mono);text-transform:none">off</span></div><input type="range" id="cutY" style="width:100%;accent-color:var(--accent)">`;
+    + `<div class="grp">Collision layers</div>` + LAYERS.map(([k, n, c]) => `<label><input type="checkbox" data-l="${k}" ${layer[k] ? 'checked' : ''}><span class="sw" style="border-radius:2px;background:${['#b4bfb6', '#97a39b', '#8b8f9c', '#73b3cc', '#cc9999'][c]}"></span>${n}<span class="n">${fmt(ROOM.tris.filter(t => t[3] === c).length)}</span></label>`).join('')
+    + `<label title="Draw the back of every triangle too (closed rooms then hide their inside)"><input type="checkbox" data-l="back" ${layer.back ? 'checked' : ''}>Back faces</label>`
+    + `<div class="grp">See-through <span id="opVal" style="font-family:var(--f-mono);text-transform:none">${layer.opacity}%</span></div><input type="range" id="opac" min="15" max="100" value="${layer.opacity}" style="width:100%;accent-color:var(--accent)">`
+    + `<div class="grp">Cut away above y <span id="cutVal" style="font-family:var(--f-mono);text-transform:none">off</span></div><input type="range" id="cutY" style="width:100%;accent-color:var(--accent)"></div>`;
+  $('legTog').onclick = () => { const h = !$('legBody').hidden; $('legBody').hidden = h; $('legTog').textContent = h ? 'Show' : 'Hide'; $('legTog').setAttribute('aria-expanded', !h); };
+  const saveL = () => { try { localStorage.setItem('tooie-layers', JSON.stringify(layer)); } catch (e) {} };
+  $('legend').querySelectorAll('input[data-l]').forEach(b => b.onchange = () => { layer[b.dataset.l] = b.checked ? 1 : 0; saveL(); buildMesh(); });
+  $('opac').oninput = () => { layer.opacity = +$('opac').value; $('opVal').textContent = layer.opacity + '%'; saveL(); buildMesh(); };
   $('legend').hidden = false;
-  $('legend').querySelectorAll('input[type=checkbox]').forEach(b => b.onchange = () => { show[b.dataset.k] = b.checked ? 1 : 0; try { localStorage.setItem('tooie-show', JSON.stringify(show)); } catch (e) {} buildPoints(); });
+  $('legend').querySelectorAll('input[data-k]').forEach(b => b.onchange = () => { show[b.dataset.k] = b.checked ? 1 : 0; try { localStorage.setItem('tooie-show', JSON.stringify(show)); } catch (e) {} buildPoints(); });
 }
 function setCut(y) { const s = $('cutY'); const off = !s || y >= +s.max; cutY = off ? 1e9 : y; clipPlane.constant = cutY; if ($('cutVal')) $('cutVal').textContent = off ? 'off' : Math.round(y); }
 document.addEventListener('input', (e) => { if (e.target.id === 'cutY') setCut(+e.target.value); });
@@ -206,17 +228,21 @@ function roomPane() {
     <h4>Flat floors only</h4><p class="note">${CATS.map(([k, nn]) => `${nn}: <b>${fmt(cf[k] || 0)}</b>`).join(' · ')}</p>
     <p class="note">Click a spot in the view for its exact floats and every run. “Hold” = all 5 resolver passes hit in one update (the Kazooie-style hold); “sitting” = Banjo’s feet are under the floor with his collision sphere resting on it.</p>`;
 }
+let CUR = -1;
 function spotCard(i, fromClick) {
-  const s = ROOM.spots[i]; const se = ROOM.seams[s[3]]; const cat = CATS.find(c => c[0] === s[5]);
+  CUR = i; const s = ROOM.spots[i]; const se = ROOM.seams[s[3]]; const cat = CATS.find(c => c[0] === s[5]);
   const runs = [...s[6]].map((o, k) => `<span class="run" title="${k ? 'lag (3-VI update) on update ' + k : 'no lag'}: ${OUT[o]}" style="border-color:var(${o === '0' || o === '1' ? '--c-walk' : o === '2' ? '--c-eject' : '--line'})">${k ? 'L' + k : '—'} ${o === '0' ? 'thru' : o === '1' ? 'void' : o === '2' ? 'eject' : o === '3' ? 'stuck' : o === '4' ? 'water' : 'wall'}</span>`).join('');
   $('spotCard').innerHTML = `<h3><span class="sw" style="background:var(${CVAR[s[5]]})"></span>${cat[1]}<button class="btn mini" id="zoomSpot" style="margin-left:auto">Zoom</button><button class="btn mini" id="closeSpot" style="margin-left:0">Close</button></h3>
-    <dl class="kv"><dt>x</dt><dd>${s[15]}</dd><dt>y</dt><dd>${s[16]}</dd><dt>z</dt><dd>${s[17]}</dd>
-      <dt>seam</dt><dd>(${se[0]}, ${se[1]}, ${se[2]}) – (${se[3]}, ${se[4]}, ${se[5]}), floor n.y ${se[6]} / ${se[7]}</dd>
+    <div class="coords"><div class="ch"><span class="lbl">Crack position (Banjo's feet)</span><button class="btn mini" id="copyXYZ" title="Copy x y z as shown">Copy</button><button class="btn mini" id="copyExact" title="Copy the exact f32 values">Copy exact</button></div>
+      <dl class="kv"><dt>x</dt><dd><b>${num(s[0], s[15])}</b> <span class="bits">${bitsHex(s[0])}</span></dd><dt>y</dt><dd><b>${num(s[1], s[16])}</b> <span class="bits">${bitsHex(s[1])}</span></dd><dt>z</dt><dd><b>${num(s[2], s[17])}</b> <span class="bits">${bitsHex(s[2])}</span></dd></dl></div>
+    <dl class="kv"><dt>seam</dt><dd>(${se[0]}, ${se[1]}, ${se[2]}) – (${se[3]}, ${se[4]}, ${se[5]}), floor n.y ${se[6]} / ${se[7]}</dd>
       <dt>crack</dt><dd>${s[4]} float${s[4] === 1 ? '' : 's'} in this 0.25 cell</dd>
       <dt>walk in</dt><dd><div class="runs">${runs}</div></dd>
       <dt>jump</dt><dd>${s[11] < 0 ? 'not needed / not tested' : `${s[11]} of 42 jump landings go through${s[12] > 0 ? ` (${s[12]} into the void)` : ''}`}</dd>
       <dt>hold</dt><dd>${s[14] ? 'yes' : 'no'} · ${s[7]} of 9 walk-in runs with a 5-pass hold${s[13] > 0 ? `, ${s[13]} jumps` : ''} · sits up to ${s[8]} update${s[8] === 1 ? '' : 's'}</dd>
-      <dt>no-lag run</dt><dd>decided on update ${s[9]}, ends at y ${s[10]}</dd></dl>`;
+      <dt>no-lag run</dt><dd>decided on update ${s[9]}; Banjo's feet end at y ${num(s[10])}${s[6][0] === '0' ? ' (on the floor below)' : s[6][0] === '1' ? ' (falling into the void)' : ''}</dd></dl>`;
+  const cp = (t, b) => { (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { b.textContent = 'Copied'; setTimeout(() => b.textContent = b.id === 'copyXYZ' ? 'Copy' : 'Copy exact', 1200); }).catch(() => { prompt('Copy:', t); }); };
+  $('copyXYZ').onclick = (e) => cp(`${num(s[0], s[15])} ${num(s[1], s[16])} ${num(s[2], s[17])}`, e.target); $('copyExact').onclick = (e) => cp(`${s[15]} ${s[16]} ${s[17]}`, e.target);
   $('spotCard').hidden = false; $('closeSpot').onclick = () => { $('spotCard').hidden = true; if (selObj) { scene.remove(selObj); selObj = null; } };
   if (selObj) scene.remove(selObj); const g = new THREE.SphereGeometry(1, 16, 12); selObj = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: css('--accent'), wireframe: true }));
   selObj.scale.setScalar(35); selObj.position.set(s[0], s[1] + 80, s[2]); scene.add(selObj);
@@ -259,6 +285,7 @@ async function loadRoom(m) {
   buildMesh(); buildPoints(); legend(); fitCamera(); roomPane(); $('loading').hidden = true; try { history.replaceState(null, '', '#' + m); } catch (e) {}
 }
 (async () => {
+  $('digSel').value = DIG; $('digSel').onchange = () => { DIG = $('digSel').value; try { localStorage.setItem('tooie-digits', DIG); } catch (e) {} if (CUR >= 0 && !$('spotCard').hidden) spotCard(CUR, false); };
   try { const r = await fetch('data/index.json', { cache: 'no-cache' }); INDEX = await r.json(); } catch (e) { $('loading').textContent = 'Could not load the level list.'; return; }
   const groups = {}; for (const r of INDEX.rooms) (groups[r.group] = groups[r.group] || []).push(r);
   $('mapSel').innerHTML = Object.keys(groups).map(g => `<optgroup label="${g}">` + groups[g].map(r => `<option value="${r.map}" ${r.done ? '' : 'disabled'}>${r.name} (${r.maps[0]})${r.done ? '' : ' · running'}</option>`).join('') + '</optgroup>').join('');
