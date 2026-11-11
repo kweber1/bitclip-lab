@@ -1221,29 +1221,31 @@
    "xlu": null,
    "done": true,
    "seams": 578,
-   "crack_samples": 77634023572,
-   "crack_floats": 94600232,
-   "spots": 332550,
-   "shown": 78475,
+   "crack_samples": 77542323572,
+   "crack_floats": 94450113,
+   "spots": 94450113,
+   "shown": 79827,
    "cats": {
-    "wall": 52488,
-    "walk": 20129,
-    "stuck": 78200,
-    "eject": 176235,
-    "lag": 1970,
-    "jump": 3528
+    "wall": 26694225,
+    "walk": 4640905,
+    "stuck": 9639715,
+    "eject": 52428364,
+    "jump": 628611,
+    "lag": 418293
    },
    "cats_flat": {
-    "wall": 5571,
-    "walk": 11161,
-    "eject": 26814,
-    "jump": 327,
-    "lag": 354,
-    "stuck": 197
+    "wall": 1798546,
+    "walk": 1815438,
+    "eject": 38702188,
+    "jump": 49186,
+    "lag": 93558,
+    "stuck": 32938
    },
-   "holds": 7696,
-   "void": 137,
-   "bytes": 1432187
+   "holds": 1779983,
+   "void": 144,
+   "bytes": 1873102,
+   "every": true,
+   "cells": 325306
   },
   {
    "map": "0xEA",
