@@ -2400,26 +2400,29 @@
    "xlu": "0x1D07",
    "done": true,
    "seams": 451,
-   "crack_samples": 63152735289,
-   "crack_floats": 63825096,
-   "spots": 131087,
-   "shown": 27872,
+   "crack_samples": 63067335289,
+   "crack_floats": 63693171,
+   "spots": 63693171,
+   "shown": 22599,
    "cats": {
-    "wall": 30922,
-    "eject": 58342,
-    "stuck": 31075,
-    "water": 10743,
-    "walk": 5
+    "wall": 9051261,
+    "eject": 46500380,
+    "stuck": 3683667,
+    "water": 4457788,
+    "walk": 50,
+    "lag": 25
    },
    "cats_flat": {
-    "wall": 1401,
-    "eject": 6414,
-    "water": 24,
-    "stuck": 8
+    "wall": 147028,
+    "eject": 516494,
+    "water": 54,
+    "stuck": 18
    },
-   "holds": 10837,
+   "holds": 1996207,
    "void": 0,
-   "bytes": 533318
+   "bytes": 625237,
+   "every": true,
+   "cells": 125128
   },
   {
    "map": "0x121",
