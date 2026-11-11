@@ -64,7 +64,10 @@ main{display:grid;grid-template-columns:minmax(0,1fr) clamp(360px,30vw,520px);mi
 .legend{max-height:calc(100% - 24px);overflow:auto}
 .legend .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--sunk)}.legend .seg button{border:0;background:transparent;color:var(--ink);font:inherit;font-weight:600;font-size:12px;padding:4px 9px;cursor:pointer}.legend .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .legend .lh{display:flex;align-items:center;gap:8px}.legend .lh b{margin-right:auto;font-size:13px}.legend .lb{display:grid;gap:5px}
-.hint{right:12px;bottom:12px;font-size:11.5px;color:var(--muted);padding:5px 9px}
+.hint{right:12px;bottom:12px;font-size:11.5px;color:var(--muted);padding:5px 9px;max-width:min(560px,calc(100% - 24px))}
+.hint>summary{cursor:pointer;font-weight:600;color:var(--ink);list-style:none;display:flex;align-items:center;gap:6px}.hint>summary::-webkit-details-marker{display:none}
+.hint>summary::after{content:"▴";color:var(--muted);font-size:10px}.hint[open]>summary{margin-bottom:4px}.hint[open]>summary::after{content:"▾"}
+.hint .keys{line-height:1.7}.hint kbd{font-family:var(--f-mono);font-size:10.5px;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--ink)}
 aside{border-left:1px solid var(--line);background:var(--panel);display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;min-width:0}
 .tabs{display:flex;gap:4px;padding:8px 12px 0;border-bottom:1px solid var(--line)}
 .tabs button{font:inherit;font-weight:600;font-size:13px;border:0;background:transparent;color:var(--muted);padding:7px 10px;border-bottom:2px solid transparent;cursor:pointer}
@@ -100,7 +103,7 @@ code{font-family:var(--f-mono);font-size:.92em}
   <div id="view"><div id="loading">Loading the level list…</div>
     <div class="float legend" id="legend" hidden></div>
     <div class="float spot" id="spotCard" hidden></div>
-    <div class="float hint">Drag to orbit · right-drag to pan · wheel zooms to the cursor · click a spot to fly to it · double-click to centre</div>
+    <details class="float hint" id="hint" open><summary>Mouse and keys</summary><div class="keys"><kbd>drag</kbd> orbit · <kbd>right-drag</kbd> pan · <kbd>scroll</kbd> zoom · <kbd>double-click</kbd> zoom to point · <kbd>click</kbd> a spot · <kbd>WASD</kbd>/<kbd>arrows</kbd> fly where the camera looks, then <kbd>drag</kbd> to look around (<kbd>Q</kbd>/<kbd>E</kbd> down/up, <kbd>Shift</kbd> faster)</div></details>
   </div>
   <aside>
     <div class="tabs" role="tablist"><button role="tab" id="tRoom" aria-selected="true">This level</button><button role="tab" id="tAll" aria-selected="false">All levels</button><button role="tab" id="tHow" aria-selected="false">How it was found</button></div>
@@ -162,7 +165,7 @@ let fly = null;
 function flyTo(p, dist, above) { const tgt = new THREE.Vector3(p.x, p.y, p.z); const dir = camera.position.clone().sub(controls.target); if (dir.lengthSq() < 1e-6) dir.set(1, 1, 1);
   if (above) { const h = Math.hypot(dir.x, dir.z) || 1; const L = dir.length(); dir.set(dir.x / h * L * 0.6, L * 0.8, dir.z / h * L * 0.6); }   // look down at the spot from above
   const d = dist ?? dir.length(); const camEnd = tgt.clone().add(dir.normalize().multiplyScalar(d));
-  fly = { t0: performance.now(), dur: matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 450, fromT: controls.target.clone(), toT: tgt, fromC: camera.position.clone(), toC: camEnd }; }
+  fly = { t0: performance.now(), dur: (matchMedia('(prefers-reduced-motion: reduce)').matches || !camGlide) ? 1 : 450, fromT: controls.target.clone(), toT: tgt, fromC: camera.position.clone(), toC: camEnd }; }
 function stepFly() { if (!fly) return; const k = Math.min(1, (performance.now() - fly.t0) / fly.dur); const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
   controls.target.lerpVectors(fly.fromT, fly.toT, e); camera.position.lerpVectors(fly.fromC, fly.toC, e); if (k >= 1) fly = null; }
 // what is under the cursor (mesh or spot), for zoom and double-click
@@ -179,13 +182,35 @@ view.addEventListener('wheel', (e) => { if (e.target !== renderer.domElement) re
 // pinch zoom on touch screens: OrbitControls' own dolly (wheel zoom above replaces it for the mouse)
 renderer.domElement.addEventListener('touchstart', (e) => { controls.enableZoom = e.touches.length > 1; }, { passive: true });
 // double-click: fly to the point under the cursor and make it the orbit centre
-renderer.domElement.addEventListener('dblclick', (e) => { const { hit, td } = underCursor(e); if (hit) flyTo(hit.point, Math.min(td, Math.max(60, td * 0.45))); });
+renderer.domElement.addEventListener('dblclick', (e) => { const { hit, td } = underCursor(e); if (hit) flyTo(hit.point, Math.min(td, Math.max(40, td * 0.45))); });
+// ---- keyboard flying and camera settings: the Kazooie viewer's code. W/S or up/down move along the view, A/D or left/right strafe,
+// Q/E down/up, Shift = 4x; once flying, dragging turns the view in place. Speed follows the orbit distance. Settings shared (bcl-cam).
+const keys = new Set(); let lastKeyT = performance.now(), flyRef = 500, camSpeedMul = 1, camGlide = true, shiftDown = false;
+const KEYMAP = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r', KeyE: 'u', KeyQ: 'd' };
+const typing = e => { const t = e.target; return t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)); };
+addEventListener('keydown', e => { if (e.key === 'Shift') shiftDown = true; if (typing(e) || e.ctrlKey || e.metaKey || e.altKey) return; const k = KEYMAP[e.code]; if (!k) return; e.preventDefault(); keys.add(k); fly = null; });
+addEventListener('keyup', e => { if (e.key === 'Shift') shiftDown = false; const k = KEYMAP[e.code]; if (k) keys.delete(k); });
+addEventListener('blur', () => keys.clear());
+const _fw = new THREE.Vector3(), _rt = new THREE.Vector3(), _mv = new THREE.Vector3();
+function stepKeys(shift) { const now = performance.now(), dt = Math.min(0.1, (now - lastKeyT) / 1000); lastKeyT = now; if (!keys.size) return;
+  camera.getWorldDirection(_fw); _rt.crossVectors(_fw, camera.up).normalize(); _mv.set(0, 0, 0);
+  if (keys.has('f')) _mv.add(_fw); if (keys.has('b')) _mv.sub(_fw); if (keys.has('r')) _mv.add(_rt); if (keys.has('l')) _mv.sub(_rt); if (keys.has('u')) _mv.y += 1; if (keys.has('d')) _mv.y -= 1;
+  if (_mv.lengthSq() === 0) return; const dist = camera.position.distanceTo(controls.target);
+  if (dist > 2) { flyRef = dist; controls.target.copy(camera.position).addScaledVector(_fw, 1); }
+  _mv.normalize().multiplyScalar(Math.max(40, flyRef * 1.2) * (shift ? 4 : 1) * camSpeedMul * dt); camera.position.add(_mv); controls.target.add(_mv); }
+function camLoad() { try { const c = JSON.parse(localStorage.getItem('bcl-cam') || 'null'); if (c) { camSpeedMul = Math.pow(2, +c.s || 0); camGlide = !!c.g; } } catch (e) {} controls.enableDamping = camGlide; }
+function camUI() { const sp = $('camSpeed'), gl = $('camGlide'); if (!sp) return; sp.value = Math.log2(camSpeedMul); gl.checked = camGlide;
+  const show = () => { $('camSpeedVal').textContent = (camSpeedMul < 1 ? camSpeedMul.toFixed(2) : camSpeedMul.toFixed(1)).replace(/\.0$/, '') + '×'; }; show();
+  const apply = () => { camSpeedMul = Math.pow(2, +sp.value); camGlide = gl.checked; controls.enableDamping = camGlide; show(); try { localStorage.setItem('bcl-cam', JSON.stringify({ s: +sp.value, g: camGlide })); } catch (e) {} };
+  sp.oninput = apply; gl.onchange = apply; }
+camLoad();
+{ const h = $('hint'); try { if (localStorage.getItem('bcl-hint') === '0') h.open = false; } catch (e) {} h.addEventListener('toggle', () => { try { localStorage.setItem('bcl-hint', h.open ? '1' : '0'); } catch (e) {} }); }
 let cutY = 1e9;
 scene.add(new THREE.HemisphereLight(0xffffff, 0x445550, 0.62)); const dl = new THREE.DirectionalLight(0xffffff, 0.38); dl.position.set(0.4, 1, 0.3); scene.add(dl);
 let meshObj = null, visObj = null, ptsObj = null, selObj = null, ptsIdx = []; let OBJS = null, objGroup = null;
 function resize() { const r = view.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); }
 new ResizeObserver(resize).observe(view); resize();
-(function loop() { stepFly(); controls.update(); faceCamera(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+(function loop() { stepFly(); stepKeys(shiftDown); controls.update(); faceCamera(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
 function themeColors() { scene.background = new THREE.Color(css('--view')); }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { themeColors(); if (ROOM) { buildMesh(); buildPoints(); } }); themeColors();
 
@@ -302,13 +327,15 @@ function legend() {
     + `<div class="grp">Surfaces (both looks)</div>` + LAYERS.map(([k, n, c]) => `<label><input type="checkbox" data-l="${k}" ${layer[k] ? 'checked' : ''}><span class="sw" style="border-radius:2px;background:${['#b4bfb6', '#97a39b', '#8b8f9c', '#73b3cc', '#cc9999'][c]}"></span>${n}<span class="n">${fmt(ROOM.tris.filter(t => t[3] === c).length)}</span></label>`).join('')
     + `<label title="Draw the back of every triangle too (closed rooms then hide their inside)"><input type="checkbox" data-l="back" ${layer.back ? 'checked' : ''}>Back faces</label>`
     + `<div class="grp">See-through <span id="opVal" style="font-family:var(--f-mono);text-transform:none">${layer.opacity}%</span></div><input type="range" id="opac" min="15" max="100" value="${layer.opacity}" style="width:100%;accent-color:var(--accent)">`
-    + `<div class="grp">Cut away above y <span id="cutVal" style="font-family:var(--f-mono);text-transform:none">off</span></div><input type="range" id="cutY" style="width:100%;accent-color:var(--accent)"></div>`;
+    + `<div class="grp">Cut away above y <span id="cutVal" style="font-family:var(--f-mono);text-transform:none">off</span></div><input type="range" id="cutY" style="width:100%;accent-color:var(--accent)">`
+    + `<div class="grp">Camera</div><div class="grp" style="display:flex;justify-content:space-between;margin-top:0"><span>Fly speed (WASD)</span><span id="camSpeedVal" style="font-family:var(--f-mono);text-transform:none;letter-spacing:0">1×</span></div><input type="range" id="camSpeed" min="-3" max="3" step="0.1" value="0" aria-label="Camera fly speed" style="width:100%;accent-color:var(--accent)">`
+    + `<label><input type="checkbox" id="camGlide" checked> Glide after moving (off = stop instantly)</label></div>`;
   $('legTog').onclick = () => { const h = !$('legBody').hidden; $('legBody').hidden = h; $('legTog').textContent = h ? 'Show' : 'Hide'; $('legTog').setAttribute('aria-expanded', !h); };
   const saveL = () => { try { localStorage.setItem('tooie-layers', JSON.stringify(layer)); } catch (e) {} };
   $('legend').querySelectorAll('input[data-l]').forEach(b => b.onchange = () => { layer[b.dataset.l] = b.checked ? 1 : 0; saveL(); if (b.dataset.l === 'objs' || b.dataset.l === 'marks') { applyObjVis(); return; } buildMesh(); if (b.dataset.l === 'tex' || b.dataset.l === 'hd') buildObjects(); });
   $('legend').querySelectorAll('button[data-draw]').forEach(b => b.onclick = () => { layer.draw = b.dataset.draw; saveL(); $('legend').querySelectorAll('button[data-draw]').forEach(x => x.setAttribute('aria-pressed', x === b)); buildMesh(); });
   $('opac').oninput = () => { layer.opacity = +$('opac').value; $('opVal').textContent = layer.opacity + '%'; saveL(); buildMesh(); };
-  $('legend').hidden = false;
+  $('legend').hidden = false; camUI();
   $('legend').querySelectorAll('input[data-k]').forEach(b => b.onchange = () => { show[b.dataset.k] = b.checked ? 1 : 0; try { localStorage.setItem('tooie-show', JSON.stringify(show)); } catch (e) {} buildPoints(); });
 }
 function setCut(y) { const s = $('cutY'); const off = !s || y >= +s.max; cutY = off ? 1e9 : y; clipPlane.constant = cutY; if ($('cutVal')) $('cutVal').textContent = off ? 'off' : Math.round(y); }
