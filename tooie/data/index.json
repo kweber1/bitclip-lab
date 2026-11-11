@@ -649,10 +649,35 @@
    "map_names": [
     "Gloomy Caverns"
    ],
-   "tris": 3305,
+   "tris": 1404,
    "opa": "0x1D21",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 724,
+   "crack_samples": 51907063565,
+   "crack_floats": 796861543,
+   "spots": 1030249,
+   "shown": 682809,
+   "cats": {
+    "wall": 195911,
+    "eject": 145706,
+    "walk": 570221,
+    "lag": 37661,
+    "jump": 21908,
+    "water": 21109,
+    "stuck": 37733
+   },
+   "cats_flat": {
+    "wall": 14115,
+    "eject": 21170,
+    "walk": 14427,
+    "lag": 487,
+    "jump": 2147,
+    "water": 15
+   },
+   "holds": 31891,
+   "void": 15698,
+   "bytes": 4123558
   },
   {
    "map": "0xD3",
