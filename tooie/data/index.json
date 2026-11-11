@@ -797,10 +797,33 @@
    "map_names": [
     "Castle Pump Room"
    ],
-   "tris": 1841,
+   "tris": 592,
    "opa": "0x1D3A",
    "xlu": null,
-   "done": false
+   "done": true,
+   "seams": 253,
+   "crack_samples": 31085116538,
+   "crack_floats": 114877055,
+   "spots": 337622,
+   "cats": {
+    "wall": 14710,
+    "eject": 114154,
+    "walk": 8832,
+    "lag": 150,
+    "jump": 871,
+    "stuck": 198905
+   },
+   "cats_flat": {
+    "wall": 4472,
+    "eject": 26404,
+    "walk": 8492,
+    "lag": 106,
+    "jump": 219,
+    "stuck": 87
+   },
+   "holds": 11564,
+   "void": 8480,
+   "bytes": 3435186
   },
   {
    "map": "0xE4",
