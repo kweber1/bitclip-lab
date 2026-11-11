@@ -1618,10 +1618,34 @@
    "map_names": [
     "Floor 4 Quality Control"
    ],
-   "tris": 2452,
+   "tris": 1074,
    "opa": "0x1D85",
    "xlu": "0x1D89",
-   "done": false
+   "done": true,
+   "seams": 338,
+   "crack_samples": 44874506285,
+   "crack_floats": 36048165,
+   "spots": 104322,
+   "shown": 43053,
+   "cats": {
+    "wall": 17157,
+    "eject": 49872,
+    "walk": 28217,
+    "lag": 398,
+    "jump": 2114,
+    "stuck": 6564
+   },
+   "cats_flat": {
+    "wall": 7223,
+    "eject": 43820,
+    "walk": 27624,
+    "lag": 273,
+    "jump": 667,
+    "stuck": 1006
+   },
+   "holds": 151,
+   "void": 26498,
+   "bytes": 559770
   },
   {
    "map": "0x10E",
