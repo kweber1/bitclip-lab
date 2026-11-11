@@ -1998,30 +1998,32 @@
    "opa": "0x1D85",
    "xlu": "0x1D89",
    "done": true,
-   "seams": 338,
-   "crack_samples": 44874506285,
-   "crack_floats": 36048165,
-   "spots": 104322,
-   "shown": 43053,
+   "seams": 402,
+   "crack_samples": 46126139878,
+   "crack_floats": 589400698,
+   "spots": 589400698,
+   "shown": 83854,
    "cats": {
-    "wall": 17157,
-    "eject": 49872,
-    "walk": 28217,
-    "lag": 398,
-    "jump": 2114,
-    "stuck": 6564
+    "wall": 9885968,
+    "eject": 16637134,
+    "walk": 555274239,
+    "lag": 139595,
+    "jump": 1531045,
+    "stuck": 5932717
    },
    "cats_flat": {
-    "wall": 7223,
-    "eject": 43820,
-    "walk": 27624,
-    "lag": 273,
-    "jump": 667,
-    "stuck": 1006
+    "wall": 489670,
+    "eject": 11426160,
+    "walk": 554573077,
+    "lag": 12872,
+    "jump": 42709,
+    "stuck": 33875
    },
-   "holds": 151,
-   "void": 26498,
-   "bytes": 559842
+   "holds": 114021349,
+   "void": 1207951,
+   "bytes": 1100102,
+   "every": true,
+   "cells": 126178
   },
   {
    "map": "0x10E",
