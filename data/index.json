@@ -237,7 +237,7 @@
 "size": 28476491,
 "bin": 1,
 "hit5": 27924,
-"slopeclips": 150000,
+"slopeclips": 220519,
 "odds": 1,
 "ntsc": 1,
 "ntsc_holds": 20187,
@@ -328,7 +328,7 @@
 "tris": 7284,
 "cracks": 544014,
 "holds": 149386,
-"slopeclips": 150000,
+"slopeclips": 413293,
 "props": 74,
 "size": 62769596,
 "hit5": 102125,
@@ -338,7 +338,8 @@
 "ntsc_holds": 150966,
 "ntsc_clips": 6287,
 "ntsc_slopeclips": 316546,
-"pose": 12
+"pose": 12,
+"gzparts": 3
 },
 {
 "map": "0x41",
@@ -820,7 +821,8 @@
 "ntsc_holds": 356977,
 "ntsc_clips": 7139,
 "ntsc_slopeclips": 5768,
-"pose": 10
+"pose": 10,
+"gzparts": 2
 },
 {
 "map": "0x34",
@@ -1096,7 +1098,8 @@
 "ntsc_holds": 340267,
 "ntsc_clips": 4626,
 "ntsc_slopeclips": 6549,
-"pose": 15
+"pose": 15,
+"gzparts": 2
 },
 {
 "map": "0x44",
@@ -1115,7 +1118,8 @@
 "ntsc_holds": 280650,
 "ntsc_clips": 4209,
 "ntsc_slopeclips": 10233,
-"pose": 16
+"pose": 16,
+"gzparts": 2
 },
 {
 "map": "0x45",
@@ -1134,7 +1138,8 @@
 "ntsc_holds": 331109,
 "ntsc_clips": 7160,
 "ntsc_slopeclips": 6890,
-"pose": 17
+"pose": 17,
+"gzparts": 2
 },
 {
 "map": "0x46",
@@ -1153,7 +1158,8 @@
 "ntsc_holds": 172967,
 "ntsc_clips": 8744,
 "ntsc_slopeclips": 70959,
-"pose": 13
+"pose": 13,
+"gzparts": 2
 },
 {
 "map": "0x5A",
@@ -1473,7 +1479,7 @@
 "size": 40592896,
 "bin": 1,
 "hit5": 66238,
-"slopeclips": 150000,
+"slopeclips": 231067,
 "odds": 1,
 "ntsc": 1,
 "ntsc_holds": 70030,
@@ -1481,7 +1487,8 @@
 "ntsc_slopeclips": 208551,
 "pose": 1,
 "lower": 108140,
-"lower_through": 75456
+"lower_through": 75456,
+"gzparts": 2
 },
 {
 "map": "0x76",
