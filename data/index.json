@@ -1646,11 +1646,11 @@
 "group": "Gruntilda's Lair",
 "tris": 7090,
 "cracks": 293579,
-"holds": 137676,
+"holds": 145255,
 "props": 11,
-"size": 42129565,
+"size": 3773114,
 "hit5": 126847,
-"slopeclips": 89,
+"slopeclips": 230029,
 "bin": 1,
 "odds": 1,
 "ntsc": 1,
@@ -1658,7 +1658,9 @@
 "ntsc_clips": 165,
 "ntsc_slopeclips": 107,
 "pose": 8,
-"lower": 5280,
-"lower_through": 2761
+"lower": 42751,
+"lower_through": 2869,
+"v2": 1,
+"clips": 60491
 }
 ]
