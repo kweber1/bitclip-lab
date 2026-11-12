@@ -309,13 +309,19 @@ function modelGeo(asset) {
     return parts; }).catch(() => null));
 }
 const markGeo = new THREE.OctahedronGeometry(22, 0);
+/* objects whose data would draw them HUGE (a bogus scale such as 60, or a model far bigger than any normal object: wrong model ids,
+   effect planes, sky pieces) are drawn at a normal size; the card still shows the data's own scale */
+const OBJ_MAX = 1000, OBJ_NORMAL = 350;
+function objScale(o, meta) { let s = o[7] || 1, why = ''; if (s > 4) { s = 1; why = 'scale ' + o[7] + ' in the data is not a real scale: drawn at 1'; }
+  if (meta) { const e = Math.max(meta.max[0] - meta.min[0], meta.max[1] - meta.min[1], meta.max[2] - meta.min[2]); if (e * s > OBJ_MAX) { why = 'its model is ' + Math.round(e * s).toLocaleString() + ' units across: drawn shrunk to a normal size (' + OBJ_NORMAL + ')'; s = OBJ_NORMAL / e; } }
+  return { s, why }; }
 async function buildObjects() {
   if (objGroup) { scene.remove(objGroup); objGroup = null; }
   await loadObjs(); const room = ROOM; const mp = OBJS.maps[room.map] || OBJS.maps[(room.maps || [])[0]]; if (!mp || ROOM !== room) return;
   const grp = new THREE.Group(); grp.userData.n = 0; grp.userData.marks = 0;
   for (let i = 0; i < mp.objs.length; i++) { const o = mp.objs[i]; const node = new THREE.Group(); node.position.set(o[1], o[2], o[3]);
-    node.rotation.set(o[4] * Math.PI / 180, o[5] * Math.PI / 180, o[6] * Math.PI / 180, 'YXZ'); node.scale.setScalar(o[7] || 1); node.userData = { o, i };
-    const asset = o[0] >= 0 ? '0x' + o[0].toString(16).toUpperCase() : null; const meta = asset && OBJS.models[asset];
+    node.rotation.set(o[4] * Math.PI / 180, o[5] * Math.PI / 180, o[6] * Math.PI / 180, 'YXZ');
+    const asset = o[0] >= 0 ? '0x' + o[0].toString(16).toUpperCase() : null; const meta = asset && OBJS.models[asset]; const os = objScale(o, meta); node.scale.setScalar(os.s); node.userData = { o, i, os };
     if (meta) { grp.userData.n++; node.userData.bill = meta.billboard; modelGeo(asset).then(parts => { if (!parts) return; for (const p of parts) { const me = new THREE.Mesh(p.g, modelMats(layer.tex ? p.mat : null)); me.userData.obj = node; node.add(me); } }); }
     else { grp.userData.marks++; node.userData.mark = true; const me = new THREE.Mesh(markGeo, new THREE.MeshBasicMaterial({ color: 0xd08a2a, wireframe: true, clippingPlanes: [clipPlane] })); me.userData.obj = node; node.add(me); node.scale.setScalar(1); }
     grp.add(node); }
@@ -329,12 +335,12 @@ function objCard(node) {
     <div class="coords"><div class="ch"><span class="lbl">Position</span><button class="btn mini" id="copyXYZ">Copy</button></div>
       <dl class="kv"><dt>x</dt><dd><b>${o[1]}</b></dd><dt>y</dt><dd><b>${o[2]}</b></dd><dt>z</dt><dd><b>${o[3]}</b></dd></dl></div>
     <dl class="kv"><dt>kind</dt><dd>${o[9] === 1 ? 'static prop (cube grid)' : o[9] === 2 ? 'spawn point (cube grid)' : 'actor (spawned)'} · id 0x${o[8].toString(16).toUpperCase()}</dd><dt>model</dt><dd>${asset}</dd>
-      <dt>rotation</dt><dd>${o[4]}°, ${o[5]}°, ${o[6]}° (x, y, z)</dd><dt>scale</dt><dd>${o[7]}</dd></dl>
+      <dt>rotation</dt><dd>${o[4]}°, ${o[5]}°, ${o[6]}° (x, y, z)</dd><dt>scale</dt><dd>${o[7]}${node.userData.os && node.userData.os.why ? ' <span class="note">(' + node.userData.os.why + ')</span>' : ''}</dd></dl>
     <p class="note" style="margin:6px 0 0">${o[9] === 2 ? 'Where the map spawns it (enemies walk away from here).' : 'As found 8 s after entering from entrance ' + ((OBJS.maps[ROOM.map] || {}).entrance ?? 1) + '.'}</p>`;
   $('spotCard').hidden = false; $('closeSpot').onclick = () => { $('spotCard').hidden = true; if (selObj) { scene.remove(selObj); selObj = null; } };
   $('copyXYZ').onclick = (e) => { (navigator.clipboard ? navigator.clipboard.writeText(`${o[1]} ${o[2]} ${o[3]}`) : Promise.reject()).then(() => { e.target.textContent = 'Copied'; }).catch(() => prompt('Copy:', `${o[1]} ${o[2]} ${o[3]}`)); };
   if (selObj) scene.remove(selObj); selObj = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({ color: css('--accent'), wireframe: true }));
-  selObj.scale.setScalar(60 * (o[7] || 1)); selObj.position.set(o[1], o[2] + 50, o[3]); scene.add(selObj);
+  selObj.scale.setScalar(60 * Math.min(4, (node.userData.os ? node.userData.os.s : o[7]) || 1)); selObj.position.set(o[1], o[2] + 50, o[3]); scene.add(selObj);
   flyTo({ x: o[1], y: o[2] + 40, z: o[3] }, Math.max(200, Math.min(camera.position.distanceTo(controls.target), 600)), true);
   $('zoomSpot').onclick = () => flyTo({ x: o[1], y: o[2] + 40, z: o[3] }, 250, true);
 }

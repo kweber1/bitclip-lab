@@ -869,10 +869,16 @@ function modelGeo(asset){ if(modelCache[asset]) return modelCache[asset];
       T.forEach((t,i)=>{ for(let j=0;j<3;j++){ const v=V[t[j]]; pos.set([v[0],v[1],v[2]],i*9+j*3); col.set([v[3]/255,v[4]/255,v[5]/255],i*9+j*3); uv.set([v[6],v[7]],i*6+j*2); } });
       const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3)); g.setAttribute('uv',new THREE.BufferAttribute(uv,2)); g.computeVertexNormals(); g.computeBoundingSphere();
       parts.push({g,mat:m>=0?M.mats[m]:null}); } return parts; }).catch(()=>null)); }
+/* objects whose data would draw them HUGE (a bogus scale such as 60, or a model far bigger than any normal object: wrong model ids,
+   effect planes, sky pieces) are drawn at a normal size; the card still shows the data's own scale */
+const OBJ_MAX = 1000, OBJ_NORMAL = 350;
+function objScale(o, meta) { let s = o[7] || 1, why = ''; if (s > 4) { s = 1; why = 'scale ' + o[7] + ' in the data is not a real scale: drawn at 1'; }
+  if (meta) { const e = Math.max(meta.max[0] - meta.min[0], meta.max[1] - meta.min[1], meta.max[2] - meta.min[2]); if (e * s > OBJ_MAX) { why = 'its model is ' + Math.round(e * s).toLocaleString() + ' units across: drawn shrunk to a normal size (' + OBJ_NORMAL + ')'; s = OBJ_NORMAL / e; } }
+  return { s, why }; }
 async function buildObjects(){ if(objGroup){ scene.remove(objGroup); objGroup=null; } await objsP; const r=room; if(!r) return; const mp=OBJS.maps[r.map]; if(!mp) return;
   const grp=new THREE.Group(); let n=0, marks=0;
-  for(let i=0;i<mp.objs.length;i++){ const o=mp.objs[i]; const node=new THREE.Group(); node.position.set(o[1],o[2],o[3]); node.rotation.set(o[4]*Math.PI/180,o[5]*Math.PI/180,o[6]*Math.PI/180,'YXZ'); node.scale.setScalar(o[7]||1); node.userData={o,i};
-    const asset=o[0]>=0?'0x'+o[0].toString(16).toUpperCase():null; const meta=asset&&OBJS.models[asset];
+  for(let i=0;i<mp.objs.length;i++){ const o=mp.objs[i]; const node=new THREE.Group(); node.position.set(o[1],o[2],o[3]); node.rotation.set(o[4]*Math.PI/180,o[5]*Math.PI/180,o[6]*Math.PI/180,'YXZ');
+    const asset=o[0]>=0?'0x'+o[0].toString(16).toUpperCase():null; const meta=asset&&OBJS.models[asset]; const os=objScale(o,meta); node.scale.setScalar(os.s); node.userData={o,i,os};
     if(meta){ n++; modelGeo(asset).then(parts=>{ if(!parts) return; for(const p of parts){ const me=new THREE.Mesh(p.g,modelMats($('visTex').checked?p.mat:null)); me.userData.obj=node; node.add(me); } }); }
     else { marks++; node.userData.mark=true; const me=new THREE.Mesh(markGeo,new THREE.MeshBasicMaterial({color:0xd08a2a,wireframe:true,clippingPlanes:[clipPlane]})); me.userData.obj=node; node.add(me); node.scale.setScalar(1); }
     grp.add(node); }
@@ -967,7 +973,7 @@ renderer.domElement.addEventListener('pointerup',e=>{ if(!downAt||Math.hypot(e.c
   // load-in markers and exits first (big targets), then the spot layers, then "inside an exit's box on screen"
   const px=e.clientX-rc.left, py=e.clientY-rc.top; const big=bigPick(px,py,rc,e.pointerType==='touch'?40:28);
   const h=big||pickPoint(px,py,rc,e.pointerType==='touch'?22:12)||exitBoxPick(px,py,rc);
-  if(!h){ const nd=pickObject(); if(nd){ const o=nd.userData.o; selectSpot({x:o[1],y:o[2],z:o[3],kind:'object',info:{o}}); } return; } const k=h.kind; const i=h.index;
+  if(!h){ const nd=pickObject(); if(nd){ const o=nd.userData.o; selectSpot({x:o[1],y:o[2],z:o[3],kind:'object',info:{o,os:nd.userData.os}}); } return; } const k=h.kind; const i=h.index;
   if(k==='spawn'){ const s=spawnList()[i]; if(!s) return; const sp=spawnStand(s); $('spawnSel').value=String(i); $('spawnSel').dispatchEvent(new Event('change')); selectSpot({x:sp[0],y:sp[1],z:sp[2],kind:'spawn',info:{label:spawnLabel(s),yaw:spawnYaw(s)}}); return; }
   if(k==='exit'){const e=exitList()[i]; selectSpot({x:e[0],y:e[1],z:e[2],kind:'exit',info:{r:e[3],toMap:e[4],toExit:e[5],name:e[6]}});}
   else if(k==='hold'){const d=room.holds[i]; selectSpot({x:d.x,y:d.y,z:d.z,kind:'hold',info:d});}
@@ -1023,7 +1029,7 @@ function renderSpot(){ const el=$('spotInfo'); if(!spot){ $('spotCard').hidden=t
   $('spotTitle').textContent=(spot.kind==='crack'&&spot.info&&spot.info.lower?(String(spot.info.lower[3]).endsWith('/edge')?'Rim crack':'Crack over a lower floor'):kinds[spot.kind])+(spot.kind==='crack'&&spot.info&&spot.info.slope?' (sloped seam)':''); $('spotDot').style.background=css('--'+({crack:'crack',hold:'hold',roof:'roof',slope:'slope',hit5:'hit5',point:'accent',exit:'accent',spawn:'pop',object:'prop'}[spot.kind]));
   if(spot.kind==='object') $('spotTitle').textContent=objName(spot.info.o);
   let rows=`<dt>Position</dt><dd>${fmt(spot.x,4)}, ${fmt(spot.y,3)}, ${fmt(spot.z,4)}</dd>`;
-  if(spot.kind==='object'){ const o=spot.info.o; rows+=`<dt>Kind</dt><dd>${o[9]===1?'cube prop (setup file)':'actor spawn point (setup file)'} · ${o[9]===1?'asset':'actor id'} 0x${o[8].toString(16).toUpperCase()}</dd><dt>Model</dt><dd>${o[0]>=0?'0x'+o[0].toString(16).toUpperCase():'none (marker)'}</dd><dt>Facing</dt><dd>${o[5]}°${o[6]?`, roll ${o[6]}°`:''}</dd><dt>Scale</dt><dd>${o[7]}</dd><dt>Note</dt><dd>${o[9]===2?'Where the map spawns it (enemies move away from here).':'Placed in the map.'} Objects are drawn only; the collision of static and moving objects is under Room.</dd>`; }
+  if(spot.kind==='object'){ const o=spot.info.o; rows+=`<dt>Kind</dt><dd>${o[9]===1?'cube prop (setup file)':'actor spawn point (setup file)'} · ${o[9]===1?'asset':'actor id'} 0x${o[8].toString(16).toUpperCase()}</dd><dt>Model</dt><dd>${o[0]>=0?'0x'+o[0].toString(16).toUpperCase():'none (marker)'}</dd><dt>Facing</dt><dd>${o[5]}°${o[6]?`, roll ${o[6]}°`:''}</dd><dt>Scale</dt><dd>${o[7]}${spot.info.os&&spot.info.os.why?' ('+spot.info.os.why+')':''}</dd><dt>Note</dt><dd>${o[9]===2?'Where the map spawns it (enemies move away from here).':'Placed in the map.'} Objects are drawn only; the collision of static and moving objects is under Room.</dd>`; }
   if(spot.info&&spot.info.seam) rows+=`<dt>Seam (tris)</dt><dd>${spot.info.seam}</dd>`;
   if(spot.kind==='crack'&&spot.info&&spot.info.lower){ const d=spot.info.lower; const V=['did not go through','dropped onto what is below','went under (115+ below the floor)'];
     rows+=(String(d[3]).endsWith('/edge')?`<dt>Where</dt><dd>on the rim of a floor triangle (no other floor triangle shares this edge): inside the triangle, but the game's float floor ray misses it</dd>`:'')+`<dt>Below the crack</dt><dd>${(+d[4])<0?'the floor ray hits nothing below':`the floor ray misses the floor and hits a triangle ${(+d[4]).toFixed(2)} lower`}</dd>`;
