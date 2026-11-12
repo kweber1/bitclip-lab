@@ -6,7 +6,7 @@
 "tris": 5633,
 "cracks": 494657,
 "holds": 218602,
-"slopeclips": 150000,
+"slopeclips": 224881,
 "props": 12,
 "size": 74450558,
 "hit5": 186109,
@@ -53,7 +53,8 @@
 "ntsc_holds": 116735,
 "ntsc_clips": 2337,
 "ntsc_slopeclips": 119603,
-"pose": 5
+"pose": 5,
+"gzparts": 2
 },
 {
 "map": "0x0C",
