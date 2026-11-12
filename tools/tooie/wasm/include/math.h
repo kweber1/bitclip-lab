@@ -8,3 +8,12 @@ static inline double floor(double x) { return __builtin_floor(x); }
 static inline double fabs(double x) { return __builtin_fabs(x); }
 static inline double fmin(double a, double b) { return a < b ? a : b; }
 static inline double fmax(double a, double b) { return a > b ? a : b; }
+/* fmaf for the Xbox 360 build (-DTX360): wasm has no scalar fused multiply-add, so a*b+c is formed in double and corrected when the
+   double result is an inexact exact-halfway case between two floats (the musl algorithm): the result is the correctly rounded fmaf. */
+static inline float fmaf(float x, float y, float z) {
+  double xy = (double)x * y, result = xy + z; union { double f; unsigned long long i; } u; u.f = result; int e = (int)(u.i >> 52 & 0x7ff);
+  if ((u.i & 0x1fffffff) != 0x10000000 || e == 0x7ff || (result - xy == z && result - z == xy)) return (float)result;
+  double err; int neg = (int)(u.i >> 63);
+  if (neg == (z > xy)) err = xy - result + z; else err = z - result + xy;
+  if (neg == (err < 0)) u.i++; else u.i--;
+  return (float)u.f; }

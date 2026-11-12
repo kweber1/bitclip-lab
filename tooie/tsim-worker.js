@@ -1,12 +1,13 @@
 // Claude 2026-11-11 (tsim-worker.js): runs the census for one 0.25 cell in the background (tsim.wasm = the census's own C++ code,
 // tools/tooie/wasm/tsim.cpp) and streams the crack floats back to the page.
 importScripts('tsim-lib.js');
-let sim = null, roomKey = null;
+let sim = null, roomKey = null, wasmName = null;
 const CLIP = new Set(['walk', 'lag', 'jump']);
 onmessage = async (e) => {
   const m = e.data;
   try {
-    if (!sim) sim = new TSim(await (await fetch('tsim.wasm')).arrayBuffer());
+    const wn = m.wasm || 'tsim.wasm';   // tsim360.wasm = the Xbox 360 version's maths
+    if (!sim || wasmName !== wn) { sim = new TSim(await (await fetch(wn)).arrayBuffer()); wasmName = wn; roomKey = null; }
     if (roomKey !== m.roomKey) { sim.loadRoom(m.col); roomKey = m.roomKey; }
     let rows = [];
     const cnt = await sim.cell(m.seam, m.cx, m.cz, (f) => {

@@ -8,6 +8,13 @@
 //   floor tracker, mode 2          func_800C65E0 / func_800C6060 / func_800C5CC0 (500-unit ray pieces)
 //   resolver                       func_800D4584 (+ func_800FAE44 fallback push 2.0, func_800FABF4 line, func_800D4400 floor snap,
 //                                  func_800FB434, func_800FAF78 normal push, flat-floor edge push func_800F0410 of 2*(pass+1)^2)
+// -DTX360: the Xbox 360 XBLA build (Banjo2_CPR.exe) instead. Same code, but its compiler fused multiply-adds (PPC fmadds / fmsubs /
+// fnmsubs: one rounding) and summed dot products in another order. Every such spot, from the 360 asm (2026-11-12):
+//   dot 0x8228CB40 = x*x' + (z*z' + y*y'), length^2 0x8228CE80 / normalize 0x8228D118 / set length 0x8228D1C8 / 0x8228DAD0 =
+//   z*z + (x*x + y*y), distance^2 0x8228CBA0 = dx*dx + (dz*dz + dy*dy), cross 0x8228CA48 (one product of each component fused),
+//   line test 0x82227850 (hit point d*t + s, barycentrics), moving sphere 0x822289D0 (bisection point), fast check 0x82228270,
+//   iteration 0x82228630 and sphere 0x82228C88 (plane point, barycentrics, edge distance), resolver 0x82259E08 (|d|^2 inline in
+//   y, z, x order), normal push 0x822C2018 (u0 + n*ph fused). fmaf() is correctly rounded on the CPU and the card.
 #ifndef TCOL_H
 #define TCOL_H
 #ifdef TCOL_CUDA
@@ -78,13 +85,37 @@ TD void vsum(float *d, const float *a, const float *b) { d[0] = a[0] + b[0]; d[1
 TD void vadd(float *d, const float *a) { d[0] += a[0]; d[1] += a[1]; d[2] += a[2]; }
 TD void vsubin(float *d, const float *a) { d[0] -= a[0]; d[1] -= a[1]; d[2] -= a[2]; }
 TD void vscl(float *d, const float *a, float s) { d[0] = a[0] * s; d[1] = a[1] * s; d[2] = a[2] * s; }
+#ifndef TX360
 TD float vdot(const float *a, const float *b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
 TD float vlsq(const float *a) { return a[0] * a[0] + a[1] * a[1] + a[2] * a[2]; }
+TD float vlsq_r(const float *a) { return a[0] * a[0] + a[1] * a[1] + a[2] * a[2]; }   // the resolver's inline |d|^2
 TD float vdsq(const float *a, const float *b) { float d0 = a[0] - b[0], d1 = a[1] - b[1], d2 = a[2] - b[2]; return d0 * d0 + d1 * d1 + d2 * d2; }
 TD void vcross(float *d, const float *a, const float *b) { float x = a[1] * b[2] - a[2] * b[1], y = a[2] * b[0] - a[0] * b[2], z = a[0] * b[1] - a[1] * b[0]; d[0] = x; d[1] = y; d[2] = z; }
-TD void vnorm(float *v) { float l = v[0] * v[0] + v[1] * v[1] + v[2] * v[2]; if (l != 0.0f) { float k = 1.0f / sqrtf(l); v[0] *= k; v[1] *= k; v[2] *= k; } }
-TD void vgetnorm(float *d, const float *s) { float l = s[0] * s[0] + s[1] * s[1] + s[2] * s[2]; if (l != 0.0f) { float k = 1.0f / sqrtf(l); d[0] = s[0] * k; d[1] = s[1] * k; d[2] = s[2] * k; } else vcp(d, s); }
-TD void vsetlen(float *v, float len) { float l = v[0] * v[0] + v[1] * v[1] + v[2] * v[2]; if (l != 0.0f) { float k = len / sqrtf(l); v[0] *= k; v[1] *= k; v[2] *= k; } }
+TD float vlen2(const float *v) { return v[0] * v[0] + v[1] * v[1] + v[2] * v[2]; }
+#define MADD(a, b, c) ((a) * (b) + (c))       // a*b + c  (N64: two roundings)
+#define NMSUB(a, b, c) ((c) - (a) * (b))      // c - a*b
+#define MSUB2(a, b, c, d) ((a) * (b) - (c) * (d))   // a*b - c*d
+#define BDEN(a1, a2, b1, b2) ((a1) * (b2) - (a2) * (b1))   // barycentric denominator, u and w numerators (N64 order)
+#define BU(a0, a2, b0, b2) ((a0) * (b2) - (a2) * (b0))
+#define BW(a0, a1, b0, b1) ((a1) * (b0) - (a0) * (b1))
+#else
+TD float vdot(const float *a, const float *b) { float f = a[1] * b[1]; f = fmaf(a[2], b[2], f); return fmaf(a[0], b[0], f); }   // 0x8228CB40
+TD float vlsq(const float *a) { float f = a[1] * a[1]; f = fmaf(a[0], a[0], f); return fmaf(a[2], a[2], f); }               // 0x8228CE80
+TD float vlsq_r(const float *a) { float f = a[1] * a[1]; f = fmaf(a[2], a[2], f); return fmaf(a[0], a[0], f); }             // resolver inline
+TD float vdsq(const float *a, const float *b) { float d1 = a[1] - b[1], d2 = a[2] - b[2], d0 = a[0] - b[0]; float f = d1 * d1; f = fmaf(d2, d2, f); return fmaf(d0, d0, f); }   // 0x8228CBA0
+TD void vcross(float *d, const float *a, const float *b) {   // 0x8228CA48
+  float x = fmaf(b[2], a[1], -(a[2] * b[1])), y = fmaf(a[2], b[0], -(b[2] * a[0])), z = fmaf(a[0], b[1], -(b[0] * a[1])); d[0] = x; d[1] = y; d[2] = z; }
+TD float vlen2(const float *v) { float f = v[1] * v[1]; f = fmaf(v[0], v[0], f); return fmaf(v[2], v[2], f); }             // normalize / set length
+#define MADD(a, b, c) fmaf((a), (b), (c))     // fmadds
+#define NMSUB(a, b, c) fmaf(-(a), (b), (c))   // fnmsubs: c - a*b, one rounding
+#define MSUB2(a, b, c, d) fmaf((a), (b), -((c) * (d)))   // fmsubs with the second product rounded
+#define BDEN(a1, a2, b1, b2) MSUB2((b2), (a1), (a2), (b1))   // 360: b2*a1 - round(a2*b1)
+#define BU(a0, a2, b0, b2) MSUB2((a0), (b2), (b0), (a2))     //      a0*b2 - round(b0*a2)
+#define BW(a0, a1, b0, b1) MSUB2((b0), (a1), (a0), (b1))     //      b0*a1 - round(a0*b1)
+#endif
+TD void vnorm(float *v) { float l = vlen2(v); if (l != 0.0f) { float k = 1.0f / sqrtf(l); v[0] *= k; v[1] *= k; v[2] *= k; } }
+TD void vgetnorm(float *d, const float *s) { float l = vlen2(s); if (l != 0.0f) { float k = 1.0f / sqrtf(l); d[0] = s[0] * k; d[1] = s[1] * k; d[2] = s[2] * k; } else vcp(d, s); }
+TD void vsetlen(float *v, float len) { float l = vlen2(v); if (l != 0.0f) { float k = len / sqrtf(l); v[0] *= k; v[1] *= k; v[2] *= k; } }
 TD int vnz(const float *a) { return a[0] != 0.0f || a[1] != 0.0f || a[2] != 0.0f; }
 TD float fabsf_(float x) { return x < 0.0f ? -x : x; }
 // TV: each triangle's corners as floats, precomputed (the exact short -> float conversions), one read instead of index + vertex reads
@@ -157,12 +188,12 @@ TD int line_model(const TWorld *w, int mi, const float *s, float *e, float *nout
     if ((fl & 0x10000) && a < 0.0f) { N[0] = -N[0]; N[1] = -N[1]; N[2] = -N[2]; }
     float np = -vdot(v0, N); float nd = vdot(N, d); if (0.0f <= nd) continue;
     float t = -(vdot(N, s) + np) / nd; if (t <= 0.0f) continue; if (1.0f <= t) continue;
-    float cur[3] = { d[0] * t + s[0], d[1] * t + s[1], d[2] * t + s[2] };
+    float cur[3] = { MADD(d[0], t, s[0]), MADD(d[1], t, s[1]), MADD(d[2], t, s[2]) };
     int pa = fabsf_(N[1]) < fabsf_(N[0]) ? 0 : 1; if (fabsf_(N[pa]) < fabsf_(N[2])) pa = 2; int i1 = (pa + 1) % 3, i2 = (pa + 2) % 3;
     float f0 = cur[i1] - v0[i1], f1 = ab[i1], f2 = ac[i1], e0 = cur[i2] - v0[i2], e1 = ab[i2], e2 = ac[i2];
-    float inv = 1.0f / (f1 * e2 - f2 * e1);
-    float u = (f0 * e2 - f2 * e0) * inv; if (u < 0.0f || 1.0f < u) continue;
-    float ww = (f1 * e0 - f0 * e1) * inv; if (ww < 0.0f || 1.0f < ww) continue; if (1.0f < u + ww) continue;
+    float inv = 1.0f / BDEN(f1, f2, e1, e2);
+    float u = BU(f0, f2, e0, e2) * inv; if (u < 0.0f || 1.0f < u) continue;
+    float ww = BW(f0, f1, e0, e1) * inv; if (ww < 0.0f || 1.0f < ww) continue; if (1.0f < u + ww) continue;
     found = 1; hit->m = mi; hit->i = k; vcp(e, cur); vcp(nout, N);
     for (int i = 0; i < 3; i++) { if (s[i] < e[i]) { mn[i] = (int)s[i]; mx[i] = (int)e[i]; } else { mn[i] = (int)e[i]; mx[i] = (int)s[i]; } mn[i] -= 1; mx[i] += 1; }
     vsub(d, e, s);
@@ -204,18 +235,18 @@ TD int iterate(const TAct *act, int n, const float *pos, float r, float *nsum) {
   int coll = -1; nsum[0] = nsum[1] = nsum[2] = 0.0f; float rd = r - 0.5f, r2 = r * r;
   for (int q = 0; q < n; q++) { const TAct *A = act + q; float s0[3]; vsub(s0, pos, A->v[0]); float th = vdot(s0, A->n);
     if (rd <= fabsf_(th)) continue;
-    float pp[3] = { pos[0] - A->n[0] * th, pos[1] - A->n[1] * th, pos[2] - A->n[2] * th };
+    float pp[3] = { NMSUB(A->n[0], th, pos[0]), NMSUB(A->n[1], th, pos[1]), NMSUB(A->n[2], th, pos[2]) };
     int pa = fabsf_(A->n[1]) < fabsf_(A->n[0]) ? 0 : 1; if (fabsf_(A->n[pa]) < fabsf_(A->n[2])) pa = 2; int i1 = (pa + 1) % 3, i2 = (pa + 2) % 3;
     float a0 = pp[i1] - A->v[0][i1], a1 = A->ab[i1], a2 = A->ac[i1], b0 = pp[i2] - A->v[0][i2], b1 = A->ab[i2], b2 = A->ac[i2];
-    float den = a1 * b2 - a2 * b1;
+    float den = BDEN(a1, a2, b1, b2);
     if (den == 0.0f) continue;
-    float inv = 1.0f / den; float u = (a0 * b2 - a2 * b0) * inv;
-    if (0.0f <= u && u <= 1.0f) { float ww = (a1 * b0 - a0 * b1) * inv; if (0.0f <= ww && ww <= 1.0f && u + ww <= 1.0f) { coll = q; vadd(nsum, A->n); continue; } }
+    float inv = 1.0f / den; float u = BU(a0, a2, b0, b2) * inv;
+    if (0.0f <= u && u <= 1.0f) { float ww = BW(a0, a1, b0, b1) * inv; if (0.0f <= ww && ww <= 1.0f && u + ww <= 1.0f) { coll = q; vadd(nsum, A->n); continue; } }
     float s[3][3]; int hit = 0;
     for (int k = 0; k < 3; k++) { vsub(s[k], pos, A->v[k]); if (vlsq(s[k]) < r2) { coll = q; vadd(nsum, A->n); hit = 1; break; } }
     if (hit) continue;
     for (int k = 0; k < 3; k++) { float e[3]; vsub(e, A->v[(k + 1) % 3], A->v[k]); float el = vlsq(e); vnorm(e); float d0 = vdot(e, s[k]);
-      if (0.0f <= d0 && d0 * d0 <= el) { float qv[3] = { s[k][0] - e[0] * d0, s[k][1] - e[1] * d0, s[k][2] - e[2] * d0 }; if (vlsq(qv) < r2) { coll = q; vadd(nsum, A->n); break; } } }
+      if (0.0f <= d0 && d0 * d0 <= el) { float qv[3] = { NMSUB(e[0], d0, s[k][0]), NMSUB(e[1], d0, s[k][1]), NMSUB(e[2], d0, s[k][2]) }; if (vlsq(qv) < r2) { coll = q; vadd(nsum, A->n); break; } } }
   }
   return coll;
 }
@@ -224,7 +255,7 @@ TD int msphere_model(const TWorld *w, int mi, const float *p1, float *p2, float 
   float vel[3]; vsub(vel, p2, p1); int n = fast_check(w, mi, p1, p2, vel, r + 0.5f, filt, act, TMAXACT); if (!n) return 0;
   float ns[3]; int c = iterate(act, n, p2, r, ns); if (c < 0) return 0;
   vcp(nout, ns); float dist[3]; vsub(dist, p2, p1); vcp(p2, p1); float st = 0.0f, en = 1.0f;
-  for (int k = 0; k < steps; k++) { float cu = (st + en) * 0.5f; float cp[3] = { dist[0] * cu + p1[0], dist[1] * cu + p1[1], dist[2] * cu + p1[2] };
+  for (int k = 0; k < steps; k++) { float cu = (st + en) * 0.5f; float cp[3] = { MADD(dist[0], cu, p1[0]), MADD(dist[1], cu, p1[1]), MADD(dist[2], cu, p1[2]) };
     int c2 = iterate(act, n, cp, r, ns); if (c2 >= 0) { en = cu; c = c2; vcp(nout, ns); } else { st = cu; vcp(p2, cp); } }
   vnorm(nout); *hit = act[c].t; return 1;
 }
@@ -245,16 +276,16 @@ TD int sphere_model(const TWorld *w, int mi, const float *pos, float r, float *n
     float s0[3]; vsub(s0, pos, v[0]);
     if ((fl & 0x10000) && vdot(s0, N) < 0.0f) { N[0] = -N[0]; N[1] = -N[1]; N[2] = -N[2]; }
     float th = vdot(s0, N); if (rd <= fabsf_(th)) continue;
-    float pp[3] = { pos[0] - N[0] * th, pos[1] - N[1] * th, pos[2] - N[2] * th };
+    float pp[3] = { NMSUB(N[0], th, pos[0]), NMSUB(N[1], th, pos[1]), NMSUB(N[2], th, pos[2]) };
     int pa = fabsf_(N[1]) < fabsf_(N[0]) ? 0 : 1; if (fabsf_(N[pa]) < fabsf_(N[2])) pa = 2; int i1 = (pa + 1) % 3, i2 = (pa + 2) % 3;
     float a0 = pp[i1] - v[0][i1], a1 = ab[i1], a2 = ac[i1], b0 = pp[i2] - v[0][i2], b1 = ab[i2], b2 = ac[i2];
-    float inv = 1.0f / (a1 * b2 - a2 * b1); float u = (a0 * b2 - a2 * b0) * inv;
-    if (0.0f <= u && u <= 1.0f) { float ww = (a1 * b0 - a0 * b1) * inv; if (0.0f <= ww && ww <= 1.0f && u + ww <= 1.0f) { found = 1; hit->m = mi; hit->i = k; vadd(acc, N); continue; } }
+    float inv = 1.0f / BDEN(a1, a2, b1, b2); float u = BU(a0, a2, b0, b2) * inv;
+    if (0.0f <= u && u <= 1.0f) { float ww = BW(a0, a1, b0, b1) * inv; if (0.0f <= ww && ww <= 1.0f && u + ww <= 1.0f) { found = 1; hit->m = mi; hit->i = k; vadd(acc, N); continue; } }
     float s[3][3]; int h2 = 0;
     for (int j = 0; j < 3; j++) { vsub(s[j], pos, v[j]); if (vlsq(s[j]) < r2) { found = 1; hit->m = mi; hit->i = k; vadd(acc, N); h2 = 1; break; } }
     if (h2) continue;
     for (int j = 0; j < 3; j++) { float e[3]; vsub(e, v[(j + 1) % 3], v[j]); float el = vlsq(e); vnorm(e); float d0 = vdot(e, s[j]);
-      if (0.0f <= d0 && d0 * d0 <= el) { float qv[3] = { s[j][0] - e[0] * d0, s[j][1] - e[1] * d0, s[j][2] - e[2] * d0 }; if (vlsq(qv) < r2) { found = 1; hit->m = mi; hit->i = k; vadd(acc, N); break; } } }
+      if (0.0f <= d0 && d0 * d0 <= el) { float qv[3] = { NMSUB(e[0], d0, s[j][0]), NMSUB(e[1], d0, s[j][1]), NMSUB(e[2], d0, s[j][2]) }; if (vlsq(qv) < r2) { found = 1; hit->m = mi; hit->i = k; vadd(acc, N); break; } } }
   });
   if (found) vgetnorm(nout, acc);
   return found;
@@ -329,7 +360,7 @@ TD void resolve(const TWorld *w, TTrack *tr, const float *old_in, const float *t
     if (i) { vcp(c->u0, pv->u0); vcp(c->uC, pv->uC); } else { vcp(c->u0, tgt); vcp(c->uC, old); }
     float keep[3]; vcp(keep, c->u0); float d[3]; vsub(d, c->u0, c->uC);
     c->line = TNONE;
-    if (100.0f < vlsq(d)) {
+    if (100.0f < vlsq_r(d)) {
       float y0 = c->u0[1]; float n44[3] = { 0, 0, 0 };
       // func_800FABF4 / func_800FAB50: line from old+h to new+h extended by r-1
       #define TLINE() do { float s34[3] = { c->uC[0], c->uC[1] + h, c->uC[2] }, s28[3] = { c->u0[0], c->u0[1] + h, c->u0[2] }; \
@@ -367,7 +398,7 @@ TD void resolve(const TWorld *w, TTrack *tr, const float *old_in, const float *t
         if (vnz(dir)) { vcp(c->n, dir); vcp(c->uC, old); float L = (float)(i + 1); vsetlen(dir, L * L * 2.0f); vadd(c->u0, dir); vadd(c->c_new, dir); } } }
     if (vnz(c->n)) {   // func_800FAF78
       float a[3], b[3], dd[3]; vsub(a, c->u0, c->uC); vsub(b, c->c_new, c->c_old); vsub(dd, a, b); float ph = -vdot(c->n, dd); if (ph < 5.0f) ph = 5.0f;
-      c->u0[0] = c->u0[0] + ph * c->n[0]; c->u0[1] = c->u0[1] + ph * c->n[1]; c->u0[2] = c->u0[2] + ph * c->n[2]; }
+      c->u0[0] = MADD(c->n[0], ph, c->u0[0]); c->u0[1] = MADD(c->n[1], ph, c->u0[1]); c->u0[2] = MADD(c->n[2], ph, c->u0[2]); }
   }
   if (i == 5) { R->held = 1; if (gnd == 0 && tri_ok(R->last) && tgt_in[1] < old[1]) R->held_flag = 1; vcp(R->out, fb); }
   else vcp(R->out, P[i].u0);

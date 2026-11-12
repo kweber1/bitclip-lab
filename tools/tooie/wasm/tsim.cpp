@@ -5,6 +5,7 @@
 // WebAssembly: clang++ --target=wasm32 -O2 -ffp-contract=off -ffreestanding -nostdlib -fno-exceptions -fno-rtti -std=c++17 -mnontrapping-fptoint -DTSIM_WASM -Iinclude
 //              -Wl,--no-entry -Wl,--export-dynamic -o tsim.wasm tsim.cpp     (wasm floats are IEEE single/double, no fused ops)
 // Native:      g++ -O2 -ffp-contract=off -DTSIM_NATIVE -o tsim tsim.cpp
+// Xbox 360 (XBLA) version: add -DTX360 (-o tsim360.wasm): the 360 build's fused multiply-adds (see tcol.h; fmaf in include/math.h).
 #ifndef TSIM_NATIVE
 #include <stdint.h>
 #include <string.h>
@@ -41,12 +42,12 @@ TD int tri_line_hit(const TWorld *w, int mi, int k, const float *s, const float 
   if ((M->TF[k] & 0x10000) && a < 0.0f) { N[0] = -N[0]; N[1] = -N[1]; N[2] = -N[2]; }
   float np = -vdot(v0, N); float nd = vdot(N, d); if (0.0f <= nd) return 0;
   float t = -(vdot(N, s) + np) / nd; if (t <= 0.0f) return 0; if (1.0f <= t) return 0;
-  float cur[3] = { d[0] * t + s[0], d[1] * t + s[1], d[2] * t + s[2] };
+  float cur[3] = { MADD(d[0], t, s[0]), MADD(d[1], t, s[1]), MADD(d[2], t, s[2]) };
   int pa = fabsf_(N[1]) < fabsf_(N[0]) ? 0 : 1; if (fabsf_(N[pa]) < fabsf_(N[2])) pa = 2; int i1 = (pa + 1) % 3, i2 = (pa + 2) % 3;
   float f0 = cur[i1] - v0[i1], f1 = ab[i1], f2 = ac[i1], e0 = cur[i2] - v0[i2], e1 = ab[i2], e2 = ac[i2];
-  float inv = 1.0f / (f1 * e2 - f2 * e1);
-  float u = (f0 * e2 - f2 * e0) * inv; if (u < 0.0f || 1.0f < u) return 0;
-  float ww = (f1 * e0 - f0 * e1) * inv; if (ww < 0.0f || 1.0f < ww) return 0; if (1.0f < u + ww) return 0;
+  float inv = 1.0f / BDEN(f1, f2, e1, e2);
+  float u = BU(f0, f2, e0, e2) * inv; if (u < 0.0f || 1.0f < u) return 0;
+  float ww = BW(f0, f1, e0, e1) * inv; if (ww < 0.0f || 1.0f < ww) return 0; if (1.0f < u + ww) return 0;
   return 1;
 }
 TD double plane_y(const TWorld *w, int mi, int k, double x, double z) {
@@ -64,7 +65,7 @@ TD void fs_init(FState *s, float x, float y, float z, float drop) {
 TD int fs_step(const TWorld *w, FState *s, float x, float y, float z, float drop, int lagupd, int kreg, int *kp, TAct *act, const float *iv, int ivn, int ivw) {
   int k = *kp; float *pos = s->pos;
   float dt = (k == lagupd) ? 0.050000004f : 0.033333335f;
-  s->vy = s->vy + dt * -2700.0f; if (s->vy < -4000.0f) s->vy = -4000.0f;
+  s->vy = MADD(dt, -2700.0f, s->vy); if (s->vy < -4000.0f) s->vy = -4000.0f;   // 360 (0x820BA934): fmadds
   float disp[3] = { 0.0f, s->vy * dt, 0.0f }, tgt[3] = { pos[0], pos[1] + disp[1], pos[2] };
   TRes R;
   { float lo = (pos[1] < tgt[1] ? pos[1] : tgt[1]) - 2.0f, hi = (pos[1] > tgt[1] ? pos[1] : tgt[1]) + 80.0f + 35.0f + 2.0f;
