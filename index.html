@@ -599,6 +599,7 @@ td.tag{text-align:left;font-weight:600}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="bkcol.js"></script>
+<script src="bkb.js"></script>
 <script src="boxsel.js"></script>
 <script src="bkexact.js"></script>
 <script src="bkgpu.js"></script>
@@ -647,7 +648,9 @@ let verBusy=0;
 // a banner when the chosen version has no results for this room yet, so its dots are the PAL ones
 function verNote(t){ const n=$('verNote'); if(!n) return; if(!t){ n.hidden=true; return; } n.innerHTML=`${t} <button class="btn mini" id="verNoteX" aria-label="Close">✕</button>`; n.hidden=false; $('verNoteX').onclick=()=>{ n.hidden=true; }; }
 async function applyVersionData(){ if(!room) return; const r=room; const ent=(index||[]).find(e=>e.map===r.map);
-  verNote(version==='xbox'&&r.version!=='Xbox'?`<b>No Xbox results for this room yet.</b> The Xbox census is still running, so the dots shown here are the PAL ones. Rooms with Xbox results so far: ${(XIDX||[]).map(e=>e.map).join(', ')||'none'}.`:null);
+  verNote(version==='xbox'&&r.version!=='Xbox'?`<b>No Xbox results for this room yet.</b> The Xbox census is still running, so the dots shown here are the PAL ones. Rooms with Xbox results so far: ${(XIDX||[]).map(e=>e.map).join(', ')||'none'}.`
+    :version==='xbox'&&!r.census_v2?'<b>Old Xbox results.</b> These are from the first Xbox run, which threw away most hold and beak-buster clips (a bug in the clip check, now fixed) and let beak-buster dives fall too fast. This room is being redone.'
+    :r.buster_note?`<b>Note.</b> ${r.buster_note}`:null);
   if(r.version==='Xbox'||version==='xbox'){ r._shown=r.version==='Xbox'?'Xbox':'PAL (Xbox not computed for this room yet)'; if($('holdsVer')) $('holdsVer').textContent=r.version==='Xbox'?'Xbox':'PAL'; if(r.version!=='Xbox') $('layerSum').textContent+=' · Xbox not computed for this room yet: PAL shown'; return; }
   if(!r._pal) r._pal={holds:r.holds,slopeclips:r.slopeclips,slopeclips_total:r.slopeclips_total,lowercracks:r.lowercracks,lowercracks_total:r.lowercracks_total,lower_note:r.lower_note};
   let src=r._pal, shown='PAL';
@@ -808,7 +811,13 @@ function lowerThrough(d){ return d[5]===2||d[9]===2||(d[15]||0)>0; }
 function clipKeys(){ const k=new Set(); const key=(x,z)=>Math.round(x*1000)+','+Math.round(z*1000);
   for(const h of room.holds) if(holdRel(h)) k.add(key(h.x,h.z)); for(const c of room.slopeclips||[]) if(busterRel(c)) k.add(key(c[0],c[2])); for(const d of room.lowercracks||[]) if(lowerThrough(d)) k.add(key(d[0],d[2])); return {k,key}; }
 // build a point layer from arr (filtered when clip-only), remembering each drawn point's index in arr for picking
-function layer(arr,xyz,color,size,keep){ const idx=[]; const pts=[]; arr.forEach((d,i)=>{ if(keep&&!keep(d)) return; idx.push(i); pts.push(xyz(d)); });
+function layer(arr,xyz,color,size,keep){
+  // BKB1 row lists with no filter: positions straight from the typed columns (no row arrays for millions of spots)
+  if(!keep&&window.BKB&&BKB.isRowList(arr)){ const n=arr.length; if(!n) return null; const pos=new Float32Array(n*3), t=[0,0,0], idx=new Int32Array(n);
+    const XYZ=arr.xyz; for(let i=0;i<n;i++){ XYZ(i,t); pos[i*3]=t[0]; pos[i*3+1]=t[1]+0.5; pos[i*3+2]=t[2]; idx[i]=i; }
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); const pm=new THREE.PointsMaterial({color:new THREE.Color(color),size,sizeAttenuation:false,depthTest:true,clippingPlanes:[clipPlane]}); pm.userData.base=size;
+    const o=new THREE.Points(g,pm); o.userData.idx=idx; return o; }
+  const idx=[]; const pts=[]; arr.forEach((d,i)=>{ if(keep&&!keep(d)) return; idx.push(i); pts.push(xyz(d)); });
   if(!pts.length) return null; const o=pointsObj(pts,color,size); o.userData.idx=idx; return o; }
 function buildPoints(){
   disposeGroup(pointsGroup);
@@ -937,7 +946,10 @@ $('digSel').value=DIG; $('digSel').onchange=e=>{ DIG=e.target.value; try{localSt
 const HKIND={1:'810',2:'fall',3:'rest'};
 function unpackRoom(d){ if(d&&d.holdsA){ d.holds=(d.holds||[]).concat(d.holdsA.map(a=>{ const h={door:null,x:a[0],y:a[1],z:a[2],seam:a[3],held:a[4],of:a[5],max_holds:a[6],clip:a[8]?{kind:HKIND[a[8][0]],h:a[8][1],vy:a[8][2],lag:a[8][3]<0?null:a[8][3],endY:a[8][4]}:null,room_census:1,full:1};
   if(a[7]) h.slope=1; if(a[9]) h.odds=a[9]; return h; })); delete d.holdsA; } return d; }
-async function gunzipJSON(buf){ const ds=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip')); return JSON.parse(await new Response(ds).text()); }
+// gzip JSON, or a BKB1 room (tools/bk/bkb.py: the spot tables as typed columns, read by bkb.js into array-like row lists)
+async function gunzipJSON(buf){ const ds=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip')); const ab=await new Response(ds).arrayBuffer();
+  const h=new Uint8Array(ab,0,Math.min(4,ab.byteLength)); if(h.length===4&&h[0]===66&&h[1]===75&&h[2]===66&&h[3]===49) return BKB.decode(ab);
+  return JSON.parse(new TextDecoder().decode(ab)); }
 async function fetchRoom(m){
   const ent=(index||[]).find(e=>e.map===m);
   if(version==='xbox'&&typeof DecompressionStream!=='undefined'){ const xe=(await xidxP).find(e=>e.map===m); if(xe){ try{
