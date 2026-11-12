@@ -143,6 +143,17 @@ async function vfetch(name, opts, v = VER) {
   if ((!r || !r.ok) && VERS[v].local) { try { r = await fetch('data/' + name, opts); } catch (e) {} }
   if (!r || !r.ok) throw new Error(r ? String(r.status) : 'offline'); return r;
 }
+/* a room's own files: big rooms are split in parts (entry.parts) and may live in an overflow repo (entry.repo) */
+async function rfetch(name, e) {
+  if (!e || !e.repo) return vfetch(name);
+  const r = await fetch('/' + e.repo + '/data/' + name); if (!r.ok) throw new Error(String(r.status)); return r;
+}
+async function roomBytes(m) {
+  const e = INDEX && INDEX.rooms.find(x => x.map === m);
+  if (!e || !e.parts) return (await rfetch('room-' + m + '.gz.wasm', e)).arrayBuffer();
+  const bufs = await Promise.all(Array.from({ length: e.parts }, (_, i) => rfetch('room-' + m + '.gz.' + i + '.wasm', e).then(r => r.arrayBuffer())));
+  const out = new Uint8Array(bufs.reduce((n, b) => n + b.byteLength, 0)); let o = 0; for (const b of bufs) { out.set(new Uint8Array(b), o); o += b.byteLength; } return out.buffer;
+}
 async function loadIndex(v) { try { const r = await vfetch('index.json', { cache: 'no-cache' }, v); const j = await r.json(); return j && j.rooms && j.rooms.some(x => x.done) ? j : null; } catch (e) { return null; } }
 function verUrl(m) { return location.pathname + (VER !== 'ntsc' ? '?v=' + VER : '') + (m ? '#' + m : ''); }
 // collision layers (triangle classes from site_build.py: 0 floor, 1 wall, 2 ceiling, 3 water, 4 not solid for Banjo)
@@ -397,7 +408,7 @@ async function floatList(s, se) {
   const out = $('flOut'), btn = $('flRun'), filter = $('flFilter').value; const want = s[15];
   if (FLW) { FLW.terminate(); FLW = null; if (btn.textContent === 'Stop') { btn.textContent = 'List them'; out.insertAdjacentHTML('beforeend', '<div class="note">Stopped.</div>'); return; } }
   const key = VER + '/' + ROOM.map; out.textContent = 'Loading the collision…';
-  try { if (!COLTXT[key]) { const r = await vfetch('col-' + ROOM.map + '.gz.wasm'); COLTXT[key] = await new Response(new Blob([await r.arrayBuffer()]).stream().pipeThrough(new DecompressionStream('gzip'))).text(); } }
+  try { if (!COLTXT[key]) { const r = await rfetch('col-' + ROOM.map + '.gz.wasm', INDEX && INDEX.rooms.find(x => x.map === ROOM.map)); COLTXT[key] = await new Response(new Blob([await r.arrayBuffer()]).stream().pipeThrough(new DecompressionStream('gzip'))).text(); } }
   catch (e) { out.textContent = 'This level has no collision file yet (' + e.message + ').'; return; }
   const cx = Math.floor(Math.fround(s[0]) / 0.25), cz = Math.floor(Math.fround(s[2]) / 0.25); const all = []; const f32 = new Float32Array(1), u32 = new Uint32Array(f32.buffer);
   const fl = b => { u32[0] = b; return f32[0]; }; const CN = { walk: 'walk-in through', lag: 'lag-frame through', jump: 'needs a jump', eject: 'ejected', stuck: 'stuck', wall: 'wall', water: 'water' };
@@ -457,7 +468,7 @@ function tab(t) { for (const [b, p] of [['tRoom', 'pRoom'], ['tAll', 'pAll'], ['
 $('tRoom').onclick = () => tab('tRoom'); $('tAll').onclick = () => tab('tAll'); $('tHow').onclick = () => tab('tHow');
 async function loadRoom(m, keepCam) {
   $('loading').hidden = false; $('loading').textContent = 'Loading ' + m + '…'; $('spotCard').hidden = true;
-  try { const r = await vfetch('room-' + m + '.gz.wasm'); ROOM = await gunzipJSON(await r.arrayBuffer()); }
+  try { ROOM = await gunzipJSON(await roomBytes(m)); }
   catch (e) { $('loading').textContent = 'Could not load ' + m + ' (' + e.message + ')'; return; }
   buildMesh(); buildPoints(); legend(); if (!keepCam) fitCamera(); roomPane(); buildObjects(); $('loading').hidden = true; try { history.replaceState(null, '', verUrl(m)); } catch (e) {}
 }
