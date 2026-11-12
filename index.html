@@ -244,6 +244,7 @@ td.tag{text-align:left;font-weight:600}
     <div id="view">
       <div id="loading">Loading room…</div>
       <div class="float extnote" id="extNote" role="status" hidden></div>
+      <div class="float extnote" id="verNote" role="status" style="top:12px;bottom:auto" hidden></div>
       
       <details class="float layers" id="legend" open>
         <summary><b>Layers</b><span class="tog" id="legTog">Hide</span></summary>
@@ -254,7 +255,7 @@ td.tag{text-align:left;font-weight:600}
           <label title="Cracks where the floor ray misses the seam but hits something lower down (a roof over a room, a stair top, a ledge over a floor): Banjo can fall through onto or into what is below. Ringed: a test fell through."><input type="checkbox" id="showLower" checked> <span class="sw" style="background:var(--lower)"></span> Cracks over lower floors &amp; rims <span class="n" id="nLower"></span></label>
           <label><input type="checkbox" id="showHolds" checked> <span class="sw" style="background:var(--hold)"></span> 5-hit holds (<span id="holdsVer">PAL</span>) <span class="n" id="nHolds"></span></label>
           <label><input type="checkbox" id="showHit5" checked> <span class="sw" style="background:var(--hit5)"></span> 5 collisions (one update) <span class="n" id="nHit5"></span></label>
-          <label><input type="checkbox" id="showSlope" checked> <span class="sw" style="background:var(--slope)"></span> Slope clips (buster) <span class="n" id="nSlope"></span></label>
+          <label><input type="checkbox" id="showSlope" checked> <span class="sw" style="background:var(--slope)"></span> Beak-buster clips <span class="n" id="nSlope"></span></label>
           <label title="Ceiling seams where the upward ray slips through. A ringed spot clips straight up in the full model: the bee flying up (4 flaps) or Banjo flying up with one lag update (the ring follows the PAL / NTSC switch)."><input type="checkbox" id="showRoof" checked> <span class="sw" style="background:var(--roof)"></span> Roof cracks <span class="n" id="nRoof"></span></label>
           <label title="No-lag clips from pads in the full model (GPU scan): orange = falling from a shock-pad jump (heights the jump reaches from a pad in range), purple = beak bomb from a flight pad (straight line at 4200, approach checked clear). Follows the PAL / NTSC switch."><input type="checkbox" id="showPad" checked> <span class="sw" style="background:var(--pop)"></span> Pad clips (shock / bomb) <span class="n" id="nPad"></span></label>
           <div class="grp">Draw the level as</div>
@@ -643,14 +644,19 @@ function setVersion(v){const was=version; version=v;$('verSel').value=v; if($('b
 async function fetchNtsc(m,ent){ const names=ent.ntscparts?Array.from({length:ent.ntscparts},(_,i)=>`map${m}.ntsc.${i}.wasm`):[`map${m}.ntsc.wasm`];
   const bufs=await Promise.all(names.map(n=>vget('NTSC',n))); return unpackRoom(await gunzipJSON(new Blob(bufs))); }
 let verBusy=0;
+// a banner when the chosen version has no results for this room yet, so its dots are the PAL ones
+function verNote(t){ const n=$('verNote'); if(!n) return; if(!t){ n.hidden=true; return; } n.innerHTML=`${t} <button class="btn mini" id="verNoteX" aria-label="Close">✕</button>`; n.hidden=false; $('verNoteX').onclick=()=>{ n.hidden=true; }; }
 async function applyVersionData(){ if(!room) return; const r=room; const ent=(index||[]).find(e=>e.map===r.map);
+  verNote(version==='xbox'&&r.version!=='Xbox'?`<b>No Xbox results for this room yet.</b> The Xbox census is still running, so the dots shown here are the PAL ones. Rooms with Xbox results so far: ${(XIDX||[]).map(e=>e.map).join(', ')||'none'}.`:null);
   if(r.version==='Xbox'||version==='xbox'){ r._shown=r.version==='Xbox'?'Xbox':'PAL (Xbox not computed for this room yet)'; if($('holdsVer')) $('holdsVer').textContent=r.version==='Xbox'?'Xbox':'PAL'; if(r.version!=='Xbox') $('layerSum').textContent+=' · Xbox not computed for this room yet: PAL shown'; return; }
-  if(!r._pal) r._pal={holds:r.holds,slopeclips:r.slopeclips,slopeclips_total:r.slopeclips_total};
+  if(!r._pal) r._pal={holds:r.holds,slopeclips:r.slopeclips,slopeclips_total:r.slopeclips_total,lowercracks:r.lowercracks,lowercracks_total:r.lowercracks_total,lower_note:r.lower_note};
   let src=r._pal, shown='PAL';
   if(version==='NTSC'){ if(ent&&ent.ntsc){ if(!r._ntsc){ const t=++verBusy; $('layerSum').textContent='Loading the NTSC dots…'; try{ r._ntsc=await fetchNtsc(r.map,ent); }catch(e){ r._ntsc=null; } if(t!==verBusy||room!==r) return; }
       if(r._ntsc){ src=r._ntsc; shown='NTSC'; } else shown='PAL (NTSC dots failed to load)'; }
-    else shown='PAL (NTSC not computed for this room yet)'; }
+    else { shown='PAL (NTSC not computed for this room yet)'; verNote('<b>No NTSC results for this room yet</b>, so the dots shown here are the PAL ones.'); } }
   const changed=r.holds!==src.holds; r.holds=src.holds; r.slopeclips=src.slopeclips; r.slopeclips_total=src.slopeclips_total; r._shown=shown;
+  // lower-floor / rim cracks: the NTSC file has its own (census v2); older NTSC files without them keep the PAL ones
+  if(src.lowercracks){ r.lowercracks=src.lowercracks; r.lowercracks_total=src.lowercracks_total; r.lower_note=src.lower_note; } else if(src!==r._pal&&r._pal.lowercracks){ r.lowercracks=r._pal.lowercracks; r.lowercracks_total=r._pal.lowercracks_total; r.lower_note=r._pal.lower_note; }
   if($('holdsVer')) $('holdsVer').textContent=shown.startsWith('NTSC')?'NTSC':'PAL';
   if(changed){ spot=null; renderSpot(); buildPoints(); renderBest('c'); renderBest('s'); } else if(r.roofs||r.padclips) buildPoints();
   if(shown!=='PAL'&&shown!=='NTSC') $('layerSum').textContent+=` · ${shown}`; else if(shown==='NTSC') $('layerSum').textContent+=' · NTSC dots'; }
@@ -832,7 +838,7 @@ function buildPoints(){
       if(P.bomb.length){ padBPts=pointsObj(P.bomb,css('--clip'),8); padBPts.userData.kind='padB'; padBPts.visible=$('showPad').checked; pointsGroup.add(padBPts); } }
     $('nPad').textContent=P?`${P.shock.length.toLocaleString()} shock · ${P.bomb.length.toLocaleString()} bomb`:(room.padclips?'none':'no pads'); }
   $('nLower').textContent=room.lowercracks?(room.lowercracks_total||room.lowercracks.length).toLocaleString()+((room.lowercracks_total||0)>room.lowercracks.length?` (${room.lowercracks.length.toLocaleString()} shown)`:''):'not scanned yet'; $('nCracks').textContent=room.cracks.length.toLocaleString(); $('nHolds').textContent=room.holds.length.toLocaleString(); $('nRoof').textContent=room.roofcracks.length.toLocaleString()+(room.roofs?` (${room.roofs.rows.filter(r=>((version==='NTSC')?r[7]+r[8]:r[5]+r[6])>0).length.toLocaleString()} clip)`:''); $('nSCracks').textContent=(room.slopecracks_total||(room.slopecracks||[]).length).toLocaleString()+((room.slopecracks_total||0)>(room.slopecracks||[]).length?` (${room.slopecracks.length.toLocaleString()} shown)`:''); $('nHit5').textContent=(room.hit5_total||(room.hit5||[]).length).toLocaleString()+((room.hit5_total||0)>(room.hit5||[]).length?` (${room.hit5.length.toLocaleString()} shown)`:''); $('nSlope').textContent=(room.slopeclips_total||(room.slopeclips||[]).length).toLocaleString()+((room.slopeclips_total||0)>(room.slopeclips||[]).length?` (${room.slopeclips.length.toLocaleString()} shown)`:'');
-  $('layerSum').textContent=`${room.cracks.length.toLocaleString()} cracks · ${room.holds.length} holds`+((room.slopeclips||[]).length?` · ${room.slopeclips.length.toLocaleString()} slope clips`:'');
+  $('layerSum').textContent=`${room.cracks.length.toLocaleString()} cracks · ${room.holds.length} holds`+((room.slopeclips||[]).length?` · ${room.slopeclips.length.toLocaleString()} beak-buster clips`:'');
   if(SF!=='all'){ const n=o=>o?o.userData.idx.length.toLocaleString():'0'; const w=SF==='hold'?'':' with clip'; $('nCracks').textContent=n(crackPts)+w; $('nHolds').textContent=n(holdPts)+w; $('nSCracks').textContent=n(scrackPts)+w; $('nLower').textContent=n(lowerPts)+(SF==='hold'?'':' falling through'); $('nHit5').textContent=n(hit5Pts)+w; $('nSlope').textContent=n(slopePts); $('nRoof').textContent='–';
     $('layerSum').textContent=SF==='hold'?`holds only · ${n(holdPts)} holds · ${n(hit5Pts)} 5-collision`:SF==='holdclip'?`hold + clip only · ${n(holdPts)} holds that clip`:`clip spots only · ${n(holdPts)} holds that clip · ${n(slopePts)} buster clips`;
     if(co&&sfRel!=='any'){ $('layerSum').textContent+=` · ${$('sfRel').selectedOptions[0].textContent.toLowerCase()}`; if(room.holds.some(h=>h.clip)&&!room.holds.some(h=>h.odds)) $('layerSum').textContent+=' (hold odds not counted for this room yet)'; } }
@@ -963,7 +969,7 @@ async function loadMap(m){
   room.roofcracks=room.roofcracks||[];
   room.padclips=null; if(room.version!=='Xbox') try{ const q=await fetch(`data/padclips/map${m}.json`); if(q.ok) room.padclips=await q.json(); }catch(e){}
   world=new BK.World(BK.load_model(room.opa,'opa'),room.xlu?BK.load_model(room.xlu,'xlu'):null,BK.load_props(activeProps()),parseInt(m,16));
-  buildRoomMeshes(); buildPoints(); $('spawnSel').value=''; Promise.all([spawnP,exitsP]).then(()=>{ fillSpawns(); drawSpawns(); }); setTimeout(()=>{ renderBest('c'); renderBest('s'); if(version!=='PAL') applyVersionData(); },0); spot=null; lastRun=null; renderSpot(); clearSim(); target=null; fillTgt(); ['bx','by','bz'].forEach(k=>$(k).value=''); if(typeof drawMarks==='function'){ disposeGroup(searchGroup); segObjs={}; drawMarks(); }
+  buildRoomMeshes(); buildPoints(); $('spawnSel').value=''; Promise.all([spawnP,exitsP]).then(()=>{ fillSpawns(); drawSpawns(); }); setTimeout(()=>{ renderBest('c'); renderBest('s'); if(version!=='PAL') applyVersionData(); else verNote(null); },0); spot=null; lastRun=null; renderSpot(); clearSim(); target=null; fillTgt(); ['bx','by','bz'].forEach(k=>$(k).value=''); if(typeof drawMarks==='function'){ disposeGroup(searchGroup); segObjs={}; drawMarks(); }
   // frame camera
   const box=new THREE.Box3().setFromObject(roomGroup); const c=box.getCenter(new THREE.Vector3()), s=box.getSize(new THREE.Vector3());
   setupSlicer(box);
@@ -1536,7 +1542,7 @@ function roomPane(){ const el=$('pRoom'); if(!el||!room||$('pRoom').closest('.pa
     <p class="note">Map ${room.map}. ${tri.toLocaleString()} collision triangles${e.props?`, ${e.props} static objects with collision`:''}. ${room.version==='Xbox'?'Xbox 360 (XBLA)':N?'NTSC':'PAL'} results${N&&!e.ntsc?' (NTSC not computed for this room yet: PAL shown)':''}${version==='xbox'&&room.version!=='Xbox'?' (Xbox not computed for this room yet: PAL shown)':''}.</p>
     <div class="stats">${st(room.cracks.length,'floor cracks (floor ray misses the seam)','crack')}${st(room.slopecracks_total||(room.slopecracks||[]).length,'slope cracks')}
       ${st(room.lowercracks_total||(room.lowercracks||[]).length,'cracks over a lower floor / rim cracks')}${st(room.holds.length,`5-hit holds (${room._shown==='NTSC'?'NTSC':room.version==='Xbox'?'Xbox':'PAL'} census)`,'hold')}
-      ${st(room.hit5_total||(room.hit5||[]).length,'5 collisions on one update','hit5')}${st(room.slopeclips_total||(room.slopeclips||[]).length,'slope clips (beak buster)','slope')}
+      ${st(room.hit5_total||(room.hit5||[]).length,'5 collisions on one update','hit5')}${st(room.slopeclips_total||(room.slopeclips||[]).length,'beak-buster clips','slope')}
       ${st(roofClip,`roof cracks that clip upward (of ${room.roofcracks.length.toLocaleString()})`,'roof')}${P?st(P.shock.length+P.bomb.length,'pad clips (shock jump + beak bomb)','pop'):''}${st(nobj,'objects and enemies in the setup file')}</div>
     <p class="note">Click a spot in the view for its exact position and every test. The tool tabs (Moves, Clip setup, Route search, Drop test) simulate Banjo with the game's own movement and collision${room.version==='Xbox'?' <b>as on the N64</b>: the Xbox rounds some steps differently (fused multiply-adds), so their exact floats can differ from the Xbox. The dots on this page are the Xbox census':''}.</p>`; }
 function allPane(){ const el=$('pAll'); if(!el||!index) return;
