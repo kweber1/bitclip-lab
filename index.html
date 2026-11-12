@@ -598,6 +598,7 @@ td.tag{text-align:left;font-weight:600}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="bkcol.js"></script>
+<script src="boxsel.js"></script>
 <script src="bkexact.js"></script>
 <script src="bkgpu.js"></script>
 <script src="bkmove.js"></script>
@@ -657,7 +658,7 @@ renderer.localClippingEnabled=true;
 const clipPlane=new THREE.Plane(new THREE.Vector3(0,-1,0),1e9); let cutY=1e9;
 function setCut(y,fromSlider){ cutY=y; clipPlane.constant=y; const s=$('cutY'); const off=y>=+s.max;
   if(!fromSlider) s.value=Math.min(+s.max,Math.max(+s.min,Math.round(y)));
-  $('cutVal').textContent=off?'off':Math.round(y); if(off){cutY=1e9; clipPlane.constant=1e9;} }
+  $('cutVal').textContent=off?'off':Math.round(y); if(off){cutY=1e9; clipPlane.constant=1e9;} if(window.BoxSel) BoxSel.changed(false); }
 view.appendChild(renderer.domElement);
 const scene=new THREE.Scene(); const camera=new THREE.PerspectiveCamera(50,1,1,200000);
 const controls=new THREE.OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.zoomSpeed=1.6; controls.minDistance=0.5; controls.screenSpacePanning=true;
@@ -831,8 +832,9 @@ function buildPoints(){
     $('layerSum').textContent=SF==='hold'?`holds only · ${n(holdPts)} holds · ${n(hit5Pts)} 5-collision`:SF==='holdclip'?`hold + clip only · ${n(holdPts)} holds that clip`:`clip spots only · ${n(holdPts)} holds that clip · ${n(slopePts)} buster clips`;
     if(co&&sfRel!=='any'){ $('layerSum').textContent+=` · ${$('sfRel').selectedOptions[0].textContent.toLowerCase()}`; if(room.holds.some(h=>h.clip)&&!room.holds.some(h=>h.odds)) $('layerSum').textContent+=' (hold odds not counted for this room yet)'; } }
   if(spot) markSpot();
+  if(window.BoxSel) BoxSel.changed(false);
 }
-['showCracks','showHolds','showRoof','showSlope','showHit5','showSCracks','showLower','showPad'].forEach(id=>$(id).onchange=()=>{pointsGroup.children.forEach(o=>{const k=o.userData.kind||(o.userData.ring?'hold':''); if(k==='padS'||k==='padB')o.visible=$('showPad').checked; if(k==='lower')o.visible=$('showLower').checked; if(k==='crack')o.visible=$('showCracks').checked; if(k==='scrack')o.visible=$('showSCracks').checked; if(k==='slope')o.visible=$('showSlope').checked; if(k==='hit5')o.visible=$('showHit5').checked; if(k==='hold')o.visible=$('showHolds').checked; if(k==='roof')o.visible=$('showRoof').checked;});});
+['showCracks','showHolds','showRoof','showSlope','showHit5','showSCracks','showLower','showPad'].forEach(id=>$(id).onchange=()=>{pointsGroup.children.forEach(o=>{const k=o.userData.kind||(o.userData.ring?'hold':''); if(k==='padS'||k==='padB')o.visible=$('showPad').checked; if(k==='lower')o.visible=$('showLower').checked; if(k==='crack')o.visible=$('showCracks').checked; if(k==='scrack')o.visible=$('showSCracks').checked; if(k==='slope')o.visible=$('showSlope').checked; if(k==='hit5')o.visible=$('showHit5').checked; if(k==='hold')o.visible=$('showHolds').checked; if(k==='roof')o.visible=$('showRoof').checked;}); if(window.BoxSel) BoxSel.changed(false);});
 function applyRoomVis(){ roomGroup.children.forEach(o=>{ let v=true; if(o.userData.xlu&&!$('showXlu').checked) v=false; if(o.userData.prop&&!$('showProps').checked) v=false; if(o.userData.ceil&&$('hideCeil').checked) v=false; o.visible=v; }); applyDraw(); buildVis(); }
 // ---- game look (same as the Tooie viewer): the level model's display lists with its vertex shading and the lab's textures
 // (data/vis/map0xNN.gz.wasm, tex/<key>.png from tools/bk/bkvis.py; HD from BK Reloaded where data/hd.json matches one)
@@ -960,6 +962,7 @@ async function loadMap(m){
   const R=Math.max(s.x,s.z,s.y)||1000; fly=null; controls.target.copy(c); camera.position.set(c.x+R*0.55,c.y+R*0.7,c.z+R*0.75); camera.far=R*20; controls.maxDistance=R*6; lastNear=0; camera.updateProjectionMatrix();
   $('aboutNote').textContent=(room.about||$('aboutNote').textContent)+(room.lower_note?' '+room.lower_note:'');
   $('loading').hidden=true; roomPane(); if(!$('pAll').closest('.pane').hidden) allPane();
+  if(window.BoxSel) BoxSel.changed(true);
 }
 
 // ---- picking
@@ -1007,6 +1010,25 @@ function pickPoint(px,py,rc,tol){ const layers=[exitPts,holdPts,padSPts,padBPts,
       const w=m[3]*x+m[7]*y+m[11]*z+m[15]; if(w<=0) continue; const sx=((m[0]*x+m[4]*y+m[8]*z+m[12])/w*0.5+0.5)*W; const sy=(1-((m[1]*x+m[5]*y+m[9]*z+m[13])/w*0.5+0.5))*H;
       const d=Math.hypot(sx-px,sy-py); if(d>tol) continue; const score=d+li*0.75+w*1e-4; if(!best||score<best.score) best={score,kind:o.userData.kind,index:o.userData.idx?o.userData.idx[j]:j}; } });
   return best; }
+// ---- box select (boxsel.js): the spots you can see (layers on, the Show filter, the slicer) inside a 3D box, as CSV
+function bkBoxRows(b){ const out=[]; const IN=BoxSel.inBox; const cy=cutY+0.6; const N=(version==='NTSC');
+  const rowsOf={ crack:(i)=>{ const d=room.cracks[i]; return {layer:'floor crack',x:d[0],y:d[1],z:d[2],seam:d[3]}; },
+    scrack:(i)=>{ const d=room.slopecracks[i]; return {layer:'slope crack',x:d[0],y:d[1],z:d[2],seam:d[3]}; },
+    hold:(i)=>{ const h=room.holds[i]; const o=holdOdds(h); const c=h.clip; return {layer:c?'hold that clips':'hold',x:h.x,y:h.y,z:h.z,seam:h.seam,held:h.held,of:h.of,max_holds:h.max_holds,clip_kind:c?c.kind:'',clip_h:c?c.h:'',clip_vy:c?c.vy:'',clip_lag:c?(c.lag==null?'none':c.lag):'',clip_endY:c?c.endY:'',odds_runs:o?o.runs:'',odds_clips:o?o.clips:'',odds_nolag:o?o.nolag:'',odds_voids:o?o.voids:'',on_slope:h.slope?1:0}; },
+    hit5:(i)=>{ const d=room.hit5[i]; return {layer:'5 collisions',x:d[0],y:d[1],z:d[2],seam:d[3],first_case:d[4],on_slope:d[5]?1:0}; },
+    slope:(i)=>{ const d=room.slopeclips[i]; return {layer:'beak-buster clip',x:d[0],y:d[1],z:d[2],seam:d[3],buster_cases:d[4],buster_nolag:busterNolag(d[5]),buster_mask:d[5]}; },
+    lower:(i)=>{ const d=room.lowercracks[i]; return {layer:'crack over a lower floor',x:d[0],y:d[1],z:d[2],seam:d[3],lower_data:d.slice(4).join(' ')}; },
+    roof:(i)=>{ const d=room.roofcracks[i]; const r=room.roofs?room.roofs.rows[i]:null; return {layer:'roof crack',x:d[0],y:d[1],z:d[2],seam:d[3],roof_clear:r?r[4]:'',bee_clip:r?(N?r[7]:r[5]):'',fly_clip:r?(N?r[8]:r[6]):''}; },
+    padS:(i)=>{ const d=room.padclips[N?'NTSC':'PAL'].shock[i]; return {layer:'shock-pad clip',x:d[0],y:d[1],z:d[2],pad_data:d.slice(3).join(' ')}; },
+    padB:(i)=>{ const d=room.padclips[N?'NTSC':'PAL'].bomb[i]; return {layer:'beak-bomb pad clip',x:d[0],y:d[1],z:d[2],pad_data:d.slice(3).join(' ')}; } };
+  if(!room) return out;
+  for(const o of pointsGroup.children){ if(!o.visible||o.userData.ring||o.userData.ringRoof) continue; const k=o.userData.kind; const f=rowsOf[k]; if(!f) continue;
+    const a=o.geometry.attributes.position.array; const idx=o.userData.idx; const n=a.length/3;
+    for(let j=0;j<n;j++){ const x=a[j*3],y=a[j*3+1]-0.5,z=a[j*3+2]; if(y>cy||!IN(b,x,y,z)) continue; const r=f(idx?idx[j]:j); out.push({layer:r.layer,version,map:room.map,...r}); } }
+  return out; }
+BoxSel.init({ THREE, scene, camera, renderer, controls, host:$('view'), pos:{right:'12px',top:'12px'},
+  pickTargets:()=>roomGroup.children.filter(o=>o.isMesh&&o.visible).concat(visGroup.children.filter(o=>o.isMesh)), cutY:()=>cutY,
+  fileName:()=>`bitclip-kazooie-${version.toLowerCase()}-${room?room.map:''}-box`, rows:bkBoxRows });
 function markSpot(){ if(selMarker){simGroup.remove(selMarker); selMarker.geometry.dispose();}
   selMarker=new THREE.Mesh(new THREE.RingGeometry(6,9,32),new THREE.MeshBasicMaterial({color:new THREE.Color(css('--accent')),side:THREE.DoubleSide,depthTest:false}));
   selMarker.rotation.x=-Math.PI/2; selMarker.position.set(spot.x,spot.y+0.6,spot.z); selMarker.renderOrder=5; simGroup.add(selMarker); }

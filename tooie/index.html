@@ -117,6 +117,7 @@ code{font-family:var(--f-mono);font-size:.92em}
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../boxsel.js"></script>
 <script>
 const CATS = [
   ['walk', 'Falls through (walk in)', 'Standing still on it, Banjo falls through the floor with no lag'],
@@ -365,6 +366,7 @@ function buildPoints() {
   ptsIdx.forEach((i, j) => { const s = X ? null : ROOM.spots[i]; pos[j * 3] = X ? X[i] : s[0]; pos[j * 3 + 1] = (X ? Y[i] : s[1]) + 3; pos[j * 3 + 2] = X ? Z[i] : s[2]; const ct = spotCat(i); const c = ct === 'walk' && spotVoid(i) ? cvoid : cc[ct]; col[j * 3] = c.r; col[j * 3 + 1] = c.g; col[j * 3 + 2] = c.b; });
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   ptsObj = new THREE.Points(g, new THREE.PointsMaterial({ size: 7, sizeAttenuation: false, vertexColors: true, depthTest: true, clippingPlanes: [clipPlane] })); scene.add(ptsObj);
+  if (window.BoxSel) BoxSel.changed(false);
 }
 function fitCamera() { const V = ROOM.verts; const mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9]; for (const v of V) for (let i = 0; i < 3; i++) { if (v[i] < mn[i]) mn[i] = v[i]; if (v[i] > mx[i]) mx[i] = v[i]; }
   const c = new THREE.Vector3((mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, (mn[2] + mx[2]) / 2); const r = Math.max(mx[0] - mn[0], mx[2] - mn[2], 1000);
@@ -393,7 +395,7 @@ function legend() {
   $('legend').hidden = false; camUI();
   $('legend').querySelectorAll('input[data-k]').forEach(b => b.onchange = () => { show[b.dataset.k] = b.checked ? 1 : 0; try { localStorage.setItem('tooie-show', JSON.stringify(show)); } catch (e) {} buildPoints(); });
 }
-function setCut(y) { const s = $('cutY'); const off = !s || y >= +s.max; cutY = off ? 1e9 : y; clipPlane.constant = cutY; if ($('cutVal')) $('cutVal').textContent = off ? 'off' : Math.round(y); }
+function setCut(y) { const s = $('cutY'); const off = !s || y >= +s.max; cutY = off ? 1e9 : y; clipPlane.constant = cutY; if ($('cutVal')) $('cutVal').textContent = off ? 'off' : Math.round(y); if (window.BoxSel) BoxSel.changed(false); }
 document.addEventListener('input', (e) => { if (e.target.id === 'cutY') setCut(+e.target.value); });
 function roomPane() {
   const e = INDEX.rooms.find(r => r.map === ROOM.map); const c = e.cats || {}; const cf = e.cats_flat || {}; const n = e.spots || 0;
@@ -502,11 +504,27 @@ function howPane() {
 }
 function tab(t) { for (const [b, p] of [['tRoom', 'pRoom'], ['tAll', 'pAll'], ['tHow', 'pHow']]) { $(b).setAttribute('aria-selected', b === t); $(p).hidden = b !== t; } if (t === 'tAll') allPane(); }
 $('tRoom').onclick = () => tab('tRoom'); $('tAll').onclick = () => tab('tAll'); $('tHow').onclick = () => tab('tHow');
+// ---- box select (../boxsel.js): the spots you can see (spot kinds that are on, the view filter, the cut) inside a 3D box, as CSV
+const f32c = (v) => { if (typeof v !== 'number' || !isFinite(v)) return v; const f = Math.fround(v); for (let p = 6; p <= 9; p++) { const t = f.toPrecision(p); if (Math.fround(+t) === f) return +t; } return f; };   // shortest decimal that is the same f32
+function tBoxRows(b) { const out = []; if (!ROOM || !ptsObj) return out; const IN = BoxSel.inBox; const a = ptsObj.geometry.attributes.position.array;
+  const FL = ['crack_floats', 'walk_in_through', 'into_void', 'lag_frame_through', 'need_jump', 'ejected', 'stuck', 'wall_pushes_off', 'water', 'with_hold'];
+  for (let j = 0; j < ptsIdx.length; j++) { const x = a[j * 3], y = a[j * 3 + 1] - 3, z = a[j * 3 + 2]; if (y > cutY + 0.01 || !IN(b, x, y, z)) continue;
+    const s = spotAt(ptsIdx[j]); const cat = CATS.find(c => c[0] === s[5]); const se = ROOM.seams[s[3]];
+    const r = { layer: cat ? cat[1] : s[5], version: VERS[VER].name, map: ROOM.map, x: f32c(s[0]), y: f32c(s[1]), z: f32c(s[2]), seam: se ? `(${se[0]} ${se[1]} ${se[2]})-(${se[3]} ${se[4]} ${se[5]})` : s[3],
+      walk_runs: s[6], into_void: s[6] && s[6][0] === '1' ? 1 : 0, walk_runs_with_hold: s[7], max_sit_updates: s[8], decided_update: s[9], end_y: f32c(s[10]),
+      jump_clips_of_42: s[11], jump_voids_of_42: s[12], jump_drops_with_hold: s[13], any_hold: s[14] ? 1 : 0 };
+    if (Array.isArray(s[15])) FL.forEach((k, i) => { r['floats_' + k] = s[15][i] ?? ''; });
+    out.push(r); }
+  return out; }
+BoxSel.init({ THREE, scene, camera, renderer, controls, host: $('view'), pos: { right: '12px', bottom: '64px' },
+  pickTargets: () => [meshObj, ...(visObj ? visObj.children : [])].filter(Boolean), cutY: () => cutY,
+  fileName: () => `bitclip-tooie-${VER}-${ROOM ? ROOM.map : ''}-box`, rows: tBoxRows });
 async function loadRoom(m, keepCam) {
   $('loading').hidden = false; $('loading').textContent = 'Loading ' + m + '…'; $('spotCard').hidden = true;
   try { ROOM = await parseRoom(await roomBytes(m)); }
   catch (e) { $('loading').textContent = 'Could not load ' + m + ' (' + e.message + ')'; return; }
   buildMesh(); buildPoints(); legend(); if (!keepCam) fitCamera(); roomPane(); buildObjects(); $('loading').hidden = true; try { history.replaceState(null, '', verUrl(m)); } catch (e) {}
+  if (window.BoxSel) BoxSel.changed(true);
 }
 function fillLevels() {
   const groups = {}; for (const r of INDEX.rooms) (groups[r.group] = groups[r.group] || []).push(r);
