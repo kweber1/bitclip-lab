@@ -158,7 +158,7 @@ function num(v) { if (DIG === 'exact') return f32s(v); const d = 2 + (+DIG); ret
 try { const s = JSON.parse(localStorage.getItem('tooie-show') || 'null'); if (s) show = Object.assign(show, s); } catch (e) {}
 
 // ---- three.js scene
-const view = $('view'); const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true }); renderer.setPixelRatio(Math.min(2, devicePixelRatio)); view.prepend(renderer.domElement);
+const view = $('view'); const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true }); renderer.setPixelRatio(Math.min(1.5, devicePixelRatio));   // 1.5 at most: the dots are drawn per screen pixel view.prepend(renderer.domElement);
 renderer.localClippingEnabled = true; const clipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e9);   // height cut: keeps y <= cut
 const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(50, 1, 1, 600000); camera.position.set(0, 8000, 8000);
 const controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.enableZoom = false; controls.minDistance = 0.5; controls.screenSpacePanning = true;
@@ -171,13 +171,13 @@ function flyTo(p, dist, above) { const tgt = new THREE.Vector3(p.x, p.y, p.z); c
 function stepFly() { if (!fly) return; const k = Math.min(1, (performance.now() - fly.t0) / fly.dur); const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
   controls.target.lerpVectors(fly.fromT, fly.toT, e); camera.position.lerpVectors(fly.fromC, fly.toC, e); if (k >= 1) fly = null; }
 // what is under the cursor (mesh or spot), for zoom and double-click
-function underCursor(e) { const rc = renderer.domElement.getBoundingClientRect(); const m = new THREE.Vector2(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1);
+function underCursor(e, withPts = true) { const rc = renderer.domElement.getBoundingClientRect(); const m = new THREE.Vector2(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1);
   const rr = new THREE.Raycaster(); rr.setFromCamera(m, camera); const td = camera.position.distanceTo(controls.target); rr.params.Points.threshold = Math.max(0.05, td / 400);
-  const objs = [meshObj, ptsObj, ...(visObj ? visObj.children : [])].filter(Boolean); const hit = rr.intersectObjects(objs, false).filter(h => h.point.y <= cutY + 0.01).sort((a, b) => a.distance - b.distance)[0];
+  const objs = [meshObj, withPts ? ptsObj : null, ...(visObj ? visObj.children : [])].filter(Boolean); const hit = rr.intersectObjects(objs, false).filter(h => h.point.y <= cutY + 0.01).sort((a, b) => a.distance - b.distance)[0];
   return { hit, ray: rr.ray, td }; }
 // mouse wheel zooms toward whatever is under the cursor (camera and orbit centre scale around that point)
 view.addEventListener('wheel', (e) => { if (e.target !== renderer.domElement) return; e.preventDefault(); fly = null;
-  const { hit, ray: rr, td } = underCursor(e); const P = hit ? hit.point.clone() : rr.at(td, new THREE.Vector3());
+  const { hit, ray: rr, td } = underCursor(e, false);   // the level, not the (up to a million) dots: zooming stays smooth const P = hit ? hit.point.clone() : rr.at(td, new THREE.Vector3());
   let dy = e.deltaY; if (e.deltaMode === 1) dy *= 33; else if (e.deltaMode === 2) dy *= 400; dy = Math.max(-600, Math.min(600, dy));
   let k = Math.pow(1.0018, dy); const d = camera.position.distanceTo(P); if (d * k < 0.3) k = 0.3 / d; if (d * k > 500000) k = 500000 / d;
   camera.position.sub(P).multiplyScalar(k).add(P); controls.target.sub(P).multiplyScalar(k).add(P); controls.update(); }, { passive: false, capture: true });
@@ -212,7 +212,14 @@ scene.add(new THREE.HemisphereLight(0xffffff, 0x445550, 0.62)); const dl = new T
 let meshObj = null, visObj = null, ptsObj = null, selObj = null, ptsIdx = []; let OBJS = null, objGroup = null;
 function resize() { const r = view.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix(); }
 new ResizeObserver(resize).observe(view); resize();
-(function loop() { stepFly(); stepKeys(shiftDown); controls.update(); faceCamera(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+// draw only when something changes: at full rate while the camera moves or the mouse / keys were used in the last 1.5 s, else 4 times
+// a second (textures and models that finish loading); dots get smaller when zoomed out (they overlap there anyway: same picture, far
+// fewer pixels to fill)
+let lastInput = performance.now(), lastIdle = 0;
+['pointerdown', 'pointermove', 'wheel', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, () => { lastInput = performance.now(); }, { passive: true, capture: true }));
+function ptSize() { if (!ptsObj) return; const d = camera.position.distanceTo(controls.target); const s = Math.max(2.5, Math.min(7, 7 * Math.sqrt(500 / Math.max(1, d)))); if (Math.abs(ptsObj.material.size - s) > 0.05) ptsObj.material.size = s; }
+(function loop() { requestAnimationFrame(loop); const now = performance.now(); const act = !!fly || keys.size > 0; stepFly(); stepKeys(shiftDown); const moved = controls.update();
+  if (!(act || moved || now - lastInput < 1500 || now - lastIdle > 250)) return; lastIdle = now; ptSize(); faceCamera(); renderer.render(scene, camera); })();
 function themeColors() { scene.background = new THREE.Color(css('--view')); }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { themeColors(); if (ROOM) { buildMesh(); buildPoints(); } }); themeColors();
 

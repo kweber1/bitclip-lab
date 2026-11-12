@@ -651,7 +651,7 @@ async function applyVersionData(){ if(!room) return; const r=room; const ent=(in
 $('verSel').onchange=()=>setVersion($('verSel').value);
 
 // ---- three.js scene
-const view=$('view'); const renderer=new THREE.WebGLRenderer({antialias:true,logarithmicDepthBuffer:true}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+const view=$('view'); const renderer=new THREE.WebGLRenderer({antialias:true,logarithmicDepthBuffer:true}); renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));   /* 1.5 at most: the dots are drawn per screen pixel */
 renderer.localClippingEnabled=true;
 // horizontal slicer: everything above cutY is cut away (plane keeps y <= cutY)
 const clipPlane=new THREE.Plane(new THREE.Vector3(0,-1,0),1e9); let cutY=1e9;
@@ -673,7 +673,7 @@ const zray=new THREE.Raycaster(), zmouse=new THREE.Vector2();
 view.addEventListener('wheel',e=>{ if(e.target!==renderer.domElement) return; e.preventDefault(); e.stopPropagation(); fly=null;
   const rc=renderer.domElement.getBoundingClientRect(); zmouse.set(((e.clientX-rc.left)/rc.width)*2-1,-((e.clientY-rc.top)/rc.height)*2+1); zray.setFromCamera(zmouse,camera);
   const tdist=camera.position.distanceTo(controls.target); zray.params.Points.threshold=Math.max(0.02,tdist/400);
-  const objs=[...roomGroup.children.filter(o=>o.isMesh&&o.visible),...pointsGroup.children.filter(o=>o.isPoints&&o.visible)];
+  const objs=roomGroup.children.filter(o=>o.isMesh&&o.visible);   /* the level, not the dots: zooming stays smooth */
   const hit=zray.intersectObjects(objs,false).filter(h=>h.point.y<=cutY+0.01).sort((a,b)=>a.distance-b.distance)[0];
   const P=hit?hit.point.clone():zray.ray.at(tdist,new THREE.Vector3());
   let dy=e.deltaY; if(e.deltaMode===1) dy*=33; else if(e.deltaMode===2) dy*=400; dy=Math.max(-600,Math.min(600,dy));
@@ -732,7 +732,14 @@ function applyCam(){ const v=+$('camSpeed').value; camSpeedMul=Math.pow(2,v); $(
 try{ const c=JSON.parse(localStorage.getItem('bcl-cam2')||'null'), o=JSON.parse(localStorage.getItem('bcl-cam')||'null'); if(c){ $('camSpeed').value=c.s; $('camGlide').checked=!!c.g; } else if(o) $('camSpeed').value=o.s; }catch(e){}   // bcl-cam2: Glide is off by default now (the speed carries over)
 $('camSpeed').oninput=applyCam; $('camGlide').onchange=applyCam; applyCam();
 let shiftDown=false; addEventListener('keydown',e=>{ if(e.key==='Shift') shiftDown=true; }); addEventListener('keyup',e=>{ if(e.key==='Shift') shiftDown=false; });
-(function loop(){requestAnimationFrame(loop); stepFly(); stepKeys(shiftDown); controls.update(); updateNearFar(); renderer.render(scene,camera);})();
+// draw only when something changes (as the Tooie viewer): full rate while the camera moves, a run plays or the mouse / keys were used
+// in the last 1.5 s, else 4 times a second; spot dots get smaller when zoomed out (same picture, far fewer pixels to fill)
+let lastInput=performance.now(), lastIdle=0;
+['pointerdown','pointermove','wheel','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>{ lastInput=performance.now(); },{passive:true,capture:true}));
+function ptScale(){ const d=camera.position.distanceTo(controls.target); const f=Math.max(0.36,Math.min(1,Math.sqrt(500/Math.max(1,d))));
+  for(const o of pointsGroup.children){ const m=o.material; if(m&&m.userData&&m.userData.base){ const s=Math.max(2,m.userData.base*f); if(Math.abs(m.size-s)>0.05) m.size=s; } } }
+requestAnimationFrame(function loop(){requestAnimationFrame(loop);   /* first frame after the whole script has run (playing is declared further down) */ const now=performance.now(); const act=!!fly||keys.size>0||!!playing; stepFly(); stepKeys(shiftDown); const moved=controls.update();
+  if(!(act||moved||now-lastInput<1500||now-lastIdle>250)) return; lastIdle=now; ptScale(); updateNearFar(); renderer.render(scene,camera);});
 
 // ---- data
 let padSPts=null, padBPts=null;
@@ -772,7 +779,7 @@ function buildRoomMeshes(){
 }
 function pointsObj(arr,color,size){ const pos=new Float32Array(arr.length*3); arr.forEach((p,i)=>{pos[i*3]=p[0];pos[i*3+1]=p[1]+0.5;pos[i*3+2]=p[2];});
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  return new THREE.Points(g,new THREE.PointsMaterial({color:new THREE.Color(color),size,sizeAttenuation:false,depthTest:true,clippingPlanes:[clipPlane]})); }
+  const pm=new THREE.PointsMaterial({color:new THREE.Color(color),size,sizeAttenuation:false,depthTest:true,clippingPlanes:[clipPlane]}); pm.userData.base=size; return new THREE.Points(g,pm); }
 // clip odds: holds carry odds = [runs, clips, nolag, voids] (every held test drop re-run with and without a lag update);
 // beak-buster clips: n of the 70 dive cases clip, cases with a 2-frame crossing update need no lag, all fall out of the map
 function busterNolag(mask){ const m=BigInt('0x'+mask); let n=0; for(let i=0;i<70;i++) if(((m>>BigInt(i))&1n)&&Math.floor(i/5)%2===0) n++; return n; }
