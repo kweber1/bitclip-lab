@@ -228,9 +228,9 @@ td.tag{text-align:left;font-weight:600}
     <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="5" fill="var(--accent)"/><path d="M5 14.5 11 8l6 6.5" fill="none" stroke="var(--accent-ink)" stroke-width="2"/><path d="M11 8v9" stroke="var(--accent-ink)" stroke-width="1.4" stroke-dasharray="1.6 1.6"/></svg>
     <b>Bit-Clip Lab</b><span class="badge" id="partTag" hidden></span><span id="brandSub">Banjo-Kazooie · N64 PAL · every room</span>
   </div>
-  <div class="ctl"><label class="lbl" for="gameSel">Game</label><select id="gameSel" aria-label="Game" style="width:auto" onchange="if(this.value!=='bk')location.href=this.value+'?v='+(document.getElementById('verSel').value==='NTSC'?'ntsc':'pal')"><option value="bk" selected>Banjo-Kazooie</option><option value="tooie/">Banjo-Tooie</option></select></div>
+  <div class="ctl"><label class="lbl" for="gameSel">Game</label><select id="gameSel" aria-label="Game" style="width:auto" onchange="if(this.value!=='bk')location.href=this.value+'?v='+({NTSC:'ntsc',xbox:'xbox'}[document.getElementById('verSel').value]||'pal')"><option value="bk" selected>Banjo-Kazooie</option><option value="tooie/">Banjo-Tooie</option></select></div>
   <script>addEventListener("pageshow",()=>{const g=document.getElementById("gameSel");if(g)g.value="bk";});</script>
-  <div class="ctl"><label class="lbl" for="verSel">Version</label><select id="verSel" aria-label="Game version" style="width:auto" title="Each version's results live in their own repository"><option value="NTSC">N64 NTSC (USA)</option><option value="PAL">N64 PAL</option><option value="xbox" disabled>Xbox · not yet</option></select></div>
+  <div class="ctl"><label class="lbl" for="verSel">Version</label><select id="verSel" aria-label="Game version" style="width:auto" title="Each version's results live in their own repository"><option value="NTSC">N64 NTSC (USA)</option><option value="PAL">N64 PAL</option><option value="xbox">Xbox 360 (XBLA)</option></select></div>
   <div class="ctl"><label class="lbl" for="mapSel">Level</label><select id="mapSel" aria-label="Level"></select></div>
   <div class="ctl"><label class="lbl" for="digSel">Digits</label><select id="digSel" aria-label="Number of digits shown" title="How many digits every number on the page shows">
     <option value="0">Normal</option><option value="2">+2 decimals</option><option value="4">+4 decimals</option><option value="exact" title="9 significant figures: every f32 bit">Exact (f32)</option></select></div>
@@ -623,23 +623,28 @@ Number.prototype.toFixed=function(n){ n=n|0; const v=+this; if(n<=0||!isFinite(v
   return TOFIXED.call(v,Math.min(20,n+(+DIG||0))); };
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 // ---- version timing (decomp core2/time.c): dt = frames * (1/FRAMERATE) stored as f32, capped (PAL 0.06, NTSC 0.05)
-const VERS={PAL:{rate:50,cap:0.06},NTSC:{rate:60,cap:0.05}};
+const VERS={PAL:{rate:50,cap:0.06},NTSC:{rate:60,cap:0.05},xbox:{rate:60,cap:0.05}};   // Xbox 360: the same dt as N64 NTSC (2/60 s, capped 0.05; xex 0x8210FAE0)
 let version='PAL';
 // each version's room files live in their own repository's GitHub Pages site on this same kweber1.github.io address
 // (bitclip-lab-bk-pal: room geometry + PAL results, bitclip-lab-bk-us: NTSC results), so each gets its own 1 GB; falls back to this site's data/
-const VREPO={PAL:'bitclip-lab-bk-pal',NTSC:'bitclip-lab-bk-us'};
+const VREPO={PAL:'bitclip-lab-bk-pal',NTSC:'bitclip-lab-bk-us',xbox:'bitclip-lab-bk-xbox'};
+// Xbox 360 (XBLA) rooms: a full room file each (geometry + every Xbox result) in bitclip-lab-bk-xbox, listed in its data/index.json
+let XIDX=null; const xidxP=fetch(`/${VREPO.xbox}/data/index.json`).then(r=>r.ok?r.json():[]).catch(()=>[]).then(j=>{ XIDX=j||[]; return XIDX; });
+const VNAME=v=>v==='NTSC'?'N64 NTSC (USA)':v==='xbox'?'Xbox 360 (XBLA)':'N64 PAL';
+const VSHORT=v=>v==='NTSC'?'NTSC':v==='xbox'?'Xbox':'PAL';
 async function vget(ver,name){ for(const u of [`/${VREPO[ver]}/data/${name}`,`data/${name}`]){ try{ const q=await fetch(u); if(q.ok) return q.arrayBuffer(); }catch(e){} } throw new Error(name); }
-const START_VER=(()=>{ const v=(new URLSearchParams(location.search).get('v')||'').toLowerCase(); return (v==='ntsc'||v==='us')?'NTSC':'PAL'; })();
+const START_VER=(()=>{ const v=(new URLSearchParams(location.search).get('v')||'').toLowerCase(); return (v==='ntsc'||v==='us')?'NTSC':(v==='xbox'||v==='x360')?'xbox':'PAL'; })();
 const dtFor=(vi)=>F(Math.min(vi*(1.0/VERS[version].rate),VERS[version].cap));
-function setVersion(v){version=v;$('verSel').value=v; if($('brandSub')) $('brandSub').textContent='Banjo-Kazooie · '+(v==='NTSC'?'N64 NTSC (USA)':'N64 PAL')+' · every room'; setTimeout(()=>{ roomPane(); if($('pAll')&&!$('pAll').closest('.pane').hidden) allPane(); },0);
-  try{ const u=new URL(location.href); if(v==='NTSC') u.searchParams.set('v','ntsc'); else u.searchParams.delete('v'); history.replaceState(history.state,'',u.pathname+u.search+u.hash); }catch(e){}
+function setVersion(v){const was=version; version=v;$('verSel').value=v; if($('brandSub')) $('brandSub').textContent='Banjo-Kazooie · '+VNAME(v)+' · every room'; setTimeout(()=>{ roomPane(); if($('pAll')&&!$('pAll').closest('.pane').hidden) allPane(); },0);
+  try{ const u=new URL(location.href); if(v==='NTSC') u.searchParams.set('v','ntsc'); else if(v==='xbox') u.searchParams.set('v','xbox'); else u.searchParams.delete('v'); history.replaceState(history.state,'',u.pathname+u.search+u.hash); }catch(e){}
   $('dtInfo').textContent=`update ${dtFor(2).toPrecision(6)}s · lag ${dtFor(3).toPrecision(6)}s`;
-  renderChips(); if(lastRun) runSim(); applyVersionData(); if(typeof fillSpawns==='function') fillSpawns(); }
+  renderChips(); if(lastRun) runSim(); if(room&&((was==='xbox')!==(v==='xbox'))) { loadMap(room.map); } else applyVersionData(); if(typeof fillSpawns==='function') fillSpawns(); }
 // the dots follow the version: NTSC holds / beak-buster clips (ntsc-run.js) load on demand; PAL ones come with the room
 async function fetchNtsc(m,ent){ const names=ent.ntscparts?Array.from({length:ent.ntscparts},(_,i)=>`map${m}.ntsc.${i}.wasm`):[`map${m}.ntsc.wasm`];
   const bufs=await Promise.all(names.map(n=>vget('NTSC',n))); return unpackRoom(await gunzipJSON(new Blob(bufs))); }
 let verBusy=0;
 async function applyVersionData(){ if(!room) return; const r=room; const ent=(index||[]).find(e=>e.map===r.map);
+  if(r.version==='Xbox'||version==='xbox'){ r._shown=r.version==='Xbox'?'Xbox':'PAL (Xbox not computed for this room yet)'; if($('holdsVer')) $('holdsVer').textContent=r.version==='Xbox'?'Xbox':'PAL'; if(r.version!=='Xbox') $('layerSum').textContent+=' · Xbox not computed for this room yet: PAL shown'; return; }
   if(!r._pal) r._pal={holds:r.holds,slopeclips:r.slopeclips,slopeclips_total:r.slopeclips_total};
   let src=r._pal, shown='PAL';
   if(version==='NTSC'){ if(ent&&ent.ntsc){ if(!r._ntsc){ const t=++verBusy; $('layerSum').textContent='Loading the NTSC dots…'; try{ r._ntsc=await fetchNtsc(r.map,ent); }catch(e){ r._ntsc=null; } if(t!==verBusy||room!==r) return; }
@@ -929,6 +934,9 @@ function unpackRoom(d){ if(d&&d.holdsA){ d.holds=(d.holds||[]).concat(d.holdsA.m
 async function gunzipJSON(buf){ const ds=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip')); return JSON.parse(await new Response(ds).text()); }
 async function fetchRoom(m){
   const ent=(index||[]).find(e=>e.map===m);
+  if(version==='xbox'&&typeof DecompressionStream!=='undefined'){ const xe=(await xidxP).find(e=>e.map===m); if(xe){ try{
+    const names=xe.gzparts?Array.from({length:xe.gzparts},(_,i)=>`map${m}.gz.${i}.wasm`):[`map${m}.gz.wasm`];
+    const bufs=await Promise.all(names.map(n=>vget('xbox',n))); return unpackRoom(await gunzipJSON(new Blob(bufs))); }catch(e){ console.warn('Xbox room failed',e); } } }
   if(ent&&ent.bin&&typeof DecompressionStream!=='undefined'){ try{
     const names=ent.gzparts?Array.from({length:ent.gzparts},(_,i)=>`map${m}.gz.${i}.wasm`):[`map${m}.gz.wasm`];
     const bufs=await Promise.all(names.map(n=>vget('PAL',n)));
@@ -951,9 +959,9 @@ async function loadMap(m){
   // by default so routes can't walk through them (data/pose-0xNN.json from extract-actor-collision-pose.py)
   { const ent=(index||[]).find(e=>e.map===m); room._pose=[]; if(ent&&ent.pose){ try{ const q=await fetch(`data/pose-${m}.json`); if(q.ok) room._pose=await q.json(); }catch(e){} } }
   // roof cracks + roof clips for every map (data/roof/map0xNN.json from tools/gpu-pc/roofscan.cu): rows [x,y,z,seam,clear,beePAL,flyPAL,beeNTSC,flyNTSC]
-  room.roofs=null; try{ const q=await fetch(`data/roof/map${m}.json`); if(q.ok){ const j=await q.json(); room.roofs=j; if(!room.roofcracks||!room.roofcracks.length||j.rows.length) room.roofcracks=j.rows.map(r=>[r[0],r[1],r[2],'R'+r[3]]); } }catch(e){}
+  room.roofs=null; if(room.version!=='Xbox') try{ const q=await fetch(`data/roof/map${m}.json`); if(q.ok){ const j=await q.json(); room.roofs=j; if(!room.roofcracks||!room.roofcracks.length||j.rows.length) room.roofcracks=j.rows.map(r=>[r[0],r[1],r[2],'R'+r[3]]); } }catch(e){}
   room.roofcracks=room.roofcracks||[];
-  room.padclips=null; try{ const q=await fetch(`data/padclips/map${m}.json`); if(q.ok) room.padclips=await q.json(); }catch(e){}
+  room.padclips=null; if(room.version!=='Xbox') try{ const q=await fetch(`data/padclips/map${m}.json`); if(q.ok) room.padclips=await q.json(); }catch(e){}
   world=new BK.World(BK.load_model(room.opa,'opa'),room.xlu?BK.load_model(room.xlu,'xlu'):null,BK.load_props(activeProps()),parseInt(m,16));
   buildRoomMeshes(); buildPoints(); $('spawnSel').value=''; Promise.all([spawnP,exitsP]).then(()=>{ fillSpawns(); drawSpawns(); }); setTimeout(()=>{ renderBest('c'); renderBest('s'); if(version!=='PAL') applyVersionData(); },0); spot=null; lastRun=null; renderSpot(); clearSim(); target=null; fillTgt(); ['bx','by','bz'].forEach(k=>$(k).value=''); if(typeof drawMarks==='function'){ disposeGroup(searchGroup); segObjs={}; drawMarks(); }
   // frame camera
@@ -1047,7 +1055,7 @@ function fmt(v,n=6){return (v==null||v==='')?'—':(+v).toFixed(n);}
 function oddsText(o,what){ const p=o.runs?100*o.clips/o.runs:0; const tag=p>=25?'reliable':p>=5?'sometimes':o.clips>=2?'rare':'one exact setup';
   return `<b>${tag}</b> · ${o.clips} of ${o.runs} ${what} clip (${p<1&&p>0?p.toFixed(1):Math.round(p)}%) · ${o.nolag?`${o.nolag} without lag`:'only with a lag frame'} · ${o.voids===o.clips?'all fall out of the map':o.voids?`${o.voids} fall out of the map, ${o.clips-o.voids} land on ground below`:'all land on ground below'}`; }
 function renderSpot(){ const el=$('spotInfo'); if(!spot){ $('spotCard').hidden=true; el.innerHTML=''; return;}
-  $('spotCard').hidden=false; const VL=(room&&room._shown==='NTSC')?'NTSC':'PAL'; const kinds={crack:'Floor crack',hold:`5-hit hold (${VL} census)`,roof:'Roof crack',padshock:`Shock-pad fall clip (${version})`,padbomb:`Beak bomb clip (${version})`,slope:`Slope clip: beak buster (${VL})`,hit5:'5 collisions on one update',point:'Picked point',exit:'Exit (loading zone)',spawn:'Load-in point',object:'Object'};
+  $('spotCard').hidden=false; const VL=(room&&room._shown==='NTSC')?'NTSC':(room&&room.version==='Xbox')?'Xbox':'PAL'; const kinds={crack:'Floor crack',hold:`5-hit hold (${VL} census)`,roof:'Roof crack',padshock:`Shock-pad fall clip (${version})`,padbomb:`Beak bomb clip (${version})`,slope:`Slope clip: beak buster (${VL})`,hit5:'5 collisions on one update',point:'Picked point',exit:'Exit (loading zone)',spawn:'Load-in point',object:'Object'};
   $('spotTitle').textContent=(spot.kind==='crack'&&spot.info&&spot.info.lower?(String(spot.info.lower[3]).endsWith('/edge')?'Rim crack':'Crack over a lower floor'):kinds[spot.kind])+(spot.kind==='crack'&&spot.info&&spot.info.slope?' (sloped seam)':''); $('spotDot').style.background=css('--'+({crack:'crack',hold:'hold',roof:'roof',slope:'slope',hit5:'hit5',point:'accent',exit:'accent',spawn:'pop',object:'prop'}[spot.kind]));
   if(spot.kind==='object') $('spotTitle').textContent=objName(spot.info.o);
   let rows=`<dt>Position</dt><dd>${fmt(spot.x,4)}, ${fmt(spot.y,3)}, ${fmt(spot.z,4)}</dd>`;
@@ -1525,13 +1533,20 @@ function roomPane(){ const el=$('pRoom'); if(!el||!room||$('pRoom').closest('.pa
   const st=(v,t,c)=>`<div class="stat"><b${c?` style="color:var(--${c})"`:''}>${(+v||0).toLocaleString()}</b><span>${t}</span></div>`;
   const nobj=OBJS&&OBJS.maps[room.map]?OBJS.maps[room.map].objs.length:0;
   el.innerHTML=`<h2>${e.name||room.map} <span style="color:var(--muted);font-weight:500">· ${e.group||''}</span></h2>
-    <p class="note">Map ${room.map}. ${tri.toLocaleString()} collision triangles${e.props?`, ${e.props} static objects with collision`:''}. ${N?'NTSC':'PAL'} results${N&&!e.ntsc?' (NTSC not computed for this room yet: PAL shown)':''}.</p>
+    <p class="note">Map ${room.map}. ${tri.toLocaleString()} collision triangles${e.props?`, ${e.props} static objects with collision`:''}. ${room.version==='Xbox'?'Xbox 360 (XBLA)':N?'NTSC':'PAL'} results${N&&!e.ntsc?' (NTSC not computed for this room yet: PAL shown)':''}${version==='xbox'&&room.version!=='Xbox'?' (Xbox not computed for this room yet: PAL shown)':''}.</p>
     <div class="stats">${st(room.cracks.length,'floor cracks (floor ray misses the seam)','crack')}${st(room.slopecracks_total||(room.slopecracks||[]).length,'slope cracks')}
-      ${st(room.lowercracks_total||(room.lowercracks||[]).length,'cracks over a lower floor / rim cracks')}${st(room.holds.length,`5-hit holds (${room._shown==='NTSC'?'NTSC':'PAL'} census)`,'hold')}
+      ${st(room.lowercracks_total||(room.lowercracks||[]).length,'cracks over a lower floor / rim cracks')}${st(room.holds.length,`5-hit holds (${room._shown==='NTSC'?'NTSC':room.version==='Xbox'?'Xbox':'PAL'} census)`,'hold')}
       ${st(room.hit5_total||(room.hit5||[]).length,'5 collisions on one update','hit5')}${st(room.slopeclips_total||(room.slopeclips||[]).length,'slope clips (beak buster)','slope')}
       ${st(roofClip,`roof cracks that clip upward (of ${room.roofcracks.length.toLocaleString()})`,'roof')}${P?st(P.shock.length+P.bomb.length,'pad clips (shock jump + beak bomb)','pop'):''}${st(nobj,'objects and enemies in the setup file')}</div>
-    <p class="note">Click a spot in the view for its exact position and every test. The tool tabs (Moves, Clip setup, Route search, Drop test) simulate Banjo with the game's own movement and collision.</p>`; }
-function allPane(){ const el=$('pAll'); if(!el||!index) return; const N=version==='NTSC'; const groups={}; for(const r of index) (groups[r.group]=groups[r.group]||[]).push(r);
+    <p class="note">Click a spot in the view for its exact position and every test. The tool tabs (Moves, Clip setup, Route search, Drop test) simulate Banjo with the game's own movement and collision${room.version==='Xbox'?' <b>as on the N64</b>: the Xbox rounds some steps differently (fused multiply-adds), so their exact floats can differ from the Xbox. The dots on this page are the Xbox census':''}.</p>`; }
+function allPane(){ const el=$('pAll'); if(!el||!index) return;
+  if(version==='xbox'){ const X=XIDX||[]; const xm=new Map(X.map(e=>[e.map,e])); const groups={}; for(const r of index) (groups[r.group]=groups[r.group]||[]).push(r); const tot=k=>X.reduce((a,r)=>a+(+r[k]||0),0);
+    let h=`<h2>All levels</h2><p class="note">Xbox 360 (XBLA): ${X.length} of ${index.length} rooms computed so far. Totals: <b>${tot('cracks').toLocaleString()}</b> floor cracks, <b>${tot('holds').toLocaleString()}</b> 5-hit holds (<b>${tot('clips').toLocaleString()}</b> that clip), <b>${tot('slopeclips').toLocaleString()}</b> slope clips.</p>
+      <table><thead><tr><th>Level</th><th>Cracks</th><th>Holds</th><th>Hold clips</th><th>Slope clips</th></tr></thead><tbody>`;
+    for(const g of Object.keys(groups)){ h+=`<tr class="world"><td colspan="5">${g}</td></tr>`;
+      for(const r of groups[g]){ const x=xm.get(r.map); const c=k=>x?(+x[k]||0).toLocaleString():'–'; h+=`<tr class="room${room&&room.map===r.map?' cur':''}" data-m="${r.map}"><td>${r.name} <span style="color:var(--muted)">${r.map}</span></td><td>${c('cracks')}</td><td>${c('holds')}</td><td>${c('clips')}</td><td>${c('slopeclips')}</td></tr>`; } }
+    el.innerHTML=h+'</tbody></table>'; el.querySelectorAll('tr.room').forEach(tr=>tr.onclick=()=>{ $('mapSel').value=tr.dataset.m; $('mapSel').dispatchEvent(new Event('change')); }); return; }
+  const N=version==='NTSC'; const groups={}; for(const r of index) (groups[r.group]=groups[r.group]||[]).push(r);
   const tot=k=>index.reduce((a,r)=>a+(+r[k]||0),0);
   let h=`<h2>All levels</h2><p class="note">${index.length} rooms. Totals: <b>${tot('cracks').toLocaleString()}</b> floor cracks, <b>${tot(N?'ntsc_holds':'holds').toLocaleString()}</b> 5-hit holds (${N?'NTSC':'PAL'}), <b>${tot(N?'ntsc_slopeclips':'slopeclips').toLocaleString()}</b> slope clips.</p>
     <table><thead><tr><th>Level</th><th>Cracks</th><th>Holds</th><th>5-coll</th><th>Slope clips</th></tr></thead><tbody>`;
