@@ -235,6 +235,34 @@ function themeColors() { scene.background = new THREE.Color(css('--view')); }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { themeColors(); if (ROOM) { buildMesh(); buildPoints(); } }); themeColors();
 
 async function gunzipJSON(buf) { const ds = new DecompressionStream('gzip'); const s = new Blob([buf]).stream().pipeThrough(ds); return JSON.parse(await new Response(s).text()); }
+/* room files: gzipped JSON (old) or TRB1 (header JSON + byte-planed typed columns, see tools/tooie/trb.py); spots stay as columns */
+async function gunzipBuf(buf) { return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer(); }
+function decodeTRB(ab) {
+  const u8 = new Uint8Array(ab), hl = new DataView(ab).getUint32(4, true), R = JSON.parse(new TextDecoder().decode(u8.subarray(8, 8 + hl)));
+  const base = (8 + hl + 3) & ~3, n = R.n, C = {};
+  for (const [name, t, off] of R.cols) {
+    const w = +t[t.length - 1], p = base + off, n2 = 2 * n, n3 = 3 * n; let a;
+    const rd = w === 1 ? (i => u8[p + i]) : w === 2 ? (i => u8[p + i] | (u8[p + n + i] << 8)) : (i => (u8[p + i] | (u8[p + n + i] << 8) | (u8[p + n2 + i] << 16) | (u8[p + n3 + i] << 24)) >>> 0);
+    if (t[0] === 'f' || t[0] === 'z') { const o = new Int32Array(n); let acc = 0; for (let i = 0; i < n; i++) { const v = rd(i); acc = (acc + ((v >>> 1) ^ -(v & 1))) | 0; o[i] = acc; } a = t[0] === 'f' ? new Float32Array(o.buffer) : o; }
+    else { a = new ({ u1: Uint8Array, i1: Int8Array, u2: Uint16Array, i2: Int16Array, u4: Uint32Array, i4: Int32Array })[t](n); for (let i = 0; i < n; i++) a[i] = rd(i); }
+    C[name] = a;
+  }
+  R.C = C; R.spots = null; return R;
+}
+async function parseRoom(gz) {
+  const ab = await gunzipBuf(gz); const h = new Uint8Array(ab, 0, 4);
+  if (h[0] === 84 && h[1] === 82 && h[2] === 66 && h[3] === 49) return decodeTRB(ab);
+  return JSON.parse(new TextDecoder().decode(ab));
+}
+const spotN = () => ROOM.C ? ROOM.n : ROOM.spots.length;
+const spotCat = i => ROOM.C ? ROOM.cats[ROOM.C.cat[i]] : ROOM.spots[i][5];
+const spotVoid = i => ROOM.C ? ROOM.walks[ROOM.C.walk[i]][0] === '1' : ROOM.spots[i][6][0] === '1';
+function spotAt(i) {
+  if (!ROOM.C) return ROOM.spots[i];
+  const C = ROOM.C, r = []; for (let j = 0; j < ROOM.nruns; j++) r.push(C['run' + j][i]);
+  return [C.x[i], C.y[i], C.z[i], C.seam[i], r[0], ROOM.cats[C.cat[i]], ROOM.walks[C.walk[i]], C.walk_runs_with_hold[i], C.max_sit_updates[i], C.decided_update[i], C.end_y[i],
+    C.jump_clips_of_42[i], C.jump_voids_of_42[i], C.jump_drops_with_hold[i], C.any_hold[i], r];
+}
 // textures: the Bit-Clip Lab's own paintings (tex/<key>.png), made from each original texture's colours and kind of surface only
 const texCache = {}; let HD = null;   // HD: BT Reloaded (GhostlyDark) replacements, matched by GLideN64's texture checksum, loaded from the pack's repo
 function labTexture(key, ws, wt) {
@@ -322,12 +350,13 @@ function buildMesh() {
   // front faces only: indoor rooms face inward, so from outside you look through the walls and roof into the room
   const op = layer.opacity / 100; const wire = layer.draw === 'both'; meshObj = new THREE.Mesh(g, wire ? new THREE.MeshBasicMaterial({ vertexColors: true, wireframe: true, clippingPlanes: [clipPlane], transparent: true, opacity: 0.6 }) : new THREE.MeshLambertMaterial({ vertexColors: true, side: layer.back ? THREE.DoubleSide : THREE.FrontSide, clippingPlanes: [clipPlane], transparent: op < 1, opacity: op, depthWrite: op >= 1 })); scene.add(meshObj);
 }
-function visible(s) { const m = $('viewSel').value; if (!show[s[5]]) return false; if (m === 'flat') { const se = ROOM.seams[s[3]]; if (!(se[6] > 0.999 && se[7] > 0.999)) return false; } if (m === 'hold' && !s[14]) return false; return true; }
+function visible(i, m = $('viewSel').value) { if (!show[spotCat(i)]) return false; if (m === 'flat') { const se = ROOM.seams[ROOM.C ? ROOM.C.seam[i] : ROOM.spots[i][3]]; if (!(se[6] > 0.999 && se[7] > 0.999)) return false; } if (m === 'hold' && !(ROOM.C ? ROOM.C.any_hold[i] : ROOM.spots[i][14])) return false; return true; }
 function buildPoints() {
   if (ptsObj) { scene.remove(ptsObj); ptsObj.geometry.dispose(); ptsObj = null; }
-  const S = ROOM.spots; ptsIdx = []; for (let i = 0; i < S.length; i++) if (visible(S[i])) ptsIdx.push(i);
+  const N = spotN(), vm = $('viewSel').value; ptsIdx = []; for (let i = 0; i < N; i++) if (visible(i, vm)) ptsIdx.push(i);
   const pos = new Float32Array(ptsIdx.length * 3), col = new Float32Array(ptsIdx.length * 3); const cc = {}; for (const k in CVAR) cc[k] = new THREE.Color(css(CVAR[k]));
-  ptsIdx.forEach((i, j) => { const s = S[i]; pos[j * 3] = s[0]; pos[j * 3 + 1] = s[1] + 3; pos[j * 3 + 2] = s[2]; const c = s[5] === 'walk' && s[6][0] === '1' ? new THREE.Color(css('--c-void')) : cc[s[5]]; col[j * 3] = c.r; col[j * 3 + 1] = c.g; col[j * 3 + 2] = c.b; });
+  const cvoid = new THREE.Color(css('--c-void')), X = ROOM.C ? ROOM.C.x : null, Y = ROOM.C ? ROOM.C.y : null, Z = ROOM.C ? ROOM.C.z : null;
+  ptsIdx.forEach((i, j) => { const s = X ? null : ROOM.spots[i]; pos[j * 3] = X ? X[i] : s[0]; pos[j * 3 + 1] = (X ? Y[i] : s[1]) + 3; pos[j * 3 + 2] = X ? Z[i] : s[2]; const ct = spotCat(i); const c = ct === 'walk' && spotVoid(i) ? cvoid : cc[ct]; col[j * 3] = c.r; col[j * 3 + 1] = c.g; col[j * 3 + 2] = c.b; });
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   ptsObj = new THREE.Points(g, new THREE.PointsMaterial({ size: 7, sizeAttenuation: false, vertexColors: true, depthTest: true, clippingPlanes: [clipPlane] })); scene.add(ptsObj);
 }
@@ -336,7 +365,7 @@ function fitCamera() { const V = ROOM.verts; const mn = [1e9, 1e9, 1e9], mx = [-
   controls.target.copy(c); camera.position.set(c.x + r * 0.35, c.y + r * 0.75, c.z + r * 0.75); camera.near = 1; camera.far = Math.max(600000, r * 20); camera.updateProjectionMatrix();
   const s = $('cutY'); if (s) { s.min = Math.floor(mn[1]) - 1; s.max = Math.ceil(mx[1]) + 1; s.value = s.max; setCut(+s.max); } }
 function legend() {
-  const cnt = Object.assign({}, ROOM.counts || {}); if (!ROOM.counts) for (const s of ROOM.spots) cnt[s[5]] = (cnt[s[5]] || 0) + 1; const voids = ROOM.every ? ((INDEX.rooms.find(r => r.map === ROOM.map) || {}).void || 0) : ROOM.spots.filter(s => s[5] === 'walk' && s[6][0] === '1').length;
+  const cnt = Object.assign({}, ROOM.counts || {}); if (!ROOM.counts) for (let i = 0, N = spotN(); i < N; i++) { const k = spotCat(i); cnt[k] = (cnt[k] || 0) + 1; } let voids = ROOM.every ? ((INDEX.rooms.find(r => r.map === ROOM.map) || {}).void || 0) : 0; if (!ROOM.every) for (let i = 0, N = spotN(); i < N; i++) if (spotCat(i) === 'walk' && spotVoid(i)) voids++;
   $('legend').innerHTML = '<div class="lh"><b>Layers</b><button class="btn mini" id="legTog" aria-expanded="true">Hide</button></div><div id="legBody" class="lb"><div class="grp" title="' + (ROOM.thinned ? 'Drawn: every spot that goes through or holds; ' + ROOM.thinned : '') + '">' + (ROOM.every ? 'Crack floats (every one tested) · ' : 'Crack spots · ') + fmt(Object.values(cnt).reduce((a, b) => a + b, 0)) + '</div>' + CATS.map(([k, n, d]) => `<label title="${d}"><input type="checkbox" data-k="${k}" ${show[k] ? 'checked' : ''}><span class="sw" style="background:var(${CVAR[k]})"></span>${n}<span class="n">${fmt(cnt[k] || 0)}</span></label>`).join('')
     + (voids ? `<label title="Walk-in spots whose fall ends in the void (no floor below)"><span style="width:13px"></span><span class="sw" style="background:var(--c-void)"></span>…into the void<span class="n">${fmt(voids)}</span></label>` : '')
     + `<div class="grp">Draw the level as</div><div class="seg" role="group" aria-label="Draw the level as">${[['game', 'Game look'], ['coll', 'Collision'], ['both', 'Both']].map(([k, n]) => `<button data-draw="${k}" aria-pressed="${layer.draw === k}" title="${k === 'game' ? 'The level model as drawn in game (vertex shading), incl. decoration Banjo does not touch' : k === 'coll' ? 'Collision triangles coloured by type' : 'Game look with the collision as a wireframe'}">${n}</button>`).join('')}</div>`
@@ -381,7 +410,7 @@ function roomPane() {
 }
 let CUR = -1;
 function spotCard(i, fromClick) {
-  CUR = i; const s = ROOM.spots[i]; const se = ROOM.seams[s[3]]; const cat = CATS.find(c => c[0] === s[5]);
+  CUR = i; const s = spotAt(i); const se = ROOM.seams[s[3]]; const cat = CATS.find(c => c[0] === s[5]);
   const runs = [...s[6]].map((o, k) => `<span class="run" title="${k ? 'lag (3-VI update) on update ' + k : 'no lag'}: ${OUT[o]}" style="border-color:var(${o === '0' || o === '1' ? '--c-walk' : o === '2' ? '--c-eject' : '--line'})">${k ? 'L' + k : '—'} ${o === '0' ? 'thru' : o === '1' ? 'void' : o === '2' ? 'eject' : o === '3' ? 'stuck' : o === '4' ? 'water' : 'wall'}</span>`).join('');
   $('spotCard').innerHTML = `<h3><span class="sw" style="background:var(${CVAR[s[5]]})"></span>${cat[1]}<button class="btn mini" id="zoomSpot" style="margin-left:auto">Zoom</button><button class="btn mini" id="closeSpot" style="margin-left:0">Close</button></h3>
     <div class="coords"><div class="ch"><span class="lbl">Crack position (Banjo's feet)</span><button class="btn mini" id="copyXYZ" title="Copy x y z as shown">Copy</button><button class="btn mini" id="copyExact" title="Copy the exact f32 values">Copy exact</button></div>
@@ -468,7 +497,7 @@ function tab(t) { for (const [b, p] of [['tRoom', 'pRoom'], ['tAll', 'pAll'], ['
 $('tRoom').onclick = () => tab('tRoom'); $('tAll').onclick = () => tab('tAll'); $('tHow').onclick = () => tab('tHow');
 async function loadRoom(m, keepCam) {
   $('loading').hidden = false; $('loading').textContent = 'Loading ' + m + '…'; $('spotCard').hidden = true;
-  try { ROOM = await gunzipJSON(await roomBytes(m)); }
+  try { ROOM = await parseRoom(await roomBytes(m)); }
   catch (e) { $('loading').textContent = 'Could not load ' + m + ' (' + e.message + ')'; return; }
   buildMesh(); buildPoints(); legend(); if (!keepCam) fitCamera(); roomPane(); buildObjects(); $('loading').hidden = true; try { history.replaceState(null, '', verUrl(m)); } catch (e) {}
 }

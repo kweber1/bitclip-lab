@@ -121,13 +121,22 @@ def build(tc, roomf, outdir):
                             'every_float_run: floats_in_run', 'x_end', 'z_end', 'across_offset'],
             'thinned': thin_txt, 'every': every, 'counts': dict(cnt), 'spots': '__SPOTS__'}
     os.makedirs(os.path.join(outdir, 'data'), exist_ok=True)
-    pre, post = json.dumps(data, separators=(',', ':')).split('"__SPOTS__"', 1)
     spf.seek(0)
-    with gzip.open(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key), 'wb', 9) as f:
-        f.write((pre + '[').encode()); first = True
-        for line in spf:
-            f.write(((',' if not first else '') + line.rstrip('\n')).encode()); first = False
-        f.write((']' + post).encode())
+    wrote = False
+    if every:   # TRB1 (tools/tooie/trb.py): the spots as typed columns, about 3x smaller than gzipped JSON
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trb')); sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); import trb
+        try:
+            cols = trb.Cols(nshown)
+            for line in spf: cols.add(json.loads(line))
+            trb.write(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key), data, cols); wrote = True
+        except AssertionError as ex: print('TRB1 not possible (%s): writing JSON' % ex, file=sys.stderr); spf.seek(0)
+    if not wrote:
+        pre, post = json.dumps(data, separators=(',', ':')).split('"__SPOTS__"', 1)
+        with gzip.open(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key), 'wb', 9) as f:
+            f.write((pre + '[').encode()); first = True
+            for line in spf:
+                f.write(((',' if not first else '') + line.rstrip('\n')).encode()); first = False
+            f.write((']' + post).encode())
     spf.close()
     entry = {'map': key, 'name': room['name'], 'group': room['group'], 'maps': room['maps'], 'map_names': room['map_names'],
              'tris': len(tris), 'seams': len(seams), 'crack_samples': int(head[5]) if head else 0, 'crack_floats': int(head[7]) if head else 0,
