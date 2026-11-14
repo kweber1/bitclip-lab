@@ -646,7 +646,7 @@ function setVersion(v){const was=version; version=v;$('verSel').value=v; if($('b
   renderChips(); if(lastRun) runSim(); if(room&&((was==='xbox')!==(v==='xbox'))) { loadMap(room.map); } else applyVersionData(); if(typeof fillSpawns==='function') fillSpawns(); }
 // the dots follow the version: NTSC holds / beak-buster clips (ntsc-run.js) load on demand; PAL ones come with the room
 async function fetchNtsc(m,ent){ const names=ent.ntscparts?Array.from({length:ent.ntscparts},(_,i)=>`map${m}.ntsc.${i}.wasm`):[`map${m}.ntsc.wasm`];
-  const bufs=await Promise.all(names.map(n=>vget('NTSC',n))); return unpackRoom(await gunzipJSON(new Blob(bufs))); }
+  const bufs=await Promise.all(names.map(n=>vget('NTSC',n))); return unpackRoom(await withPc(await gunzipJSON(new Blob(bufs)),'NTSC',m,ent.ntsc_pcf)); }
 let verBusy=0;
 // a banner when the chosen version has no results for this room yet, so its dots are the PAL ones
 function verNote(t){ const n=$('verNote'); if(!n) return; if(!t){ n.hidden=true; return; } n.innerHTML=`${t} <button class="btn mini" id="verNoteX" aria-label="Close">✕</button>`; n.hidden=false; $('verNoteX').onclick=()=>{ n.hidden=true; }; }
@@ -968,15 +968,18 @@ const pcKey=(x,y,z)=>Math.round(x*1e4)+','+Math.round(y*1e3)+','+Math.round(z*1e
 async function gunzipJSON(buf){ const ds=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip')); const ab=await new Response(ds).arrayBuffer();
   const h=new Uint8Array(ab,0,Math.min(4,ab.byteLength)); if(h.length===4&&h[0]===66&&h[1]===75&&h[2]===66&&h[3]===49) return BKB.decode(ab);
   return JSON.parse(new TextDecoder().decode(ab)); }
+// punch-cancel results of the all-room run live in their own small file next to the room (map0xNN.pc.wasm in the version's repo, BKB1
+// with just the pcancel table), so adding them does not re-upload the big room file; index flag pcf (PAL), ntsc_pcf (NTSC), pcf (Xbox index)
+async function withPc(d,ver,m,has){ if(has&&d){ try{ const p=await gunzipJSON(await vget(ver,`map${m}.pc.wasm`)); d.pcancel=p.pcancel; d.pcancel_scope=p.pcancel_scope; d.pcancel_note=p.pcancel_note; }catch(e){ console.warn('punch-cancel file failed',e); } } return d; }
 async function fetchRoom(m){
   const ent=(index||[]).find(e=>e.map===m);
   if(version==='xbox'&&typeof DecompressionStream!=='undefined'){ const xe=(await xidxP).find(e=>e.map===m); if(xe){ try{
     const names=xe.gzparts?Array.from({length:xe.gzparts},(_,i)=>`map${m}.gz.${i}.wasm`):[`map${m}.gz.wasm`];
-    const bufs=await Promise.all(names.map(n=>vget('xbox',n))); return unpackRoom(await gunzipJSON(new Blob(bufs))); }catch(e){ console.warn('Xbox room failed',e); } } }
+    const bufs=await Promise.all(names.map(n=>vget('xbox',n))); return unpackRoom(await withPc(await gunzipJSON(new Blob(bufs)),'xbox',m,xe.pcf)); }catch(e){ console.warn('Xbox room failed',e); } } }
   if(ent&&ent.bin&&typeof DecompressionStream!=='undefined'){ try{
     const names=ent.gzparts?Array.from({length:ent.gzparts},(_,i)=>`map${m}.gz.${i}.wasm`):[`map${m}.gz.wasm`];
     const bufs=await Promise.all(names.map(n=>vget('PAL',n)));
-    return unpackRoom(await gunzipJSON(new Blob(bufs))); }catch(e){ console.warn('packed room failed',e); } }
+    return unpackRoom(await withPc(await gunzipJSON(new Blob(bufs)),'PAL',m,ent.pcf)); }catch(e){ console.warn('packed room failed',e); } }
   try{ let r, t;
     if(ent&&ent.gzparts){ const parts=await Promise.all(Array.from({length:ent.gzparts},(_,i)=>fetch(`data/map${m}.gz.${i}.txt`).then(q=>q.ok?q.text():Promise.reject(new Error('part '+i))))); t=parts.map(x=>x.trim()).join(''); r={ok:true}; }
     else { r=await fetch(`data/map${m}.gz.txt`); t=r.ok?(await r.text()).trim():''; }
