@@ -1104,7 +1104,7 @@ function pcRows(d){ if(!pcRoom()) return `<dt>Punch cancel</dt><dd>not tested in
   if(p.clips){ r+=`<dt>· no lag</dt><dd>${p.n[0]?`clips: ${pcA(p.n[1])}`:'no clip'}</dd><dt>· one lag frame</dt><dd>${fam(p.o[0],p.o[1],p.o[2],1150,'the 46 lag positions')}</dd>`;
     r+=`<dt>· 3/2 alternation</dt><dd>${p.a[0]||p.s[0]?[p.a[0]?`steady: ${fam(p.a[0],p.a[1],p.a[2],50,'the 2 phases')}`:'steady: no clip',p.s[0]?`with one slip: ${fam(p.s[0],p.s[1],p.s[2],2000,'the 80 slips')}`:'with one slip: no clip'].join('<br>'):'no clip'}</dd>`;
     r+=`<dt>· console FP-45 lag</dt><dd>${p.f[0]?`${pct(p.f[2])} of real console tries clip with ${pcA(p.f[1])} (${p.f[0].toLocaleString()} clipping runs over all A holds)`:'no clip'}</dd>`;
-    const b=p.best; r+=`<dt>Example</dt><dd>${pcA(b.K)}, ${pcPat(b.name)}, ${b.claw}-frame claw update</dd>`;
+    const b=p.best; r+=`<dt>Example</dt><dd>${pcA(b.K)}, ${pcPat(b.name)}${/^alt/.test(b.name)?'':`, ${b.claw}-frame claw update`}</dd>`;
     const V=room.version==='Xbox'||room._shown==='NTSC'; r+=`<dt>Setup</dt><dd>stand one claw lunge (${b2(V?[1.55,3.48]:[2.23,5.01])} units for a 2- / 3-frame claw update) from the crack, B, then A on the next update, no stick</dd>`; }
   return r; }
 const b2=a=>a.join(' / ');
@@ -1151,7 +1151,7 @@ function renderSpot(){ const el=$('spotInfo'); if(!spot){ $('spotCard').hidden=t
       $('roofOut').textContent=o.join(' · '); }; },0); }
   el.innerHTML=`<dl class="kv">${rows}</dl>${extra}`;
   if(spot.kind==='hold'&&spot.info.clip_dY!=null){ $('dy').value=spot.info.clip_dY; }
-  $('spotTitle').textContent=spot.kind==='hold'?(spot.info.room_census?'5-hit hold (room census, PAL)':'5-hit hold (note-door census, PAL)'):$('spotTitle').textContent;
+  $('spotTitle').textContent=spot.kind==='hold'?(spot.info.room_census?`5-hit hold (room census, ${VL})`:'5-hit hold (note-door census, PAL)'):$('spotTitle').textContent;
 }
 // slope clips: the 70 fast-fall cases of fastscan.js (same order)
 const H5_STARTS=[20,10,5,0,-5,-10,-15,-20,-25,-30,-35,-40,-45], H5_STEPS=[20,30,40,55];
