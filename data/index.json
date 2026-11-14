@@ -1561,10 +1561,13 @@
 "bin": 1,
 "odds": 1,
 "ntsc": 1,
-"ntsc_holds": 154287,
-"ntsc_clips": 345,
-"ntsc_slopeclips": 8891,
-"pose": 3
+"ntsc_holds": 156768,
+"ntsc_clips": 37877,
+"ntsc_slopeclips": 208667,
+"pose": 3,
+"ntsc_lower": 14804,
+"ntsc_lower_through": 936,
+"ntsc_v2": 1
 },
 {
 "map": "0x7A",
@@ -1654,13 +1657,16 @@
 "bin": 1,
 "odds": 1,
 "ntsc": 1,
-"ntsc_holds": 135570,
-"ntsc_clips": 165,
-"ntsc_slopeclips": 107,
+"ntsc_holds": 144508,
+"ntsc_clips": 28641,
+"ntsc_slopeclips": 220994,
 "pose": 8,
 "lower": 42751,
 "lower_through": 2869,
 "v2": 1,
-"clips": 60491
+"clips": 60491,
+"ntsc_lower": 42751,
+"ntsc_lower_through": 2509,
+"ntsc_v2": 1
 }
 ]
