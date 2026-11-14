@@ -1,4 +1,4 @@
-// Claude 2026-11-12 (tcensus_x.cu = tcensus_ex18b.cu + -DTX360 support, see tcolx.h): Banjo-Tooie (USA) bit-clip census for one room, on the graphics card (CUDA) or the CPU.
+// Claude 2026-11-14: + TC_ZL=1 (zero-line seams only, across offsets o * 1e-10; see zl_off). Claude 2026-11-12 (tcensus_x.cu = tcensus_ex18b.cu + -DTX360 support, see tcolx.h): Banjo-Tooie (USA) bit-clip census for one room, on the graphics card (CUDA) or the CPU.
 //  1. seams: edges shared by two different walkable floor triangles (flags & (0x400005 | 0x20020) == 0, n.y > 0.3), opaque and
 //     transparent models together;
 //  2. crack scan: EVERY float along each seam's major axis, +-3 floats across it, at the seam's floor height: the Tooie floor ray
@@ -44,7 +44,7 @@ static double T0; static double now(void) { return (double)clock() / CLOCKS_PER_
 #endif
 enum { O_LAND = 0, O_VOID = 1, O_EJECT = 2, O_STUCK = 3, O_WATER = 4, O_WALL = 5 };
 
-typedef struct { int a, b; int ma, mb; float P[3], Q[3]; int axis; double nya, nyb; uint32_t k0, k1; uint32_t n1, n2, n3; uint32_t k2; float z0; int candoff, ncand; float ymin, ymax; int ivoff, ivn, ivwater; int boff, nb; double bm0, bstep; double dax, dot; float bm0f, binvf; } Seam;
+typedef struct { int a, b; int ma, mb; float P[3], Q[3]; int axis; double nya, nyb; uint32_t k0, k1; uint32_t n1, n2, n3; uint32_t k2; float z0; int candoff, ncand; float ymin, ymax; int ivoff, ivn, ivwater; int boff, nb; double bm0, bstep; double dax, dot; float bm0f, binvf; int zl; } Seam;
 // samples along the major axis: every float in [lo, -1), then steps of 1e-5 over [-1, 1] (floats are too dense there), then every float in (1, hi]
 typedef struct { int seam; float x, y, z; int width; } Spot;
 typedef struct { unsigned char out[NVAR], holds[NVAR], maxhits[NVAR], upd[NVAR], sits[NVAR]; float endy[NVAR]; } SpotRes;
@@ -53,6 +53,11 @@ typedef struct { unsigned char out[NVAR], holds[NVAR], maxhits[NVAR], upd[NVAR],
 TD uint32_t fkey(float f) { uint32_t b; memcpy(&b, &f, 4); return (b & 0x80000000u) ? ~b : (b | 0x80000000u); }
 TD float kfloat(uint32_t k) { uint32_t b = (k & 0x80000000u) ? (k & 0x7FFFFFFFu) : ~k; float f; memcpy(&f, &b, 4); return f; }
 TD float fstep(float f, int n) { uint32_t k = fkey(f); return kfloat(k + (uint32_t)n); }
+// zero-line seams (TC_ZL=1, Claude 2026-11-14): a seam lying on x = 0 or z = 0 has its cracks only a tiny distance off the line (one triangle
+// sees e.g. z = -1e-10 exactly, the other, whose reference corner is far from 0, loses it in the subtraction and treats the point as on its
+// edge); the +-3 floats across it that the scan normally tests are denormals there, where the ray still hits. On such seams the across
+// offsets o = -3..3 become o * 1e-10 instead (o = 0, the line itself, is skipped: the census tested it).
+TD float zl_off(int o) { return (float)o * 1e-10f; }
 
 // one triangle of the line test (same code as line_model) -> 1 if the segment s..e hits it
 TD int tri_line_hit(const TWorld *w, int mi, int k, const float *s, const float *e) {
@@ -94,7 +99,7 @@ TD void seam_point(const TWorld *w, const Seam *S, uint32_t j, int o, float *x, 
   float m; if (j < S->n1) m = kfloat(S->k0 + j); else if (j < S->n1 + S->n2) m = (float)((double)S->z0 + (double)(j - S->n1) * 1e-5); else m = kfloat(S->k2 + (j - S->n1 - S->n2));
   int ax = S->axis, ot = 2 - ax;   // axis 0 = x major, 2 = z major
   double t = ((double)m - S->P[ax]) / ((double)S->Q[ax] - S->P[ax]); double c = S->P[ot] + t * ((double)S->Q[ot] - S->P[ot]);
-  float cf = fstep((float)c, o); float p[3]; p[ax] = m; p[ot] = cf;
+  float cf = S->zl ? zl_off(o) : fstep((float)c, o); float p[3]; p[ax] = m; p[ot] = cf;
   double yy = plane_y(w, S->ma, S->a, p[0], p[2]); *x = p[0]; *z = p[2]; *y = (float)yy; }
 // candidates of one block of a seam (see "block candidates" in main): the triangles whose XZ box reaches that part of the seam
 TD const int *block_cands(const Seam *S, const int *bcand, const int *bofs, float x, float z, int *n) {
@@ -118,7 +123,8 @@ TD float seam_m(const Seam *S, uint32_t j) {
 TD void crack7(const TWorld *w, const Seam *S, const int *bcand, const int *bofs, uint32_t j, int o0, int o1, uint8_t *r) {
   float m = seam_m(S, j); int ax = S->axis, ot = 2 - ax;
   double t = ((double)m - S->P[ax]) / S->dax; double c = S->P[ot] + t * S->dot;
-  for (int o = o0; o <= o1; o++) { float cf = fstep((float)c, o); float p[3]; p[ax] = m; p[ot] = cf; p[1] = 0.0f;
+  for (int o = o0; o <= o1; o++) { if (S->zl && o == 0) { r[3] = 0; continue; }   // o = 0 is the seam line itself: the census tested it
+    float cf = S->zl ? zl_off(o) : fstep((float)c, o); float p[3]; p[ax] = m; p[ot] = cf; p[1] = 0.0f;
     double yy = plane_y(w, S->ma, S->a, p[0], p[2]); r[o + 3] = (uint8_t)crack_at2(w, S, bcand, bofs, p[0], (float)yy, p[2], yy); } }
 // ---- fall-in simulation of one spot, one timing variant
 // Free-air updates: iv = the seam's merged height intervals of every triangle within 40 units horizontally of the seam (the
@@ -292,7 +298,7 @@ static int same_tri(const TWorld *w, int ma, int a, int mb, int b) {   // same t
   for (int j = 0; j < 3; j++) { int f = 0; for (int l = 0; l < 3; l++) if (va[j][0] == vb[l][0] && va[j][1] == vb[l][1] && va[j][2] == vb[l][2]) f = 1; if (!f) return 0; } return 1; }
 
 static int *BOFS = 0, NBOFS = 0;   // block candidates: (offset, count) per seam block
-static int ZEROSTEP = 0, EVERY = 0, HAVEREG = 0, ZEROPART = 0, CRACKONLY = 0, FALL9TEST = 0; static long long nfall9bad = 0; static double REG[4];
+static int ZEROSTEP = 0, EVERY = 0, HAVEREG = 0, ZEROPART = 0, CRACKONLY = 0, FALL9TEST = 0, ZL = 0; static long long nfall9bad = 0; static double REG[4];
 static int in_region(const Seam *s) {   // distance from the region point to the seam segment
   if (!HAVEREG) return 1; double d[3], v[3], L2 = 0, t = 0; for (int c = 0; c < 3; c++) { v[c] = (double)s->Q[c] - s->P[c]; d[c] = REG[c] - s->P[c]; L2 += v[c] * v[c]; t += d[c] * v[c]; }
   t = L2 > 0 ? fmin(1, fmax(0, t / L2)) : 0; double q = 0; for (int c = 0; c < 3; c++) { double e = s->P[c] + t * v[c] - REG[c]; q += e * e; } return sqrt(q) <= REG[3]; }
@@ -574,7 +580,8 @@ int main(int argc, char **argv) {
 #ifndef TCPU
     if ((e = getenv("TC_CPUTHREADS"))) CPUTHR = atoi(e);
 #endif
-    if ((e = getenv("TC_REGION")) && sscanf(e, "%lf %lf %lf %lf", REG, REG + 1, REG + 2, REG + 3) == 4) HAVEREG = 1; }
+    if ((e = getenv("TC_REGION")) && sscanf(e, "%lf %lf %lf %lf", REG, REG + 1, REG + 2, REG + 3) == 4) HAVEREG = 1;
+    ZL = (e = getenv("TC_ZL")) && atoi(e); }
   if (argc < 3) { fprintf(stderr, "usage: tcensus room.txt out.txt [maxseams]\n"); return 1; }
   T0 = now(); TWorld w; load_world(argv[1], &w); int maxseams = argc > 3 ? atoi(argv[3]) : 1 << 30;
   for (int mi = 0; mi < 2; mi++) { const TModel *M = w.m[mi]; if (!M) continue; double *pn = (double *)malloc(sizeof(double) * 6 * (M->nt + 1));   // plane table (see plane_y)
@@ -612,6 +619,7 @@ int main(int argc, char **argv) {
       else { float a = lo < -1.0f ? -1.0f : lo, b = hi > 1.0f ? 1.0f : hi; s.n1 = lo < -1.0f ? fkey(-1.0f) - s.k0 : 0; s.z0 = a; s.n2 = (uint32_t)((b - a) / 1e-5) + 1;
         s.k2 = fkey(1.0f) + 1; s.n3 = hi > 1.0f ? s.k1 - s.k2 + 1 : 0; }
       s.nya = tri_ny(&w, s.ma, s.a); s.nyb = tri_ny(&w, s.mb, s.b); s.ymin = s.P[1] < s.Q[1] ? s.P[1] : s.Q[1]; s.ymax = s.P[1] < s.Q[1] ? s.Q[1] : s.P[1];
+      { int ot_ = 2 - s.axis; s.zl = ZL && s.P[ot_] == 0.0f && s.Q[ot_] == 0.0f; if (ZL && !s.zl) continue; }   // TC_ZL: zero-line seams only
       if (!in_region(&s)) continue;
       S[ns++] = s; }
     i = j; }
@@ -639,6 +647,7 @@ int main(int argc, char **argv) {
       if (ZEROPART == 1) { if (hi < -1.0f || lo > 1.0f) continue; float a_ = lo < -1.0f ? -1.0f : lo, b_ = hi > 1.0f ? 1.0f : hi; s.k0 = fkey(a_); s.n1 = fkey(b_) - s.k0 + 1; }
       else if (ZEROPART == 2 && !(hi < -1.0f || lo > 1.0f)) { s.n1 = lo < -1.0f ? fkey(-1.0f) - s.k0 : 0; s.k2 = fkey(1.0f) + 1; s.n3 = hi > 1.0f ? s.k1 - s.k2 + 1 : 0; if (!s.n1 && !s.n3) continue; }
       s.nya = tri_ny(&w, s.ma, s.a); s.nyb = tri_ny(&w, s.mb, s.b); s.ymin = s.P[1] < s.Q[1] ? s.P[1] : s.Q[1]; s.ymax = s.P[1] < s.Q[1] ? s.Q[1] : s.P[1];
+      { int ot_ = 2 - s.axis; s.zl = ZL && s.P[ot_] == 0.0f && s.Q[ot_] == 0.0f; if (ZL && !s.zl) continue; }   // TC_ZL: zero-line seams only
       if (!in_region(&s)) continue;
       if (ns >= ne) break; S[ns++] = s; }
     LOG("%d T-junction seams\n", ns - nt0); }

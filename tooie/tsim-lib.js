@@ -17,10 +17,14 @@ class TSim {
   seam(se) { return this.x.ts_seam(se[0], se[1], se[2], se[3], se[4], se[5], se[9], se[10], se[11], se[12]); }
   // runs the census for cell (cx, cz) of the seam; calls onFloat per crack float; returns counts {n, walk, void, lag, ...}.
   // opts.chunk floats per call (for progress); opts.shouldStop() to abort; async when opts.yield is given (await between chunks)
+  // opts.zl: the room was merged with the zero-line run (tcensus_zl.cu): a seam lying on x = 0 / z = 0 is scanned a second time with
+  // the across offsets o * 1e-10 (ts_zl), as that run did, and the counts add up like the merged cell's
   async cell(se, cx, cz, onFloat, opts = {}) {
     this.seam(se); const axis = Math.abs(se[3] - se[0]) >= Math.abs(se[5] - se[2]) ? 0 : 2;
     this.x.ts_jrange(axis === 0 ? cx : cz, this.jr); let [j0, j1] = new Uint32Array(this.mem(), this.jr, 2); j0 >>>= 0; j1 >>>= 0;
     const cnt = { n: 0 }; for (const c of CAT) cnt[c] = 0; const step = opts.chunk || 2048; const f32 = new Float32Array(1), u32 = new Uint32Array(f32.buffer);
+    const ot = 2 - axis, zl = !!(opts.zl && this.x.ts_zl && se[ot] === 0 && se[3 + ot] === 0); const passes = zl ? 2 : 1;
+    for (let pass = 0; pass < passes; pass++) { if (this.x.ts_zl) this.x.ts_zl(pass);
     for (let a = j0; a < j1; a += step) {
       if (opts.shouldStop && opts.shouldStop()) { cnt.stopped = true; break; }
       const b = Math.min(j1, a + step); const n = this.x.ts_scan(cx, cz, a, b, this.buf, this.cap); if (n > this.cap) throw new Error('scan buffer');
@@ -30,9 +34,10 @@ class TSim {
         const res = { out: Array.from(R.slice(0, 9)), holds: Array.from(R.slice(9, 18)), maxhits: Array.from(R.slice(18, 27)), upd: Array.from(R.slice(27, 36)), sits: Array.from(R.slice(36, 45)),
           jump: Array.from(R.slice(45, 53)), endy: Array.from(new Float32Array(this.mem(), this.res + 56, 9)) };
         const hold = R[54]; cnt.n++; cnt[CAT[cat]]++; if (cat === 0 && res.out[0] === 1) cnt.void++; if (hold) cnt.hold++;
-        if (onFloat) onFloat({ j: B[5 * i], o: B[5 * i + 1] - 3, x, y, z, xb: B[5 * i + 2], yb: B[5 * i + 3], zb: B[5 * i + 4], cat: CAT[cat], hold, res }); }
-      if (opts.progress) opts.progress((b - j0) / Math.max(1, j1 - j0), cnt);
-      if (opts.yield) await opts.yield(); }
+        if (onFloat) onFloat({ j: B[5 * i], o: B[5 * i + 1] - 3, zl: pass, x, y, z, xb: B[5 * i + 2], yb: B[5 * i + 3], zb: B[5 * i + 4], cat: CAT[cat], hold, res }); }
+      if (opts.progress) opts.progress((pass + (b - j0) / Math.max(1, j1 - j0)) / passes, cnt);
+      if (opts.yield) await opts.yield(); } }
+    if (this.x.ts_zl) this.x.ts_zl(0);
     return cnt; }
 }
 if (typeof module !== 'undefined') module.exports = { TSim, CAT };

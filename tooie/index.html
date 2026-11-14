@@ -423,6 +423,8 @@ function roomPane() {
     <p class="note">Click a spot in the view for its exact floats and every run. “Hold” = all 5 resolver passes hit in one update (the Kazooie-style hold); “sitting” = Banjo’s feet are under the floor with his collision sphere resting on it.</p>`;
 }
 let CUR = -1;
+// a seam lying on x = 0 or z = 0 along its long axis (tcensus_zl.cu, Claude 2026-11-14)
+function zlSeam(se) { const ax = Math.abs(se[3] - se[0]) >= Math.abs(se[5] - se[2]) ? 0 : 2, ot = 2 - ax; return se[ot] === 0 && se[3 + ot] === 0; }
 function spotCard(i, fromClick) {
   CUR = i; const s = spotAt(i); const se = ROOM.seams[s[3]]; const cat = CATS.find(c => c[0] === s[5]);
   const runs = [...s[6]].map((o, k) => `<span class="run" title="${k ? 'lag (3-VI update) on update ' + k : 'no lag'}: ${OUT[o]}" style="border-color:var(${o === '0' || o === '1' ? '--c-walk' : o === '2' ? '--c-eject' : '--line'})">${k ? 'L' + k : '—'} ${o === '0' ? 'thru' : o === '1' ? 'void' : o === '2' ? 'eject' : o === '3' ? 'stuck' : o === '4' ? 'water' : 'wall'}</span>`).join('');
@@ -430,6 +432,7 @@ function spotCard(i, fromClick) {
     <div class="coords"><div class="ch"><span class="lbl">Crack position (Banjo's feet)</span><button class="btn mini" id="copyXYZ" title="Copy x y z as shown">Copy</button><button class="btn mini" id="copyExact" title="Copy the exact f32 values">Copy exact</button></div>
       <dl class="kv"><dt>x</dt><dd><b>${num(s[0])}</b> <span class="bits">${bitsHex(s[0])}</span></dd><dt>y</dt><dd><b>${num(s[1])}</b> <span class="bits">${bitsHex(s[1])}</span></dd><dt>z</dt><dd><b>${num(s[2])}</b> <span class="bits">${bitsHex(s[2])}</span></dd></dl></div>
     <dl class="kv"><dt>seam</dt><dd>(${se[0]}, ${se[1]}, ${se[2]}) – (${se[3]}, ${se[4]}, ${se[5]}), floor n.y ${se[6]} / ${se[7]}</dd>
+      ${zlSeam(se) ? `<dt>zero line</dt><dd>This seam lies on ${se[0] === 0 && se[3] === 0 ? 'x' : 'z'} = 0. Its cracks can be only a tiny distance off the line, where the census's ±3 floats across are denormals; ${ROOM.zl ? `this level was also run with offsets of 1–3 × 10⁻¹⁰ across (the zero-line run), and its floats are counted in this cell` : `the zero-line run (offsets of 1–3 × 10⁻¹⁰ across) has not been added to this level yet`}. A small sideways move from a spot exactly on the line, e.g. walking from a load-in point at ${se[0] === 0 && se[3] === 0 ? 'x' : 'z'} = 0, gets there.</dd>` : ''}
       <dt>crack</dt><dd>${Array.isArray(s[15]) ? `<b>every float tested</b>: ${fmt(s[15][0])} crack float${s[15][0] === 1 ? '' : 's'} here — ${[['walk-in through', 1], ['into the void', 2], ['lag-frame through', 3], ['need a jump', 4], ['ejected', 5], ['stuck', 6], ['wall pushes off', 7], ['water', 8], ['with a hold', 9]].filter(([, i]) => s[15][i]).map(([t, i]) => `<b>${fmt(s[15][i])}</b> ${t}`).join(', ')}. The position above is one float of the best outcome.` : s.length > 15 ? `<b>every float tested</b>: ${s[15]} consecutive crack float${s[15] === 1 ? '' : 's'} along the seam (${s[18] ? (s[18] > 0 ? '+' : '') + s[18] + ' floats across' : 'on the seam line'}), all with these results, from here to x ${num(s[16])}, z ${num(s[17])}` : `${s[4]} float${s[4] === 1 ? '' : 's'} in this 0.25 cell (one tested)`}</dd>
       <dt>walk in</dt><dd><div class="runs">${runs}</div></dd>
       <dt>jump</dt><dd>${s[11] < 0 ? 'not needed / not tested' : `${s[11]} of 42 jump landings go through${s[12] > 0 ? ` (${s[12]} into the void)` : ''}`}</dd>
@@ -459,7 +462,7 @@ async function floatList(s, se) {
   btn.textContent = 'Stop'; const MAXROWS = 3000; let shown = 0;
   const add = (rows) => { for (const r of rows) { all.push(r); if (shown >= MAXROWS) continue; shown++;
       $('flBody').insertAdjacentHTML('beforeend', `<tr data-i="${all.length - 1}" title="Click to copy the exact x y z"><td>${f32s(fl(r[0]))}</td><td>${f32s(fl(r[1]))}</td><td>${f32s(fl(r[2]))}</td><td><span class="sw" style="background:var(${CVAR[r[3]]})"></span>${CN[r[3]]}${r[6] ? ' · hold' : ''}</td><td class="mono">${r[4]}</td><td>${r[5] < 0 ? '—' : r[5] + '/42'}</td></tr>`); } };
-  FLW = new Worker('tsim-worker.js');
+  FLW = new Worker('tsim-worker.js?v=2');
   FLW.onmessage = (e) => { const m = e.data;
     if (m.type === 'error') { out.insertAdjacentHTML('beforeend', `<div class="note">Error: ${m.message}</div>`); btn.textContent = 'List them'; FLW.terminate(); FLW = null; return; }
     add(m.rows); const c = m.cnt; $('flBar').style.width = (m.type === 'done' ? 100 : Math.round(m.p * 100)) + '%';
@@ -473,7 +476,7 @@ async function floatList(s, se) {
         const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([L.join('\n') + '\n'], { type: 'text/csv' })); a.download = `tooie-${VER}-${ROOM.map}-seam${s[3]}-cell${cx}_${cz}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }; } };
   $('flBody').onclick = (e) => { const tr = e.target.closest('tr'); if (!tr) return; const r = all[+tr.dataset.i]; const t = `${f32s(fl(r[0]))} ${f32s(fl(r[1]))} ${f32s(fl(r[2]))}`;
     (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { tr.classList.add('copied'); setTimeout(() => tr.classList.remove('copied'), 900); }).catch(() => prompt('Copy:', t)); };
-  FLW.postMessage({ roomKey: key, col: COLTXT[key], seam: se, cx, cz, filter, wasm: VER === 'xbox' ? 'tsim360.wasm' : 'tsim.wasm' });
+  FLW.postMessage({ roomKey: key, col: COLTXT[key], seam: se, cx, cz, filter, zl: !!ROOM.zl, wasm: VER === 'xbox' ? 'tsim360.wasm?v=2' : 'tsim.wasm?v=2' });
 }
 const ray = new THREE.Raycaster(); let down = null;
 renderer.domElement.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });

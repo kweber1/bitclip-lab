@@ -151,10 +151,15 @@ EXPORT("ts_seam") int ts_seam(float p0, float p1, float p2, float q0, float q1, 
       if (mxx < bx0 || mnx > bx1 || mxz < bz0 || mnz > bz1 || mxy < by0 || mny > by1) continue;
       s->cand[s->ncand++] = (mi << 24) | k; } }
   return (int)(s->n1 + s->n3); }
+// zero-line seams (Claude 2026-11-14, tcensus_zl.cu TC_ZL=1): on a seam lying on x = 0 or z = 0 the census's +-3 float steps across are
+// denormals; the zero-line run tests o * 1e-10 instead (o = 0, the line itself, skipped). ts_zl(1) makes ts_scan use those offsets
+// (the page turns it on for such seams of rooms merged with the zero-line run, then scans the cell a second time).
+static int ZLM = 0;
+EXPORT("ts_zl") int ts_zl(int on) { ZLM = on; return 0; }
 static void seam_pt(uint32_t j, int o, float *x, float *y, float *z) {
   const TSeam *S = &SE; float m = j < S->n1 ? kfloat(S->k0 + j) : kfloat(S->k2 + (j - S->n1));
   int ax = S->axis, ot = 2 - ax; double t = ((double)m - S->P[ax]) / ((double)S->Q[ax] - S->P[ax]); double c = S->P[ot] + t * ((double)S->Q[ot] - S->P[ot]);
-  float cf = fstep((float)c, o); float p[3]; p[ax] = m; p[ot] = cf; double yy = plane_y(&W, S->ma, S->a, p[0], p[2]); *x = p[0]; *z = p[2]; *y = (float)yy; }
+  float cf = ZLM ? (float)o * 1e-10f : fstep((float)c, o); float p[3]; p[ax] = m; p[ot] = cf; double yy = plane_y(&W, S->ma, S->a, p[0], p[2]); *x = p[0]; *z = p[2]; *y = (float)yy; }
 static int crack_at(float x, float y, float z) {
   float s[3] = { x, y + 56.0f, z }, e[3] = { x, y + -444.0f, z };
   for (int q = 0; q < SE.ncand; q++) { int c = SE.cand[q]; int mi = (c >> 24) & 1, k = c & 0xFFFFFF;
@@ -171,7 +176,7 @@ EXPORT("ts_jrange") int ts_jrange(int c, uint32_t *out) {
 // crack floats of cell (cx, cz) among floats j0..j1-1 (all 7 across offsets): writes {j, o, x, y, z} (x y z as float bits), up to max
 EXPORT("ts_scan") int ts_scan(int cx, int cz, uint32_t j0, uint32_t j1, uint32_t *out, int max) {
   int n = 0;
-  for (uint32_t j = j0; j < j1; j++) for (int o = -3; o <= 3; o++) { float x, y, z; seam_pt(j, o, &x, &y, &z);
+  for (uint32_t j = j0; j < j1; j++) for (int o = -3; o <= 3; o++) { if (ZLM && o == 0) continue; float x, y, z; seam_pt(j, o, &x, &y, &z);
     if ((int)floor((double)x / 0.25) != cx || (int)floor((double)z / 0.25) != cz) continue;
     if (!crack_at(x, y, z)) continue;
     if (n < max) { uint32_t *q = out + 5 * n; q[0] = j; q[1] = (uint32_t)(o + 3); memcpy(q + 2, &x, 4); memcpy(q + 3, &y, 4); memcpy(q + 4, &z, 4); } n++; }

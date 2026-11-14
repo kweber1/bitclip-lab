@@ -120,6 +120,7 @@ def build(tc, roomf, outdir):
                             'decided_update', 'end_y', 'jump_clips_of_42', 'jump_voids_of_42', 'jump_drops_with_hold', 'any_hold',
                             'every_float_run: floats_in_run', 'x_end', 'z_end', 'across_offset'],
             'thinned': thin_txt, 'every': every, 'counts': dict(cnt), 'spots': '__SPOTS__'}
+    if head and 'zl' in head: data['zl'] = 1   # merged with the zero-line run (tc_merge_zl.py): zero-line seams' cells include its floats
     os.makedirs(os.path.join(outdir, 'data'), exist_ok=True)
     spf.seek(0)
     wrote = False
@@ -141,7 +142,7 @@ def build(tc, roomf, outdir):
     entry = {'map': key, 'name': room['name'], 'group': room['group'], 'maps': room['maps'], 'map_names': room['map_names'],
              'tris': len(tris), 'seams': len(seams), 'crack_samples': int(head[5]) if head else 0, 'crack_floats': int(head[7]) if head else 0,
              'spots': nsp, 'shown': nshown, 'cats': dict(cnt), 'cats_flat': dict(cntflat), 'holds': nhold,
-             'void': nvoid, 'every': every, 'cells': ncell, 'bytes': os.path.getsize(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key))}
+             'void': nvoid, 'every': every, 'cells': ncell, 'zl': 1 if head and 'zl' in head else 0, 'bytes': os.path.getsize(os.path.join(outdir, 'data', 'room-%s.gz.wasm' % key))}
     return entry
 
 if __name__ == '__main__':
