@@ -22,7 +22,15 @@
 "clips": 123213,
 "ntsc_lower": 53104,
 "ntsc_lower_through": 11830,
-"ntsc_v2": 1
+"ntsc_v2": 1,
+"ntsc_pcf": 1,
+"ntsc_pc": 188515,
+"ntsc_pc_clips": 17939,
+"ntsc_pc_scope": "room",
+"pcf": 1,
+"pc": 175138,
+"pc_clips": 147893,
+"pc_scope": "room"
 },
 {
 "map": "0x8C",
@@ -2115,16 +2123,18 @@
 "ntsc_lower": 14804,
 "ntsc_lower_through": 936,
 "ntsc_v2": 1,
-"pc": 1599,
-"pc_clips": 266,
-"pc_scope": "door",
-"ntsc_pc": 1592,
-"ntsc_pc_clips": 0,
-"ntsc_pc_scope": "door",
+"pc": 153037,
+"pc_clips": 137775,
+"pc_scope": "room",
+"ntsc_pc": 152032,
+"ntsc_pc_clips": 1025,
+"ntsc_pc_scope": "room",
 "lower": 14804,
 "lower_through": 934,
 "v2": 1,
-"clips": 105197
+"clips": 105197,
+"ntsc_pcf": 1,
+"pcf": 1
 },
 {
 "map": "0x7A",
@@ -2253,11 +2263,13 @@
 "ntsc_lower": 42751,
 "ntsc_lower_through": 2509,
 "ntsc_v2": 1,
-"pc": 1290,
-"pc_clips": 1247,
-"pc_scope": "door",
-"ntsc_pc": 1246,
-"ntsc_pc_clips": 152,
-"ntsc_pc_scope": "door"
+"pc": 114194,
+"pc_clips": 64957,
+"pc_scope": "room",
+"ntsc_pc": 110966,
+"ntsc_pc_clips": 1069,
+"ntsc_pc_scope": "room",
+"ntsc_pcf": 1,
+"pcf": 1
 }
 ]

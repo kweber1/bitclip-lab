@@ -969,7 +969,7 @@ function unpackRoom(d){ if(d&&d.holdsA){ d.holds=(d.holds||[]).concat(d.holdsA.m
   if(a[7]) h.slope=1; if(a[9]) h.odds=a[9]; return h; })); delete d.holdsA; }
   if(d&&d.pcancel&&d.holds){ const M=new Map(); const n=d.pcancel.length; for(let i=0;i<n;i++){ const r=d.pcancel[i]; M.set(pcKey(r[0],r[1],r[2]),r); }
     for(const h of d.holds){ const r=M.get(pcKey(h.x,h.y,h.z)); if(r) h.pc={runs:r[4],held:r[5],clips:r[6],n:[r[7],r[8]],o:[r[9],r[10],r[11]],a:[r[12],r[13],r[14]],s:[r[15],r[16],r[17]],f:[r[18],r[19],r[20]],best:{K:r[21],name:r[22],claw:r[23]}}; }
-    d._pcN=n; d._pcScope=d.pcancel_scope||'room'; delete d.pcancel; }
+    d._pcN=d.pcancel_held||n; d._pcScope=d.pcancel_scope||'room'; delete d.pcancel; }
   return d; }
 const pcKey=(x,y,z)=>Math.round(x*1e4)+','+Math.round(y*1e3)+','+Math.round(z*1e4);
 // gzip JSON, or a BKB1 room (tools/bk/bkb.py: the spot tables as typed columns, read by bkb.js into array-like row lists)
@@ -978,7 +978,7 @@ async function gunzipJSON(buf){ const ds=new Blob([buf]).stream().pipeThrough(ne
   return JSON.parse(new TextDecoder().decode(ab)); }
 // punch-cancel results of the all-room run live in their own small file next to the room (map0xNN.pc.wasm in the version's repo, BKB1
 // with just the pcancel table), so adding them does not re-upload the big room file; index flag pcf (PAL), ntsc_pcf (NTSC), pcf (Xbox index)
-async function withPc(d,ver,m,has){ if(has&&d){ try{ const p=await gunzipJSON(await vget(ver,`map${m}.pc.wasm`)); d.pcancel=p.pcancel; d.pcancel_scope=p.pcancel_scope; d.pcancel_note=p.pcancel_note; }catch(e){ console.warn('punch-cancel file failed',e); } } return d; }
+async function withPc(d,ver,m,has){ if(has&&d){ try{ const p=await gunzipJSON(await vget(ver,`map${m}.pc.wasm`)); d.pcancel=p.pcancel; d.pcancel_scope=p.pcancel_scope; d.pcancel_note=p.pcancel_note; d.pcancel_held=p.pcancel_held; }catch(e){ console.warn('punch-cancel file failed',e); } } return d; }
 async function fetchRoom(m){
   const ent=(index||[]).find(e=>e.map===m);
   if(version==='xbox'&&typeof DecompressionStream!=='undefined'){ const xe=(await xidxP).find(e=>e.map===m); if(xe){ try{
@@ -1110,7 +1110,7 @@ function pcPat(nm){ let m; if(nm==='nolag') return 'no lag'; if((m=nm.match(/^la
   if((m=nm.match(/^alt([01])$/))) return `3/2 alternation, the claw on a ${m[1]==='0'?3:2}-frame update`; if((m=nm.match(/^alt([01])s(\d+)$/))) return `3/2 alternation (claw on a ${m[1]==='0'?3:2}) with one slip at jump update ${m[2]}`;
   if((m=nm.match(/^fp(\d+)$/))) return `console FP-45 lag pattern #${m[1]} (of 358, by how common)`; return nm; }
 function pcRows(d){ if(!pcRoom()) return `<dt>Punch cancel</dt><dd>not tested in this room yet</dd>`; const p=d.pc;
-  if(!p){ const D=PC_DOORS[room.map]; const near=D&&Math.hypot(d.x-D[0],d.z-D[1])<300; return `<dt>Punch cancel</dt><dd>${room._pcScope==='room'||near?(d.slope?'not tested (sloped seam)':'never holds with a punch cancel'):'not tested here yet (only the note-door area so far)'}</dd>`; }
+  if(!p){ const D=PC_DOORS[room.map]; const near=D&&Math.hypot(d.x-D[0],d.z-D[1])<300; return `<dt>Punch cancel</dt><dd>${room._pcScope==='room'?(d.slope?'not tested (sloped seam)':'no clip with a punch cancel'):near?(d.slope?'not tested (sloped seam)':'never holds with a punch cancel'):'not tested here yet (only the note-door area so far)'}</dd>`; }
   const pct=v=>(v*100<1&&v>0?(v*100).toFixed(1):Math.round(v*100))+'%'; const fam=(c,K,sh,runs,what)=>c?`${c.toLocaleString()} of ${runs.toLocaleString()} runs clip · best: ${pcA(K)} (${pct(sh)} of ${what} clip there)`:'no clip';
   const L=p.clips?`<b>clips</b> in ${p.clips.toLocaleString()} of ${p.runs.toLocaleString()} runs (held in ${p.held.toLocaleString()})`:`holds in ${p.held.toLocaleString()} of ${p.runs.toLocaleString()} runs, <b>no clip</b>`;
   let r=`<dt>Punch cancel</dt><dd>${L}</dd>`;
