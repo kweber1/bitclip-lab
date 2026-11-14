@@ -849,8 +849,9 @@ function buildPoints(){
     // clip-capable holds get a ring
     const clipH=room.holds.filter(h=>co?holdclip(h):(h.clip_dY!=null||h.clip)); if(clipH.length&&!PCF){const r=pointsObj(clipH.map(h=>[h.x,h.y+1,h.z]),css('--clip'),16); r.material.transparent=true; r.material.opacity=.55; r.userData.ring=true; r.visible=$('showHolds').checked; pointsGroup.add(r);} }
   // punch-cancel clips: a green ring (the lag chosen under PC lag)
-  { const pcH=PCR?room.holds.filter(pcOK):[]; if(pcH.length){ const r=pointsObj(pcH.map(h=>[h.x,h.y+1.5,h.z]),css('--pc'),PCF?16:21); r.material.transparent=true; r.material.opacity=.75; r.userData.kind='pc'; r.userData.ringPc=true; r.visible=$('showPc').checked; pointsGroup.add(r); }
-    $('nPc').textContent=!PCR?'not tested yet':`${pcH.length.toLocaleString()} of ${room._pcN.toLocaleString()} tested holds${room._pcScope==='door'?' (door area)':''}`; }
+  { const seen=new Set(), pcH=[]; if(PCR) for(const h of room.holds){ if(!pcOK(h)) continue; const k=pcKey(h.x,h.y,h.z); if(seen.has(k)) continue; seen.add(k); pcH.push(h); }   // one per position (a spot can be on a flat and a sloped seam)
+    if(pcH.length){ const r=pointsObj(pcH.map(h=>[h.x,h.y+1.5,h.z]),css('--pc'),PCF?16:21); r.material.transparent=true; r.material.opacity=.75; r.userData.kind='pc'; r.userData.ringPc=true; r.visible=$('showPc').checked; pointsGroup.add(r); }
+    $('nPc').textContent=!PCR?'not tested yet':`${pcH.length.toLocaleString()} clip of ${room._pcN.toLocaleString()} that hold${room._pcScope==='door'?' (door area)':''}`; }
   if(roofPts){roofPts.userData.kind='roof'; roofPts.visible=$('showRoof').checked; pointsGroup.add(roofPts);}
   if(roofPts&&room.roofs){ const N=(version==='NTSC'); const cl=room.roofs.rows.filter(r=>(N?r[7]+r[8]:r[5]+r[6])>0); if(cl.length){ const o=pointsObj(cl,css('--clip'),12); o.material.transparent=true; o.material.opacity=.6; o.userData.kind='roof'; o.userData.ringRoof=true; o.visible=$('showRoof').checked; pointsGroup.add(o);} }
   padSPts=padBPts=null; { const P=room.padclips&&room.padclips[version==='NTSC'?'NTSC':'PAL'];
@@ -1097,12 +1098,12 @@ function pcPat(nm){ let m; if(nm==='nolag') return 'no lag'; if((m=nm.match(/^la
   if((m=nm.match(/^fp(\d+)$/))) return `console FP-45 lag pattern #${m[1]} (of 358, by how common)`; return nm; }
 function pcRows(d){ if(!pcRoom()) return `<dt>Punch cancel</dt><dd>not tested in this room yet</dd>`; const p=d.pc;
   if(!p){ const D=PC_DOORS[room.map]; const near=D&&Math.hypot(d.x-D[0],d.z-D[1])<300; return `<dt>Punch cancel</dt><dd>${room._pcScope==='room'||near?(d.slope?'not tested (sloped seam)':'never holds with a punch cancel'):'not tested here yet (only the note-door area so far)'}</dd>`; }
-  const pct=v=>(v*100<1&&v>0?(v*100).toFixed(1):Math.round(v*100))+'%'; const fam=(c,K,sh,runs)=>c?`${c} of ${runs} runs clip · best ${pcA(K).toLowerCase()}${sh!=null?` (${pct(sh)} of the patterns at that A)`:''}`:'no clip';
+  const pct=v=>(v*100<1&&v>0?(v*100).toFixed(1):Math.round(v*100))+'%'; const fam=(c,K,sh,runs,what)=>c?`${c.toLocaleString()} of ${runs.toLocaleString()} runs clip · best: ${pcA(K)} (${pct(sh)} of ${what} clip there)`:'no clip';
   const L=p.clips?`<b>clips</b> in ${p.clips.toLocaleString()} of ${p.runs.toLocaleString()} runs (held in ${p.held.toLocaleString()})`:`holds in ${p.held.toLocaleString()} of ${p.runs.toLocaleString()} runs, <b>no clip</b>`;
   let r=`<dt>Punch cancel</dt><dd>${L}</dd>`;
-  if(p.clips){ r+=`<dt>· no lag</dt><dd>${p.n[0]?`clips with ${pcA(p.n[1]).toLowerCase()}`:'no clip'}</dd><dt>· one lag frame</dt><dd>${fam(p.o[0],p.o[1],p.o[2],1150)}</dd>`;
-    r+=`<dt>· 3/2 alternation</dt><dd>${p.a[0]||p.s[0]?[p.a[0]?`steady: ${fam(p.a[0],p.a[1],p.a[2],50)}`:'steady: no clip',p.s[0]?`with one slip: ${fam(p.s[0],p.s[1],p.s[2],2000)}`:'with one slip: no clip'].join('<br>'):'no clip'}</dd>`;
-    r+=`<dt>· console FP-45 lag</dt><dd>${p.f[0]?`${pct(p.f[2])} of real console tries clip with ${pcA(p.f[1]).toLowerCase()} (${p.f[0]} clipping runs)`:'no clip'}</dd>`;
+  if(p.clips){ r+=`<dt>· no lag</dt><dd>${p.n[0]?`clips: ${pcA(p.n[1])}`:'no clip'}</dd><dt>· one lag frame</dt><dd>${fam(p.o[0],p.o[1],p.o[2],1150,'the 46 lag positions')}</dd>`;
+    r+=`<dt>· 3/2 alternation</dt><dd>${p.a[0]||p.s[0]?[p.a[0]?`steady: ${fam(p.a[0],p.a[1],p.a[2],50,'the 2 phases')}`:'steady: no clip',p.s[0]?`with one slip: ${fam(p.s[0],p.s[1],p.s[2],2000,'the 80 slips')}`:'with one slip: no clip'].join('<br>'):'no clip'}</dd>`;
+    r+=`<dt>· console FP-45 lag</dt><dd>${p.f[0]?`${pct(p.f[2])} of real console tries clip with ${pcA(p.f[1])} (${p.f[0].toLocaleString()} clipping runs over all A holds)`:'no clip'}</dd>`;
     const b=p.best; r+=`<dt>Example</dt><dd>${pcA(b.K)}, ${pcPat(b.name)}, ${b.claw}-frame claw update</dd>`;
     const V=room.version==='Xbox'||room._shown==='NTSC'; r+=`<dt>Setup</dt><dd>stand one claw lunge (${b2(V?[1.55,3.48]:[2.23,5.01])} units for a 2- / 3-frame claw update) from the crack, B, then A on the next update, no stick</dd>`; }
   return r; }
