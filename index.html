@@ -761,7 +761,7 @@ requestAnimationFrame(function loop(){requestAnimationFrame(loop);   /* first fr
 
 // ---- data
 let padSPts=null, padBPts=null;
-let index=[], room=null, world=null, crackPts=null, slopePts=null, hit5Pts=null, scrackPts=null, lowerPts=null, holdPts=null, roofPts=null, selMarker=null;
+let index=[], room=null, world=null, crackPts=null, slopePts=null, hit5Pts=null, scrackPts=null, lowerPts=null, holdPts=null, pcPts=null, roofPts=null, selMarker=null;
 let spot=null; // {x,y,z,kind,info}
 function disposeGroup(g){g.traverse(o=>{if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose();}); g.clear();}
 function buildRoomMeshes(){
@@ -849,8 +849,9 @@ function buildPoints(){
     // clip-capable holds get a ring
     const clipH=room.holds.filter(h=>co?holdclip(h):(h.clip_dY!=null||h.clip)); if(clipH.length&&!PCF){const r=pointsObj(clipH.map(h=>[h.x,h.y+1,h.z]),css('--clip'),16); r.material.transparent=true; r.material.opacity=.55; r.userData.ring=true; r.visible=$('showHolds').checked; pointsGroup.add(r);} }
   // punch-cancel clips: a green ring (the lag chosen under PC lag)
-  { const seen=new Set(), pcH=[]; if(PCR) for(const h of room.holds){ if(!pcOK(h)) continue; const k=pcKey(h.x,h.y,h.z); if(seen.has(k)) continue; seen.add(k); pcH.push(h); }   // one per position (a spot can be on a flat and a sloped seam)
-    if(pcH.length){ const r=pointsObj(pcH.map(h=>[h.x,h.y+1.5,h.z]),css('--pc'),PCF?16:21); r.material.transparent=true; r.material.opacity=.75; r.userData.kind='pc'; r.userData.ringPc=true; r.visible=$('showPc').checked; pointsGroup.add(r); }
+  { const seen=new Set(), pcH=[], pcI=[]; pcPts=null; if(PCR) room.holds.forEach((h,i)=>{ if(!pcOK(h)) return; const k=pcKey(h.x,h.y,h.z); if(seen.has(k)) return; seen.add(k); pcH.push(h); pcI.push(i); });   // one per position (a spot can be on a flat and a sloped seam)
+    // pickable on its own (index into room.holds), so the rings can be clicked with the 5-hit hold layer off
+    if(pcH.length){ const r=pointsObj(pcH.map(h=>[h.x,h.y+1.5,h.z]),css('--pc'),PCF?16:21); r.material.transparent=true; r.material.opacity=.75; r.userData.kind='pc'; r.userData.ringPc=true; r.userData.idx=pcI; r.visible=$('showPc').checked; pointsGroup.add(r); pcPts=r; }
     $('nPc').textContent=!PCR?'not tested yet':`${pcH.length.toLocaleString()} clip of ${room._pcN.toLocaleString()} that hold${room._pcScope==='door'?' (door area)':''}`; }
   if(roofPts){roofPts.userData.kind='roof'; roofPts.visible=$('showRoof').checked; pointsGroup.add(roofPts);}
   if(roofPts&&room.roofs){ const N=(version==='NTSC'); const cl=room.roofs.rows.filter(r=>(N?r[7]+r[8]:r[5]+r[6])>0); if(cl.length){ const o=pointsObj(cl,css('--clip'),12); o.material.transparent=true; o.material.opacity=.6; o.userData.kind='roof'; o.userData.ringRoof=true; o.visible=$('showRoof').checked; pointsGroup.add(o);} }
@@ -1050,26 +1051,28 @@ function exitBoxPick(px,py,rc){ if(!$('showExits').checked) return null; let bes
 // pick the drawn spot nearest the click on screen (within tol pixels), checking every visible point layer; ties go to
 // the spot nearer the camera, then to the rarer layers (holds, 5 collisions, slope clips) over plain cracks
 const _pv=new THREE.Vector3();
-function pickPoint(px,py,rc,tol){ const layers=[exitPts,holdPts,padSPts,padBPts,hit5Pts,slopePts,lowerPts,roofPts,crackPts,scrackPts]; let best=null;
+function pickPoint(px,py,rc,tol){ const layers=[exitPts,holdPts,pcPts,padSPts,padBPts,hit5Pts,slopePts,lowerPts,roofPts,crackPts,scrackPts]; let best=null;
   camera.updateMatrixWorld(); const vp=new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse); const m=vp.elements; const W=rc.width, H=rc.height;
   layers.forEach((o,li)=>{ if(!o||!o.visible) return; const a=o.geometry.attributes.position.array; const n=a.length/3;
     for(let j=0;j<n;j++){ const x=a[j*3],y=a[j*3+1],z=a[j*3+2]; if(y>cutY+0.6) continue;
       const w=m[3]*x+m[7]*y+m[11]*z+m[15]; if(w<=0) continue; const sx=((m[0]*x+m[4]*y+m[8]*z+m[12])/w*0.5+0.5)*W; const sy=(1-((m[1]*x+m[5]*y+m[9]*z+m[13])/w*0.5+0.5))*H;
-      const d=Math.hypot(sx-px,sy-py); if(d>tol) continue; const score=d+li*0.75+w*1e-4; if(!best||score<best.score) best={score,kind:o.userData.kind,index:o.userData.idx?o.userData.idx[j]:j}; } });
+      const d=Math.hypot(sx-px,sy-py); if(d>tol) continue; const score=d+li*0.75+w*1e-4; if(!best||score<best.score) best={score,kind:o.userData.kind==='pc'?'hold':o.userData.kind,index:o.userData.idx?o.userData.idx[j]:j}; } });
   return best; }
 // ---- box select (boxsel.js): the spots you can see (layers on, the Show filter, the slicer) inside a 3D box, as CSV
+function pcCols(h){ const p=h.pc; if(!p) return {}; return {pc_runs:p.runs,pc_held:p.held,pc_clips:p.clips,pc_nolag_clips:p.n[0],pc_onelag_clips:p.o[0],pc_onelag_bestA:p.o[1],pc_alt_clips:p.a[0]+p.s[0],pc_fp45_share:p.f[2],pc_fp45_bestA:p.f[1],pc_example:p.clips?`A ${p.best.K} ${p.best.name} claw ${p.best.claw}`:''}; }
 function bkBoxRows(b){ const out=[]; const IN=BoxSel.inBox; const cy=cutY+0.6; const N=(version==='NTSC');
   const rowsOf={ crack:(i)=>{ const d=room.cracks[i]; return {layer:'floor crack',x:d[0],y:d[1],z:d[2],seam:d[3]}; },
     scrack:(i)=>{ const d=room.slopecracks[i]; return {layer:'slope crack',x:d[0],y:d[1],z:d[2],seam:d[3]}; },
-    hold:(i)=>{ const h=room.holds[i]; const o=holdOdds(h); const c=h.clip; return {layer:c?'hold that clips':'hold',x:h.x,y:h.y,z:h.z,seam:h.seam,held:h.held,of:h.of,max_holds:h.max_holds,clip_kind:c?c.kind:'',clip_h:c?c.h:'',clip_vy:c?c.vy:'',clip_lag:c?(c.lag==null?'none':c.lag):'',clip_endY:c?c.endY:'',odds_runs:o?o.runs:'',odds_clips:o?o.clips:'',odds_nolag:o?o.nolag:'',odds_voids:o?o.voids:'',on_slope:h.slope?1:0}; },
+    hold:(i)=>{ const h=room.holds[i]; const o=holdOdds(h); const c=h.clip; return {layer:c?'hold that clips':'hold',x:h.x,y:h.y,z:h.z,seam:h.seam,held:h.held,of:h.of,max_holds:h.max_holds,clip_kind:c?c.kind:'',clip_h:c?c.h:'',clip_vy:c?c.vy:'',clip_lag:c?(c.lag==null?'none':c.lag):'',clip_endY:c?c.endY:'',odds_runs:o?o.runs:'',odds_clips:o?o.clips:'',odds_nolag:o?o.nolag:'',odds_voids:o?o.voids:'',on_slope:h.slope?1:0,...pcCols(h)}; },
     hit5:(i)=>{ const d=room.hit5[i]; return {layer:'5 collisions',x:d[0],y:d[1],z:d[2],seam:d[3],first_case:d[4],on_slope:d[5]?1:0}; },
     slope:(i)=>{ const d=room.slopeclips[i]; return {layer:'beak-buster clip',x:d[0],y:d[1],z:d[2],seam:d[3],buster_cases:d[4],buster_nolag:busterNolag(d[5]),buster_mask:d[5]}; },
     lower:(i)=>{ const d=room.lowercracks[i]; return {layer:'crack over a lower floor',x:d[0],y:d[1],z:d[2],seam:d[3],lower_data:d.slice(4).join(' ')}; },
     roof:(i)=>{ const d=room.roofcracks[i]; const r=room.roofs?room.roofs.rows[i]:null; return {layer:'roof crack',x:d[0],y:d[1],z:d[2],seam:d[3],roof_clear:r?r[4]:'',bee_clip:r?(N?r[7]:r[5]):'',fly_clip:r?(N?r[8]:r[6]):''}; },
     padS:(i)=>{ const d=room.padclips[N?'NTSC':'PAL'].shock[i]; return {layer:'shock-pad clip',x:d[0],y:d[1],z:d[2],pad_data:d.slice(3).join(' ')}; },
     padB:(i)=>{ const d=room.padclips[N?'NTSC':'PAL'].bomb[i]; return {layer:'beak-bomb pad clip',x:d[0],y:d[1],z:d[2],pad_data:d.slice(3).join(' ')}; } };
-  if(!room) return out;
-  for(const o of pointsGroup.children){ if(!o.visible||o.userData.ring||o.userData.ringRoof) continue; const k=o.userData.kind; const f=rowsOf[k]; if(!f) continue;
+  rowsOf.pc=(i)=>rowsOf.hold(i);
+  if(!room) return out; const holdsShown=!!(holdPts&&holdPts.visible);
+  for(const o of pointsGroup.children){ if(!o.visible||o.userData.ring||o.userData.ringRoof) continue; const k=o.userData.kind; if(k==='pc'&&holdsShown) continue; const f=rowsOf[k]; if(!f) continue;
     const a=o.geometry.attributes.position.array; const idx=o.userData.idx; const n=a.length/3;
     for(let j=0;j<n;j++){ const x=a[j*3],y=a[j*3+1]-0.5,z=a[j*3+2]; if(y>cy||!IN(b,x,y,z)) continue; const r=f(idx?idx[j]:j); out.push({layer:r.layer,version,map:room.map,...r}); } }
   return out; }
