@@ -191,7 +191,13 @@ function underCursor(e, withPts = true) { const rc = renderer.domElement.getBoun
 view.addEventListener('wheel', (e) => { if (e.target !== renderer.domElement) return; e.preventDefault(); fly = null;
   const { hit, ray: rr, td } = underCursor(e, false); /* the level, not the (up to a million) dots: zooming stays smooth */ const P = hit ? hit.point.clone() : rr.at(td, new THREE.Vector3());
   let dy = e.deltaY; if (e.deltaMode === 1) dy *= 33; else if (e.deltaMode === 2) dy *= 400; dy = Math.max(-600, Math.min(600, dy));
-  let k = Math.pow(1.0018, dy); const d = camera.position.distanceTo(P); if (d * k < 0.3) k = 0.3 / d; if (d * k > 500000) k = 500000 / d;
+  let k = Math.pow(1.0018, dy); const d = camera.position.distanceTo(P);
+  if (dy < 0) { // zooming in never stops: a step of at least |dy|/50 units; once the point is close, camera and orbit centre move forward together along the cursor ray
+    const move = Math.max(d * (1 - k), -dy * 0.02);
+    if (d - move >= 1) { k = (d - move) / d; camera.position.sub(P).multiplyScalar(k).add(P); controls.target.sub(P).multiplyScalar(k).add(P); }
+    else { const dir = rr.direction.clone().normalize().multiplyScalar(move); camera.position.add(dir); controls.target.add(dir); }
+    controls.update(); return; }
+  if (d * k > 500000) k = 500000 / d;
   camera.position.sub(P).multiplyScalar(k).add(P); controls.target.sub(P).multiplyScalar(k).add(P); controls.update(); }, { passive: false, capture: true });
 // pinch zoom on touch screens: OrbitControls' own dolly (wheel zoom above replaces it for the mouse)
 renderer.domElement.addEventListener('touchstart', (e) => { controls.enableZoom = e.touches.length > 1; }, { passive: true });

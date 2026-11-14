@@ -686,7 +686,7 @@ function flyTo(p,dist){ const tgt=new THREE.Vector3(p.x,p.y,p.z); const dir=came
   fly={t0:performance.now(),dur:(matchMedia('(prefers-reduced-motion: reduce)').matches||!($('camGlide')&&$('camGlide').checked))?1:450,fromT:controls.target.clone(),toT:tgt,fromC:camera.position.clone(),toC:camEnd}; }
 function stepFly(){ if(!fly) return; const k=Math.min(1,(performance.now()-fly.t0)/fly.dur); const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
   controls.target.lerpVectors(fly.fromT,fly.toT,e); camera.position.lerpVectors(fly.fromC,fly.toC,e); if(k>=1) fly=null; }
-// mouse-wheel zooms toward whatever is under the cursor (scales camera and orbit centre around that point)
+// mouse-wheel zooms toward whatever is under the cursor (scales camera and orbit centre around that point); zooming in has no stop
 const zray=new THREE.Raycaster(), zmouse=new THREE.Vector2();
 view.addEventListener('wheel',e=>{ if(e.target!==renderer.domElement) return; e.preventDefault(); e.stopPropagation(); fly=null;
   const rc=renderer.domElement.getBoundingClientRect(); zmouse.set(((e.clientX-rc.left)/rc.width)*2-1,-((e.clientY-rc.top)/rc.height)*2+1); zray.setFromCamera(zmouse,camera);
@@ -695,7 +695,14 @@ view.addEventListener('wheel',e=>{ if(e.target!==renderer.domElement) return; e.
   const hit=zray.intersectObjects(objs,false).filter(h=>h.point.y<=cutY+0.01).sort((a,b)=>a.distance-b.distance)[0];
   const P=hit?hit.point.clone():zray.ray.at(tdist,new THREE.Vector3());
   let dy=e.deltaY; if(e.deltaMode===1) dy*=33; else if(e.deltaMode===2) dy*=400; dy=Math.max(-600,Math.min(600,dy));
-  let s=Math.pow(1.0018,dy); const d=camera.position.distanceTo(P); if(d*s<0.3) s=0.3/d; if(d*s>(controls.maxDistance||1e6)) s=(controls.maxDistance||1e6)/d;
+  let s=Math.pow(1.0018,dy); const d=camera.position.distanceTo(P);
+  if(dy<0){ // zooming in never stops: a step of at least |dy|/50 units, and once the point under the cursor is close, the camera and
+    // the orbit centre move forward together along the cursor ray (through the point), so you can keep going at the same speed
+    const move=Math.max(d*(1-s),-dy*0.02);
+    if(d-move>=1){ s=(d-move)/d; camera.position.sub(P).multiplyScalar(s).add(P); controls.target.sub(P).multiplyScalar(s).add(P); nearHint=d-move; }
+    else { const dir=zray.ray.direction.clone().normalize().multiplyScalar(move); camera.position.add(dir); controls.target.add(dir); nearHint=Math.max(0.3,d-move); }
+    controls.update(); return; }
+  if(d*s>(controls.maxDistance||1e6)) s=(controls.maxDistance||1e6)/d;
   camera.position.sub(P).multiplyScalar(s).add(P); controls.target.sub(P).multiplyScalar(s).add(P); nearHint=d*s; controls.update(); },{passive:false,capture:true});
 // near/far follow the zoom so close-ups are not clipped
 let lastNear=0, nearHint=Infinity;
