@@ -2072,11 +2072,11 @@
 "group": "Gruntilda's Lair",
 "tris": 4979,
 "cracks": 295662,
-"holds": 155203,
+"holds": 157466,
 "props": 7,
-"size": 3643864,
+"size": 3643815,
 "hit5": 130065,
-"slopeclips": 9577,
+"slopeclips": 209301,
 "bin": 1,
 "odds": 1,
 "ntsc": 1,
@@ -2092,7 +2092,11 @@
 "pc_scope": "door",
 "ntsc_pc": 1592,
 "ntsc_pc_clips": 0,
-"ntsc_pc_scope": "door"
+"ntsc_pc_scope": "door",
+"lower": 14804,
+"lower_through": 934,
+"v2": 1,
+"clips": 105197
 },
 {
 "map": "0x7A",
