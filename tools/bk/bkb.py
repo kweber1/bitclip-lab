@@ -17,7 +17,9 @@
 #   cracks, slopecracks [x, y, z, seam]        hit5 [x, y, z, seam, first case, slope]
 #   holdsA [x, y, z, seam, held, of, max holds, slope, clip 0 | [kind, h, vy, lag, end y], odds 0 | [runs, clips, nolag, voids]]
 #   slopeclips [x, y, z, seam, cases, mask, (flat)]       lowercracks [x, y, z, seam, drop, ...12 more] or 5-entry sample rows
-#   pcancel [x, y, z, seam, held, cases, clips, nolag, voids, K, lag, end y, slope]
+#   pcancel [x, y, z, seam, runs, held, clips, then per lag family (no lag: clips, best A; one lag frame, 3/2 alternation, alternation
+#           with one slip, console FP-45 lag: clips, best A, share) and the example clip: A, pattern name, claw frames] (ingest_pc.py;
+#           A 0 = held the whole jump, -1 = none)
 import json, gzip, struct
 import numpy as np
 TABLES = {
@@ -25,7 +27,7 @@ TABLES = {
   'holdsA': ['x', 'y', 'z', 'seam', 'held', 'of', 'maxh', 'slope', 'clip', 'ck', 'ch', 'cv', 'cl', 'ce', 'odds', 'oR', 'oC', 'oN', 'oV'],
   'slopeclips': ['x', 'y', 'z', 'seam', 'n', 'mask', 'flat'],
   'lowercracks': ['len', 'x', 'y', 'z', 'seam', 'drop', 'sv', 'sy', 'held', 'mh', 'fv', 'fk', 'fh', 'fvy', 'flag', 'fe', 'bu', 'bo'],
-  'pcancel': ['x', 'y', 'z', 'seam', 'held', 'cases', 'clips', 'nolag', 'voids', 'K', 'lag', 'ey', 'slope'] }
+  'pcancel': ['x', 'y', 'z', 'seam', 'runs', 'held', 'clips', 'nC', 'nK', 'oC', 'oK', 'oS', 'aC', 'aK', 'aS', 'sC', 'sK', 'sS', 'fC', 'fK', 'fS', 'bK', 'bN', 'claw'] }
 def split_row(t, r):
     if t == 'holdsA':
         c, o = r[8], r[9]; return r[:8] + [1 if c else 0] + (list(c) if c else [0] * 5) + [1 if o else 0] + (list(o) if o else [0] * 4)
@@ -138,5 +140,21 @@ def decode(raw):
             cols.append(vals)
         room[t] = [join_row(t, list(r)) for r in zip(*cols)] if n else []
     return room
+def add_tables(raw, extra):
+    """raw BKB1 bytes + {table: rows, other header key: value} -> raw BKB1 bytes with the new tables' columns appended (the other
+    tables' bytes are kept as they are, so a big room is not decoded); a table that is already there is replaced by a full re-encode"""
+    assert raw[:4] == b'BKB1'; hl = struct.unpack_from('<I', raw, 4)[0]; hdr = json.loads(raw[8:8 + hl]); base = (8 + hl + 3) & ~3
+    if any(t in hdr['tables'] for t in extra if t in TABLES): room = decode(raw); room.update(extra); return encode(room)
+    body = bytearray(raw[base:])
+    def put(b):
+        while len(body) % 4: body.append(0)
+        off = len(body); body.extend(b); return off
+    for t, rows in extra.items():
+        if t in TABLES and isinstance(rows, list):
+            V = [split_row(t, r) for r in rows]; hdr['tables'][t] = {'n': len(rows), 'cols': [[c] + encode_col([v[j] for v in V], put) for j, c in enumerate(TABLES[t])]}
+        else: hdr[t] = rows
+    hj = json.dumps(hdr, separators=(',', ':')).encode(); head = bytearray(b'BKB1' + struct.pack('<I', len(hj)) + hj)
+    while len(head) % 4: head.append(0)
+    return bytes(head) + bytes(body)
 def write(path, room, level=9):
     raw = encode(room); gz = gzip.compress(raw, level, mtime=0); return gz

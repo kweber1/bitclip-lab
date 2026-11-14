@@ -1555,7 +1555,7 @@
 "cracks": 295662,
 "holds": 155203,
 "props": 7,
-"size": 43960077,
+"size": 3643864,
 "hit5": 130065,
 "slopeclips": 9577,
 "bin": 1,
@@ -1567,7 +1567,13 @@
 "pose": 3,
 "ntsc_lower": 14804,
 "ntsc_lower_through": 936,
-"ntsc_v2": 1
+"ntsc_v2": 1,
+"pc": 1599,
+"pc_clips": 266,
+"pc_scope": "door",
+"ntsc_pc": 1592,
+"ntsc_pc_clips": 0,
+"ntsc_pc_scope": "door"
 },
 {
 "map": "0x7A",
@@ -1651,7 +1657,7 @@
 "cracks": 293579,
 "holds": 145255,
 "props": 11,
-"size": 3773114,
+"size": 3787010,
 "hit5": 126847,
 "slopeclips": 230029,
 "bin": 1,
@@ -1667,6 +1673,12 @@
 "clips": 60491,
 "ntsc_lower": 42751,
 "ntsc_lower_through": 2509,
-"ntsc_v2": 1
+"ntsc_v2": 1,
+"pc": 1290,
+"pc_clips": 1247,
+"pc_scope": "door",
+"ntsc_pc": 1246,
+"ntsc_pc_clips": 152,
+"ntsc_pc_scope": "door"
 }
 ]

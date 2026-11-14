@@ -43,7 +43,7 @@
       c.odds(i) ? [c.oR(i), c.oC(i), c.oN(i), c.oV(i)] : 0],
     slopeclips: (c) => (i) => { const r = [c.x(i), c.y(i), c.z(i), c.seam(i), c.n(i), c.mask(i)]; const f = c.flat(i); if (f !== -1) r.push(f); return r; },
     lowercracks: (c) => { const K = ['x', 'y', 'z', 'seam', 'drop', 'sv', 'sy', 'held', 'mh', 'fv', 'fk', 'fh', 'fvy', 'flag', 'fe', 'bu', 'bo']; return (i) => { const n = c.len(i); const r = new Array(n); for (let k = 0; k < n; k++) r[k] = c[K[k]](i); return r; }; },
-    pcancel: (c) => (i) => [c.x(i), c.y(i), c.z(i), c.seam(i), c.held(i), c.cases(i), c.clips(i), c.nolag(i), c.voids(i), c.K(i), c.lag(i), c.ey(i), c.slope(i)] };
+    pcancel: (c) => { const K = ['x', 'y', 'z', 'seam', 'runs', 'held', 'clips', 'nC', 'nK', 'oC', 'oK', 'oS', 'aC', 'aK', 'aS', 'sC', 'sK', 'sS', 'fC', 'fK', 'fS', 'bK', 'bN', 'claw']; return (i) => K.map(k => c[k](i)); } };
   // array-like view over typed columns
   class RowList {
     constructor(n, row, cols) { this.n = n; this.row = row; this.cols = cols; }
