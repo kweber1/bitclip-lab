@@ -24,12 +24,12 @@
 "ntsc_lower_through": 11830,
 "ntsc_v2": 1,
 "ntsc_pcf": 1,
-"ntsc_pc": 188515,
-"ntsc_pc_clips": 17939,
+"ntsc_pc": 189147,
+"ntsc_pc_clips": 17950,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 175138,
-"pc_clips": 147893,
+"pc": 175776,
+"pc_clips": 148259,
 "pc_scope": "room",
 "ntsc_zl_holds": 1182,
 "ntsc_zl_clips": 364,
@@ -59,7 +59,15 @@
 "clips": 17081,
 "ntsc_lower": 3748,
 "ntsc_lower_through": 0,
-"ntsc_v2": 1
+"ntsc_v2": 1,
+"ntsc_pcf": 1,
+"ntsc_pc": 31845,
+"ntsc_pc_clips": 298,
+"ntsc_pc_scope": "room",
+"pcf": 1,
+"pc": 32506,
+"pc_clips": 21023,
+"pc_scope": "room"
 },
 {
 "map": "0x02",
@@ -333,7 +341,15 @@
 "clips": 13451,
 "ntsc_lower": 2610,
 "ntsc_lower_through": 838,
-"ntsc_v2": 1
+"ntsc_v2": 1,
+"ntsc_pcf": 1,
+"ntsc_pc": 48684,
+"ntsc_pc_clips": 30,
+"ntsc_pc_scope": "room",
+"pcf": 1,
+"pc": 48311,
+"pc_clips": 20973,
+"pc_scope": "room"
 },
 {
 "map": "0x0B",
@@ -567,12 +583,12 @@
 "ntsc_lower_through": 202,
 "ntsc_v2": 1,
 "ntsc_pcf": 1,
-"ntsc_pc": 64878,
-"ntsc_pc_clips": 734,
+"ntsc_pc": 65621,
+"ntsc_pc_clips": 755,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 65726,
-"pc_clips": 63767,
+"pc": 66476,
+"pc_clips": 64022,
 "pc_scope": "room",
 "ntsc_zl_holds": 743,
 "ntsc_zl_clips": 57,
@@ -713,7 +729,15 @@
 "ntsc_zl_holds": 1,
 "ntsc_zl_clips": 1,
 "zl_holds": 1,
-"zl_clips": 1
+"zl_clips": 1,
+"ntsc_pcf": 1,
+"ntsc_pc": 84838,
+"ntsc_pc_clips": 1290,
+"ntsc_pc_scope": "room",
+"pcf": 1,
+"pc": 85952,
+"pc_clips": 70199,
+"pc_scope": "room"
 },
 {
 "map": "0x12",
@@ -817,8 +841,8 @@
 "ntsc_pc_clips": 77,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 26870,
-"pc_clips": 4611,
+"pc": 27316,
+"pc_clips": 4616,
 "pc_scope": "room"
 },
 {
@@ -926,8 +950,8 @@
 "ntsc_pc_clips": 5,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 53346,
-"pc_clips": 13905,
+"pc": 54665,
+"pc_clips": 14376,
 "pc_scope": "room"
 },
 {
@@ -958,7 +982,15 @@
 "ntsc_zl_holds": 1196,
 "ntsc_zl_clips": 425,
 "zl_holds": 1218,
-"zl_clips": 519
+"zl_clips": 519,
+"ntsc_pcf": 1,
+"ntsc_pc": 18098,
+"ntsc_pc_clips": 29,
+"ntsc_pc_scope": "room",
+"pcf": 1,
+"pc": 18853,
+"pc_clips": 8137,
+"pc_scope": "room"
 },
 {
 "map": "0x1B",
@@ -1028,8 +1060,8 @@
 "ntsc_pc_clips": 207,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 82521,
-"pc_clips": 78727,
+"pc": 83028,
+"pc_clips": 78786,
 "pc_scope": "room"
 },
 {
@@ -1095,12 +1127,12 @@
 "zl_holds": 712,
 "zl_clips": 178,
 "ntsc_pcf": 1,
-"ntsc_pc": 105021,
-"ntsc_pc_clips": 2664,
+"ntsc_pc": 105734,
+"ntsc_pc_clips": 2678,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 105019,
-"pc_clips": 105018,
+"pc": 105731,
+"pc_clips": 105333,
 "pc_scope": "room"
 },
 {
@@ -1202,12 +1234,12 @@
 "zl_holds": 125,
 "zl_clips": 116,
 "ntsc_pcf": 1,
-"ntsc_pc": 6560,
-"ntsc_pc_clips": 212,
+"ntsc_pc": 6685,
+"ntsc_pc_clips": 214,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 6545,
-"pc_clips": 5895,
+"pc": 6670,
+"pc_clips": 5961,
 "pc_scope": "room"
 },
 {
@@ -1243,8 +1275,8 @@
 "ntsc_pc_clips": 39,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 7167,
-"pc_clips": 6644,
+"pc": 7384,
+"pc_clips": 6731,
 "pc_scope": "room"
 },
 {
@@ -1276,12 +1308,12 @@
 "zl_holds": 1019,
 "zl_clips": 212,
 "ntsc_pcf": 1,
-"ntsc_pc": 13750,
-"ntsc_pc_clips": 299,
+"ntsc_pc": 14769,
+"ntsc_pc_clips": 301,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 14143,
-"pc_clips": 13195,
+"pc": 15162,
+"pc_clips": 13631,
 "pc_scope": "room"
 },
 {
@@ -1313,12 +1345,12 @@
 "zl_holds": 216,
 "zl_clips": 145,
 "ntsc_pcf": 1,
-"ntsc_pc": 26020,
-"ntsc_pc_clips": 459,
+"ntsc_pc": 26236,
+"ntsc_pc_clips": 461,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 26322,
-"pc_clips": 25710,
+"pc": 26538,
+"pc_clips": 25926,
 "pc_scope": "room"
 },
 {
@@ -1355,8 +1387,8 @@
 "ntsc_pc_clips": 225,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 7744,
-"pc_clips": 6531,
+"pc": 8165,
+"pc_clips": 6647,
 "pc_scope": "room"
 },
 {
@@ -1485,7 +1517,15 @@
 "clips": 0,
 "ntsc_lower": 2426,
 "ntsc_lower_through": 32,
-"ntsc_v2": 1
+"ntsc_v2": 1,
+"ntsc_pcf": 1,
+"ntsc_pc": 2687,
+"ntsc_pc_clips": 0,
+"ntsc_pc_scope": "room",
+"pcf": 1,
+"pc": 2687,
+"pc_clips": 0,
+"pc_scope": "room"
 },
 {
 "map": "0x31",
@@ -1517,12 +1557,12 @@
 "zl_holds": 3259,
 "zl_clips": 448,
 "ntsc_pcf": 1,
-"ntsc_pc": 345890,
-"ntsc_pc_clips": 1392,
+"ntsc_pc": 349098,
+"ntsc_pc_clips": 1400,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 350822,
-"pc_clips": 321394,
+"pc": 354079,
+"pc_clips": 322103,
 "pc_scope": "room"
 },
 {
@@ -1555,12 +1595,12 @@
 "zl_holds": 682,
 "zl_clips": 31,
 "ntsc_pcf": 1,
-"ntsc_pc": 22177,
-"ntsc_pc_clips": 292,
+"ntsc_pc": 22787,
+"ntsc_pc_clips": 295,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 22340,
-"pc_clips": 18200,
+"pc": 22956,
+"pc_clips": 18260,
 "pc_scope": "room"
 },
 {
@@ -1626,12 +1666,12 @@
 "zl_holds": 1410,
 "zl_clips": 60,
 "ntsc_pcf": 1,
-"ntsc_pc": 33589,
-"ntsc_pc_clips": 281,
+"ntsc_pc": 34957,
+"ntsc_pc_clips": 283,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 33602,
-"pc_clips": 30430,
+"pc": 34957,
+"pc_clips": 30496,
 "pc_scope": "room"
 },
 {
@@ -1697,12 +1737,12 @@
 "zl_holds": 1431,
 "zl_clips": 784,
 "ntsc_pcf": 1,
-"ntsc_pc": 7863,
-"ntsc_pc_clips": 56,
+"ntsc_pc": 9293,
+"ntsc_pc_clips": 111,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 7858,
-"pc_clips": 7173,
+"pc": 9289,
+"pc_clips": 8604,
 "pc_scope": "room"
 },
 {
@@ -1734,12 +1774,12 @@
 "zl_holds": 660,
 "zl_clips": 204,
 "ntsc_pcf": 1,
-"ntsc_pc": 5122,
-"ntsc_pc_clips": 57,
+"ntsc_pc": 5658,
+"ntsc_pc_clips": 62,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 5261,
-"pc_clips": 3643,
+"pc": 5821,
+"pc_clips": 3987,
 "pc_scope": "room"
 },
 {
@@ -1771,12 +1811,12 @@
 "zl_holds": 1570,
 "zl_clips": 177,
 "ntsc_pcf": 1,
-"ntsc_pc": 17438,
-"ntsc_pc_clips": 96,
+"ntsc_pc": 18996,
+"ntsc_pc_clips": 187,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 17445,
-"pc_clips": 15658,
+"pc": 19011,
+"pc_clips": 16295,
 "pc_scope": "room"
 },
 {
@@ -1812,8 +1852,8 @@
 "ntsc_pc_clips": 282,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 13276,
-"pc_clips": 10102,
+"pc": 13332,
+"pc_clips": 10144,
 "pc_scope": "room"
 },
 {
@@ -1845,12 +1885,12 @@
 "zl_holds": 846,
 "zl_clips": 137,
 "ntsc_pcf": 1,
-"ntsc_pc": 16666,
-"ntsc_pc_clips": 261,
+"ntsc_pc": 17467,
+"ntsc_pc_clips": 269,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 17363,
-"pc_clips": 12693,
+"pc": 18182,
+"pc_clips": 12956,
 "pc_scope": "room"
 },
 {
@@ -1882,12 +1922,12 @@
 "zl_holds": 269,
 "zl_clips": 114,
 "ntsc_pcf": 1,
-"ntsc_pc": 14229,
-"ntsc_pc_clips": 168,
+"ntsc_pc": 14498,
+"ntsc_pc_clips": 175,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 14321,
-"pc_clips": 13473,
+"pc": 14590,
+"pc_clips": 13742,
 "pc_scope": "room"
 },
 {
@@ -1957,12 +1997,12 @@
 "zl_holds": 78,
 "zl_clips": 4,
 "ntsc_pcf": 1,
-"ntsc_pc": 15780,
-"ntsc_pc_clips": 479,
+"ntsc_pc": 15858,
+"ntsc_pc_clips": 482,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 16002,
-"pc_clips": 15637,
+"pc": 16080,
+"pc_clips": 15642,
 "pc_scope": "room"
 },
 {
@@ -2051,8 +2091,8 @@
 "ntsc_pc_clips": 2803,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 329567,
-"pc_clips": 314850,
+"pc": 330870,
+"pc_clips": 315285,
 "pc_scope": "room"
 },
 {
@@ -2085,8 +2125,8 @@
 "zl_holds": 917,
 "zl_clips": 31,
 "pcf": 1,
-"pc": 274247,
-"pc_clips": 257720,
+"pc": 275147,
+"pc_clips": 258149,
 "pc_scope": "room",
 "ntsc_pcf": 1,
 "ntsc_pc": 270788,
@@ -2127,8 +2167,8 @@
 "ntsc_pc_clips": 2981,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 314539,
-"pc_clips": 291027,
+"pc": 315868,
+"pc_clips": 291484,
 "pc_scope": "room"
 },
 {
@@ -2165,8 +2205,8 @@
 "ntsc_pc_clips": 707,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 155286,
-"pc_clips": 134230,
+"pc": 156128,
+"pc_clips": 134697,
 "pc_scope": "room"
 },
 {
@@ -2370,12 +2410,12 @@
 "zl_holds": 634,
 "zl_clips": 466,
 "ntsc_pcf": 1,
-"ntsc_pc": 60499,
-"ntsc_pc_clips": 336,
+"ntsc_pc": 61070,
+"ntsc_pc_clips": 363,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 61261,
-"pc_clips": 39445,
+"pc": 61828,
+"pc_clips": 39937,
 "pc_scope": "room"
 },
 {
@@ -2412,8 +2452,8 @@
 "ntsc_pc_clips": 663,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 102206,
-"pc_clips": 90561,
+"pc": 103061,
+"pc_clips": 91412,
 "pc_scope": "room"
 },
 {
@@ -2560,12 +2600,12 @@
 "zl_holds": 155,
 "zl_clips": 80,
 "ntsc_pcf": 1,
-"ntsc_pc": 56776,
-"ntsc_pc_clips": 35,
+"ntsc_pc": 56856,
+"ntsc_pc_clips": 54,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 58860,
-"pc_clips": 17782,
+"pc": 59002,
+"pc_clips": 17916,
 "pc_scope": "room"
 },
 {
@@ -2632,12 +2672,12 @@
 "zl_holds": 2302,
 "zl_clips": 1298,
 "ntsc_pcf": 1,
-"ntsc_pc": 217933,
-"ntsc_pc_clips": 645,
+"ntsc_pc": 219848,
+"ntsc_pc_clips": 646,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 219409,
-"pc_clips": 82526,
+"pc": 221492,
+"pc_clips": 83812,
 "pc_scope": "room"
 },
 {
@@ -2674,8 +2714,8 @@
 "ntsc_pc_clips": 2922,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 122036,
-"pc_clips": 60390,
+"pc": 122527,
+"pc_clips": 60577,
 "pc_scope": "room"
 },
 {
@@ -2814,8 +2854,8 @@
 "ntsc_pc_clips": 393,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 105958,
-"pc_clips": 50581,
+"pc": 106358,
+"pc_clips": 50971,
 "pc_scope": "room"
 },
 {
@@ -2911,11 +2951,11 @@
 "ntsc_lower": 14804,
 "ntsc_lower_through": 936,
 "ntsc_v2": 1,
-"pc": 153037,
-"pc_clips": 137775,
+"pc": 153416,
+"pc_clips": 138115,
 "pc_scope": "room",
-"ntsc_pc": 152032,
-"ntsc_pc_clips": 1025,
+"ntsc_pc": 152408,
+"ntsc_pc_clips": 1031,
 "ntsc_pc_scope": "room",
 "lower": 14804,
 "lower_through": 934,
@@ -2989,7 +3029,15 @@
 "ntsc_zl_holds": 99,
 "ntsc_zl_clips": 63,
 "zl_holds": 120,
-"zl_clips": 99
+"zl_clips": 99,
+"ntsc_pcf": 1,
+"ntsc_pc": 58113,
+"ntsc_pc_clips": 129,
+"ntsc_pc_scope": "room",
+"pcf": 1,
+"pc": 58041,
+"pc_clips": 26987,
+"pc_scope": "room"
 },
 {
 "map": "0x8E",
@@ -3019,7 +3067,15 @@
 "ntsc_zl_holds": 430,
 "ntsc_zl_clips": 78,
 "zl_holds": 479,
-"zl_clips": 93
+"zl_clips": 93,
+"ntsc_pcf": 1,
+"ntsc_pc": 30420,
+"ntsc_pc_clips": 94,
+"ntsc_pc_scope": "room",
+"pcf": 1,
+"pc": 30557,
+"pc_clips": 12223,
+"pc_scope": "room"
 },
 {
 "map": "0x90",
@@ -3044,7 +3100,15 @@
 "clips": 31034,
 "ntsc_lower": 10267,
 "ntsc_lower_through": 8,
-"ntsc_v2": 1
+"ntsc_v2": 1,
+"ntsc_pcf": 1,
+"ntsc_pc": 96571,
+"ntsc_pc_clips": 391,
+"ntsc_pc_scope": "room",
+"pcf": 1,
+"pc": 96670,
+"pc_clips": 46038,
+"pc_scope": "room"
 },
 {
 "map": "0x93",
