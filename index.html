@@ -14,7 +14,7 @@
 :root{
   --bg:#e9edeb; --panel:#fbfcfb; --sunk:#f1f4f2; --ink:#16201c; --muted:#5a6863; --line:#d3dbd7; --line-soft:#e3e8e5;
   --accent:#0f6f63; --accent-soft:#d7ebe6; --accent-ink:#ffffff;
-  --hold:#cf3f2b; --clip:#7a35c2; --pc:#6f9e00; --crack:#1d67b0; --roof:#b97d0c; --slope:#0d8a5a; --lower:#0b7f92; --hit5:#d4357a; --prop:#b5651d; --free:#3b80c0; --land:#2f8a49; --pop:#d47c15;
+  --hold:#cf3f2b; --clip:#7a35c2; --pc:#6f9e00; --water:#2950d6; --crack:#1d67b0; --roof:#b97d0c; --slope:#0d8a5a; --lower:#0b7f92; --hit5:#d4357a; --prop:#b5651d; --free:#3b80c0; --land:#2f8a49; --pop:#d47c15;
   --view:#d9dfdc; --mesh-floor:#b4bfb6; --mesh-wall:#97a39b; --mesh-ceil:#8b8f9c;
   --shadow:0 6px 24px rgba(20,32,28,.14);
   --f-ui:"Chivo",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; --f-mono:"Chivo Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
@@ -22,12 +22,12 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0e1312; --panel:#151b19; --sunk:#111715; --ink:#e3eae6; --muted:#8d9b95; --line:#26302c; --line-soft:#1e2724;
   --accent:#43c3a5; --accent-soft:#16352e; --accent-ink:#06120f;
-  --hold:#ff6a52; --clip:#bd8bff; --pc:#b6f03c; --crack:#5aaeff; --roof:#ffc04d; --slope:#4fe0a0; --lower:#47d3ea; --hit5:#ff6fae; --prop:#e8954d; --free:#6db6ff; --land:#6fd486; --pop:#ffad4d;
+  --hold:#ff6a52; --clip:#bd8bff; --pc:#b6f03c; --water:#8aa6ff; --crack:#5aaeff; --roof:#ffc04d; --slope:#4fe0a0; --lower:#47d3ea; --hit5:#ff6fae; --prop:#e8954d; --free:#6db6ff; --land:#6fd486; --pop:#ffad4d;
   --view:#0a0e0d; --mesh-floor:#4a5650; --mesh-wall:#36413c; --mesh-ceil:#3b3d4b; --shadow:0 8px 28px rgba(0,0,0,.45); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0e1312; --panel:#151b19; --sunk:#111715; --ink:#e3eae6; --muted:#8d9b95; --line:#26302c; --line-soft:#1e2724;
   --accent:#43c3a5; --accent-soft:#16352e; --accent-ink:#06120f;
-  --hold:#ff6a52; --clip:#bd8bff; --pc:#b6f03c; --crack:#5aaeff; --roof:#ffc04d; --slope:#4fe0a0; --lower:#47d3ea; --hit5:#ff6fae; --prop:#e8954d; --free:#6db6ff; --land:#6fd486; --pop:#ffad4d;
+  --hold:#ff6a52; --clip:#bd8bff; --pc:#b6f03c; --water:#8aa6ff; --crack:#5aaeff; --roof:#ffc04d; --slope:#4fe0a0; --lower:#47d3ea; --hit5:#ff6fae; --prop:#e8954d; --free:#6db6ff; --land:#6fd486; --pop:#ffad4d;
   --view:#0a0e0d; --mesh-floor:#4a5650; --mesh-wall:#36413c; --mesh-ceil:#3b3d4b; --shadow:0 8px 28px rgba(0,0,0,.45); color-scheme:dark}
 html,body{height:100%}
 [hidden]{display:none!important}
@@ -101,6 +101,7 @@ main{--side:clamp(400px,32vw,580px);display:grid;grid-template-columns:minmax(0,
 .layers>summary::-webkit-details-marker{display:none}
 .layers>summary .sum{font-weight:400;color:var(--muted);font-family:var(--f-mono);font-size:11.5px}
 .layers .body{display:grid;gap:6px;padding:4px 12px 11px;border-top:1px solid var(--line-soft);min-width:230px}
+.layers label.sub{padding-left:22px;color:var(--muted)}
 .layers .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600;margin-top:6px}
 .layers label{display:flex;gap:8px;align-items:center;cursor:pointer}
 .layers label .n{margin-left:auto;color:var(--muted);font-family:var(--f-mono);font-size:11.5px;padding-left:8px}
@@ -259,6 +260,8 @@ td.tag{text-align:left;font-weight:600}
           <label title="Holds where a punch cancel clips: Banjo one claw lunge from the crack, B, then A on the next update (no stick), with the lag chosen under Show → PC lag. Ringed in green. Click a hold for the A hold and lag that work."><input type="checkbox" id="showPc" checked> <span class="sw" style="background:var(--pc)"></span> Punch-cancel clips <span class="n" id="nPc"></span></label>
           <label><input type="checkbox" id="showHit5" checked> <span class="sw" style="background:var(--hit5)"></span> 5 collisions (one update) <span class="n" id="nHit5"></span></label>
           <label><input type="checkbox" id="showSlope" checked> <span class="sw" style="background:var(--slope)"></span> Beak-buster clips <span class="n" id="nSlope"></span></label>
+          <label title="Spots with a water surface more than 100 units above them and nothing solid in between: Banjo would be swimming there. The census and the punch-cancel test do not model swimming, so their results at these spots are not real. Marked with a blue halo (holds, punch-cancel clips, beak-buster clips, 5 collisions, lower cracks). Water as in the room file; the Sandcastle punch-cancel layer was run with the hall drained."><input type="checkbox" id="showWater" checked> <span class="sw" style="background:var(--water)"></span> Under deep water <span class="n" id="nWater"></span></label>
+          <label class="sub" title="Leave the spots under deep water out of every layer"><input type="checkbox" id="hideWater"> Hide spots under deep water</label>
           <label title="Ceiling seams where the upward ray slips through. A ringed spot clips straight up in the full model: the bee flying up (4 flaps) or Banjo flying up with one lag update (the ring follows the PAL / NTSC switch)."><input type="checkbox" id="showRoof" checked> <span class="sw" style="background:var(--roof)"></span> Roof cracks <span class="n" id="nRoof"></span></label>
           <label title="No-lag clips from pads in the full model (GPU scan): orange = falling from a shock-pad jump (heights the jump reaches from a pad in range), purple = beak bomb from a flight pad (straight line at 4200, approach checked clear). Follows the PAL / NTSC switch."><input type="checkbox" id="showPad" checked> <span class="sw" style="background:var(--pop)"></span> Pad clips (shock / bomb) <span class="n" id="nPad"></span></label>
           <div class="grp">Draw the level as</div>
@@ -768,7 +771,7 @@ requestAnimationFrame(function loop(){requestAnimationFrame(loop);   /* first fr
 
 // ---- data
 let padSPts=null, padBPts=null;
-let index=[], room=null, world=null, crackPts=null, slopePts=null, hit5Pts=null, scrackPts=null, lowerPts=null, holdPts=null, pcPts=null, roofPts=null, selMarker=null;
+let index=[], room=null, world=null, crackPts=null, slopePts=null, hit5Pts=null, scrackPts=null, lowerPts=null, holdPts=null, pcPts=null, roofPts=null, selMarker=null, waterPts=null;
 let spot=null; // {x,y,z,kind,info}
 function disposeGroup(g){g.traverse(o=>{if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose();}); g.clear();}
 function buildRoomMeshes(){
@@ -832,34 +835,75 @@ function layer(arr,xyz,color,size,keep){
     const XYZ=arr.xyz; for(let i=0;i<n;i++){ XYZ(i,t); pos[i*3]=t[0]; pos[i*3+1]=t[1]+0.5; pos[i*3+2]=t[2]; idx[i]=i; }
     const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); const pm=new THREE.PointsMaterial({color:new THREE.Color(color),size,sizeAttenuation:false,depthTest:true,clippingPlanes:[clipPlane]}); pm.userData.base=size;
     const o=new THREE.Points(g,pm); o.userData.idx=idx; return o; }
-  const idx=[]; const pts=[]; arr.forEach((d,i)=>{ if(keep&&!keep(d)) return; idx.push(i); pts.push(xyz(d)); });
+  const idx=[]; const pts=[]; arr.forEach((d,i)=>{ if(keep&&!keep(d,i)) return; idx.push(i); pts.push(xyz(d)); });
   if(!pts.length) return null; const o=pointsObj(pts,color,size); o.userData.idx=idx; return o; }
+// ---- water (Claude 2026-11-15): a spot under deep water has a water surface (collision triangles with flag 0x20000, opa and xlu) more
+// than 100 above it with nothing solid in between, so Banjo swims there (the game's floor tracker switches to swimming at depth 100).
+// The census and the punch-cancel test do not model swimming: their tracker then skips the floor ray, which makes clips that are not
+// real (checked in BizHawk at the flooded TTC Sandcastle). Water is taken as the room file has it; a punch-cancel file can name water
+// levels that were moved away for its run (pcancel_water.drained_y: the Sandcastle hall, drained by Leaky).
+let WATER=null;
+const wKey=(i,j)=>(i+32768)*65536+(j+32768);
+function buildWater(){ WATER=null; if(!world) return; const T=[]; for(const cl of [world.opa,world.xlu]) if(cl) for(const t of cl.tris) if(t.flags&0x20000) T.push(t);
+  if(!T.length) return; const S=64, G=new Map();
+  for(const t of T){ const x0=Math.floor(t.tmin[0]/S), x1=Math.floor(t.tmax[0]/S), z0=Math.floor(t.tmin[2]/S), z1=Math.floor(t.tmax[2]/S);
+    for(let i=x0;i<=x1;i++) for(let j=z0;j<=z1;j++){ const k=wKey(i,j); let c=G.get(k); if(!c) G.set(k,c=[]); c.push(t); } }
+  WATER={S,G,cache:new Map(),arr:new WeakMap(),arrP:new WeakMap()}; }
+// height of the water surface over (x, y, z) when it is deep water (100 < h < 4000, open to the surface), else 0
+function wetH(x,y,z,skip){ if(!WATER) return 0; const cell=WATER.G.get(wKey(Math.floor(x/WATER.S),Math.floor(z/WATER.S))); if(!cell) return 0;
+  const sk=skip&&skip.drained_y||null; let best=null;
+  for(const t of cell){ const v=t.v; if(sk&&sk.some(w=>Math.abs(v[0][1]-w)<1&&Math.abs(v[1][1]-w)<1&&Math.abs(v[2][1]-w)<1)) continue;
+    const d1=(x-v[1][0])*(v[0][2]-v[1][2])-(v[0][0]-v[1][0])*(z-v[1][2]), d2=(x-v[2][0])*(v[1][2]-v[2][2])-(v[1][0]-v[2][0])*(z-v[2][2]), d3=(x-v[0][0])*(v[2][2]-v[0][2])-(v[2][0]-v[0][0])*(z-v[0][2]);
+    if((d1<0||d2<0||d3<0)&&(d1>0||d2>0||d3>0)) continue;
+    const n=t.unitN; const wy=Math.abs(n[1])>1e-6?v[0][1]-(n[0]*(x-v[0][0])+n[2]*(z-v[0][2]))/n[1]:(v[0][1]+v[1][1]+v[2][1])/3;
+    const h=wy-y; if(h>100&&h<4000&&(best===null||wy<best)) best=wy; }
+  if(best===null) return 0;
+  // one line test per 4 x 8 x 4-unit cell and water level (nearby spots and seam floats share it)
+  const key=((Math.floor(x/4)*65536+Math.floor(z/4))*4096+Math.floor(y/8))*4096+Math.round(best/8); const c=WATER.cache.get(key); if(c!==undefined) return c;
+  const st=world.stored; const hit=world.line([x,y+60,z],[x,best-0.5,z],[0,0,0],0x1E0000); world.stored=st; const r=hit?0:best-y;
+  WATER.cache.set(key,r); return r; }
+// the same for every spot of a layer at once, kept per spot list (rows [x,y,z,...], hold objects or BKB row lists)
+function wetArr(arr,skip){ if(!WATER||!arr) return null; const M=skip?WATER.arrP:WATER.arr; let W=M.get(arr); if(W) return W;
+  const n=arr.length; W=new Float32Array(n); const RL=window.BKB&&BKB.isRowList(arr), t=[0,0,0];
+  for(let i=0;i<n;i++){ let x,y,z; if(RL){ arr.xyz(i,t); x=t[0]; y=t[1]; z=t[2]; } else { const d=arr[i]; if(Array.isArray(d)){ x=d[0]; y=d[1]; z=d[2]; } else { x=d.x; y=d.y; z=d.z; } }
+    if(!WATER.G.has(wKey(Math.floor(x/WATER.S),Math.floor(z/WATER.S)))) continue; W[i]=wetH(x,y,z,skip); }
+  M.set(arr,W); return W; }
 function buildPoints(){
   disposeGroup(pointsGroup);
   const SF0=spotFilter; const PCF=SF0==='pc'; const SF=PCF?'holdclip':SF0; const co=SF==='clip'||SF==='holdclip'; const {k:CK,key}=co&&!PCF?clipKeys():{k:null,key:null}; const atClip=d=>CK.has(key(d[0],d[2]));
   const none=()=>false;  // hides a layer under a filter
   const holdclip=PCF?pcOK:holdRel; const PCR=pcRoom(); $('sfPcCtl').hidden=!(PCF||(PCR&&room.holds.some(h=>h.pc)));
+  const HW=$('hideWater').checked&&!!WATER, dryOf=a=>{ const W=HW?wetArr(a):null; return W?(d,i)=>!W[i]:null; }, both=(f,g)=>!HW||!g?f:f?((d,i)=>f(d,i)&&g(d,i)):g;
   crackPts=layer(room.cracks,d=>d,css('--crack'),4,PCF?none:SF==='all'?null:SF==='clip'?atClip:none);
-  holdPts=layer(room.holds,h=>[h.x,h.y,h.z],css('--hold'),10,co?holdclip:null);
+  holdPts=layer(room.holds,h=>[h.x,h.y,h.z],css('--hold'),10,both(co?holdclip:null,dryOf(room.holds)));
   roofPts=SF!=='all'?null:(room.roofcracks.length?pointsObj(room.roofcracks,css('--roof'),4):null);
   const scr=room.slopecracks||[]; scrackPts=layer(scr,d=>d,css('--crack'),4,PCF?none:SF==='all'?null:SF==='clip'?atClip:none);
   if(scrackPts){scrackPts.userData.kind='scrack'; scrackPts.material.transparent=true; scrackPts.material.opacity=.7; scrackPts.visible=$('showSCracks').checked; pointsGroup.add(scrackPts);}
-  const lw=room.lowercracks||[]; lowerPts=layer(lw,d=>d,css('--lower'),5,PCF?none:SF==='all'?null:SF==='clip'?lowerThrough:SF==='hold'?(d=>d[7]>0):SF==='holdclip'?(d=>d[7]>0&&d[9]===2):none);
+  const lw=room.lowercracks||[]; lowerPts=layer(lw,d=>d,css('--lower'),5,both(PCF?none:SF==='all'?null:SF==='clip'?lowerThrough:SF==='hold'?(d=>d[7]>0):SF==='holdclip'?(d=>d[7]>0&&d[9]===2):none,dryOf(lw)));
   if(lowerPts){lowerPts.userData.kind='lower'; lowerPts.visible=$('showLower').checked; pointsGroup.add(lowerPts);
-    const thr=lw.filter(lowerThrough); if(thr.length){ const r=pointsObj(thr.map(d=>[d[0],d[1]+1,d[2]]),css('--clip'),13); r.material.transparent=true; r.material.opacity=.5; r.userData.kind='lower'; r.userData.ring=true; r.visible=$('showLower').checked; pointsGroup.add(r);} }
-  const h5=room.hit5||[]; hit5Pts=layer(h5,d=>d,css('--hit5'),7,PCF?none:SF==='all'||SF==='hold'?null:SF==='clip'?atClip:none);
+    const LW=HW?wetArr(lw):null; const thr=lw.filter((d,i)=>lowerThrough(d)&&!(LW&&LW[i])); if(thr.length){ const r=pointsObj(thr.map(d=>[d[0],d[1]+1,d[2]]),css('--clip'),13); r.material.transparent=true; r.material.opacity=.5; r.userData.kind='lower'; r.userData.ring=true; r.visible=$('showLower').checked; pointsGroup.add(r);} }
+  const h5=room.hit5||[]; hit5Pts=layer(h5,d=>d,css('--hit5'),7,both(PCF?none:SF==='all'||SF==='hold'?null:SF==='clip'?atClip:none,dryOf(h5)));
   if(hit5Pts){hit5Pts.userData.kind='hit5'; hit5Pts.visible=$('showHit5').checked; pointsGroup.add(hit5Pts);}
-  const sc=room.slopeclips||[]; slopePts=layer(sc,d=>d,css('--slope'),6,SF==='hold'||SF==='holdclip'?none:co&&sfRel!=='any'?busterRel:null);
+  const sc=room.slopeclips||[]; slopePts=layer(sc,d=>d,css('--slope'),6,both(SF==='hold'||SF==='holdclip'?none:co&&sfRel!=='any'?busterRel:null,dryOf(sc)));
   if(slopePts){slopePts.userData.kind='slope'; slopePts.visible=$('showSlope').checked; pointsGroup.add(slopePts);}
   if(crackPts){crackPts.userData.kind='crack'; crackPts.visible=$('showCracks').checked; pointsGroup.add(crackPts);}
   if(holdPts){holdPts.userData.kind='hold'; holdPts.visible=$('showHolds').checked; pointsGroup.add(holdPts);
     // clip-capable holds get a ring
-    const clipH=room.holds.filter(h=>co?holdclip(h):(h.clip_dY!=null||h.clip)); if(clipH.length&&!PCF){const r=pointsObj(clipH.map(h=>[h.x,h.y+1,h.z]),css('--clip'),16); r.material.transparent=true; r.material.opacity=.55; r.userData.ring=true; r.visible=$('showHolds').checked; pointsGroup.add(r);} }
+    const HWH=HW?wetArr(room.holds):null; const clipH=room.holds.filter((h,i)=>(co?holdclip(h):(h.clip_dY!=null||h.clip))&&!(HWH&&HWH[i])); if(clipH.length&&!PCF){const r=pointsObj(clipH.map(h=>[h.x,h.y+1,h.z]),css('--clip'),16); r.material.transparent=true; r.material.opacity=.55; r.userData.ring=true; r.visible=$('showHolds').checked; pointsGroup.add(r);} }
   // punch-cancel clips: a green ring (the lag chosen under PC lag)
-  { const seen=new Set(), pcH=[], pcI=[]; pcPts=null; if(PCR) room.holds.forEach((h,i)=>{ if(!pcOK(h)) return; const k=pcKey(h.x,h.y,h.z); if(seen.has(k)) return; seen.add(k); pcH.push(h); pcI.push(i); });   // one per position (a spot can be on a flat and a sloped seam)
+  { const seen=new Set(), pcH=[], pcI=[]; pcPts=null; if(PCR) room.holds.forEach((h,i)=>{ if(!pcOK(h)) return; if(HW&&(room._pcWater?wetArr(room.holds,room._pcWater):wetArr(room.holds))[i]) return; const k=pcKey(h.x,h.y,h.z); if(seen.has(k)) return; seen.add(k); pcH.push(h); pcI.push(i); });   // one per position (a spot can be on a flat and a sloped seam)
     // pickable on its own (index into room.holds), so the rings can be clicked with the 5-hit hold layer off
     if(pcH.length){ const r=pointsObj(pcH.map(h=>[h.x,h.y+1.5,h.z]),css('--pc'),PCF?16:21); r.material.transparent=true; r.material.opacity=.75; r.userData.kind='pc'; r.userData.ringPc=true; r.userData.idx=pcI; r.visible=$('showPc').checked; pointsGroup.add(r); pcPts=r; }
     $('nPc').textContent=!PCR?'not tested yet':`${pcH.length.toLocaleString()} clip of ${room._pcN.toLocaleString()} that hold${room._pcScope==='door'?' (door area)':''}`; }
+  // spots under deep water: a blue halo on every drawn hold, punch-cancel ring, beak-buster clip, 5-collision and lower crack that has one
+  waterPts=null; { const W=[], seen=new Set(), t=[0,0,0]; let nw=0;
+    const each=(o,arr,dy,skip)=>{ if(!o||!WATER) return; const H=wetArr(arr,skip), I=o.userData.idx, RL=window.BKB&&BKB.isRowList(arr);
+      for(let j=0;j<I.length;j++){ const i=I[j]; if(!H[i]) continue; let x,y,z; if(RL){ arr.xyz(i,t); x=t[0]; y=t[1]; z=t[2]; } else { const d=arr[i]; if(Array.isArray(d)){ x=d[0]; y=d[1]; z=d[2]; } else { x=d.x; y=d.y; z=d.z; } }
+        const k=pcKey(x,y,z)+(skip?'p':''); if(seen.has(k)) continue; seen.add(k); W.push([x,y+dy,z]); nw++; } };
+    each(holdPts,room.holds,1); each(slopePts,room.slopeclips||[],1); each(hit5Pts,room.hit5||[],1); each(lowerPts,room.lowercracks||[],1);
+    if(room._pcWater) each(pcPts,room.holds,2,room._pcWater);
+    if(W.length){ const r=pointsObj(W,css('--water'),27); r.material.transparent=true; r.material.opacity=.38; r.material.depthWrite=false; r.userData.kind='water'; r.visible=$('showWater').checked; pointsGroup.add(r); waterPts=r; }
+    $('nWater').textContent=!WATER?'no water in this room':HW?'hidden':nw?`${nw.toLocaleString()} spot${nw>1?'s':''}`:'none'; }
   if(roofPts){roofPts.userData.kind='roof'; roofPts.visible=$('showRoof').checked; pointsGroup.add(roofPts);}
   if(roofPts&&room.roofs){ const N=(version==='NTSC'); const cl=room.roofs.rows.filter(r=>(N?r[7]+r[8]:r[5]+r[6])>0); if(cl.length){ const o=pointsObj(cl,css('--clip'),12); o.material.transparent=true; o.material.opacity=.6; o.userData.kind='roof'; o.userData.ringRoof=true; o.visible=$('showRoof').checked; pointsGroup.add(o);} }
   padSPts=padBPts=null; { const P=room.padclips&&room.padclips[version==='NTSC'?'NTSC':'PAL'];
@@ -874,7 +918,7 @@ function buildPoints(){
   if(spot) markSpot();
   if(window.BoxSel) BoxSel.changed(false);
 }
-['showCracks','showHolds','showRoof','showSlope','showHit5','showSCracks','showLower','showPad','showPc'].forEach(id=>$(id).onchange=()=>{pointsGroup.children.forEach(o=>{const k=o.userData.kind||(o.userData.ring?'hold':''); if(k==='pc')o.visible=$('showPc').checked; if(k==='padS'||k==='padB')o.visible=$('showPad').checked; if(k==='lower')o.visible=$('showLower').checked; if(k==='crack')o.visible=$('showCracks').checked; if(k==='scrack')o.visible=$('showSCracks').checked; if(k==='slope')o.visible=$('showSlope').checked; if(k==='hit5')o.visible=$('showHit5').checked; if(k==='hold')o.visible=$('showHolds').checked; if(k==='roof')o.visible=$('showRoof').checked;}); if(window.BoxSel) BoxSel.changed(false);});
+['showCracks','showHolds','showRoof','showSlope','showHit5','showSCracks','showLower','showPad','showPc','showWater'].forEach(id=>$(id).onchange=()=>{pointsGroup.children.forEach(o=>{const k=o.userData.kind||(o.userData.ring?'hold':''); if(k==='pc')o.visible=$('showPc').checked; if(k==='water')o.visible=$('showWater').checked; if(k==='padS'||k==='padB')o.visible=$('showPad').checked; if(k==='lower')o.visible=$('showLower').checked; if(k==='crack')o.visible=$('showCracks').checked; if(k==='scrack')o.visible=$('showSCracks').checked; if(k==='slope')o.visible=$('showSlope').checked; if(k==='hit5')o.visible=$('showHit5').checked; if(k==='hold')o.visible=$('showHolds').checked; if(k==='roof')o.visible=$('showRoof').checked;}); if(window.BoxSel) BoxSel.changed(false);});
 function applyRoomVis(){ roomGroup.children.forEach(o=>{ let v=true; if(o.userData.xlu&&!$('showXlu').checked) v=false; if(o.userData.prop&&!$('showProps').checked) v=false; if(o.userData.ceil&&$('hideCeil').checked) v=false; o.visible=v; }); applyDraw(); buildVis(); }
 // ---- game look (same as the Tooie viewer): the level model's display lists with its vertex shading and the lab's textures
 // (data/vis/map0xNN.gz.wasm, tex/<key>.png from tools/bk/bkvis.py; HD from BK Reloaded where data/hd.json matches one)
@@ -937,8 +981,9 @@ $('sfRel').value=sfRel; $('sfRelCtl').hidden=!(spotFilter==='clip'||spotFilter==
 $('sfRel').onchange=()=>{ sfRel=$('sfRel').value; try{localStorage.setItem('bcl-sfr',sfRel);}catch(e){} if(room) buildPoints(); };
 $('sfSel').value=spotFilter; $('sfRelCtl').hidden=!(spotFilter==='clip'||spotFilter==='holdclip');
 $('sfPc').value=sfPc; $('sfPc').onchange=()=>{ sfPc=$('sfPc').value; try{localStorage.setItem('bcl-sfpc',sfPc);}catch(e){} if(room) buildPoints(); };
+$('hideWater').onchange=()=>{ try{localStorage.setItem('bcl-hidewater',$('hideWater').checked?'1':'0');}catch(e){} if(room) buildPoints(); }; try{ if(localStorage.getItem('bcl-hidewater')==='1') $('hideWater').checked=true; }catch(e){}
 $('sfSel').onchange=()=>{ spotFilter=$('sfSel').value; try{localStorage.setItem('bcl-sf',spotFilter);}catch(e){} $('sfRelCtl').hidden=!(spotFilter==='clip'||spotFilter==='holdclip'); if(room) buildPoints(); };
-$('usePose').onchange=()=>{ if(!room) return; world=new BK.World(world.opa,world.xlu,BK.load_props(activeProps()),parseInt(room.map,16)); buildRoomMeshes(); if(lastRun&&lastRun.mode!=='move') runSim(); };
+$('usePose').onchange=()=>{ if(!room) return; world=new BK.World(world.opa,world.xlu,BK.load_props(activeProps()),parseInt(room.map,16)); buildWater(); buildRoomMeshes(); if(lastRun&&lastRun.mode!=='move') runSim(); };
 $('showXlu').onchange=applyRoomVis; $('showProps').onchange=applyRoomVis; $('hideCeil').onchange=applyRoomVis; $('showSphere').onchange=()=>drawSim(); $('showBanjo').onchange=()=>{ try{localStorage.setItem('bcl-banjo',$('showBanjo').checked?'1':'0');}catch(e){} drawSim(); }; try{ if(localStorage.getItem('bcl-banjo')==='0') $('showBanjo').checked=false; }catch(e){} $('floorTint').onchange=()=>{ if(room) buildRoomMeshes(); };
 $('cutY').oninput=e=>setCut(+e.target.value,true);
 $('cutOff').onclick=()=>setCut(+$('cutY').max,false);
@@ -969,7 +1014,7 @@ function unpackRoom(d){ if(d&&d.holdsA){ d.holds=(d.holds||[]).concat(d.holdsA.m
   if(a[7]) h.slope=1; if(a[9]) h.odds=a[9]; return h; })); delete d.holdsA; }
   if(d&&d.pcancel&&d.holds){ const M=new Map(); const n=d.pcancel.length; for(let i=0;i<n;i++){ const r=d.pcancel[i]; M.set(pcKey(r[0],r[1],r[2]),r); }
     for(const h of d.holds){ const r=M.get(pcKey(h.x,h.y,h.z)); if(r) h.pc={runs:r[4],held:r[5],clips:r[6],n:[r[7],r[8]],o:[r[9],r[10],r[11]],a:[r[12],r[13],r[14]],s:[r[15],r[16],r[17]],f:[r[18],r[19],r[20]],best:{K:r[21],name:r[22],claw:r[23]}}; }
-    d._pcN=d.pcancel_held||n; d._pcScope=d.pcancel_scope||'room'; delete d.pcancel; }
+    d._pcN=d.pcancel_held||n; d._pcScope=d.pcancel_scope||'room'; d._pcWater=d.pcancel_water||null; delete d.pcancel; }
   return d; }
 const pcKey=(x,y,z)=>Math.round(x*1e4)+','+Math.round(y*1e3)+','+Math.round(z*1e4);
 // gzip JSON, or a BKB1 room (tools/bk/bkb.py: the spot tables as typed columns, read by bkb.js into array-like row lists)
@@ -978,7 +1023,7 @@ async function gunzipJSON(buf){ const ds=new Blob([buf]).stream().pipeThrough(ne
   return JSON.parse(new TextDecoder().decode(ab)); }
 // punch-cancel results of the all-room run live in their own small file next to the room (map0xNN.pc.wasm in the version's repo, BKB1
 // with just the pcancel table), so adding them does not re-upload the big room file; index flag pcf (PAL), ntsc_pcf (NTSC), pcf (Xbox index)
-async function withPc(d,ver,m,has){ if(has&&d){ try{ const p=await gunzipJSON(await vget(ver,`map${m}.pc.wasm`)); d.pcancel=p.pcancel; d.pcancel_scope=p.pcancel_scope; d.pcancel_note=p.pcancel_note; d.pcancel_held=p.pcancel_held; }catch(e){ console.warn('punch-cancel file failed',e); } } return d; }
+async function withPc(d,ver,m,has){ if(has&&d){ try{ const p=await gunzipJSON(await vget(ver,`map${m}.pc.wasm`)); d.pcancel=p.pcancel; d.pcancel_scope=p.pcancel_scope; d.pcancel_note=p.pcancel_note; d.pcancel_held=p.pcancel_held; d.pcancel_water=p.pcancel_water; }catch(e){ console.warn('punch-cancel file failed',e); } } return d; }
 async function fetchRoom(m){
   const ent=(index||[]).find(e=>e.map===m);
   if(version==='xbox'&&typeof DecompressionStream!=='undefined'){ const xe=(await xidxP).find(e=>e.map===m); if(xe){ try{
@@ -1010,7 +1055,7 @@ async function loadMap(m){
   room.roofcracks=room.roofcracks||[];
   room.padclips=null; if(room.version!=='Xbox') try{ const q=await fetch(`data/padclips/map${m}.json`); if(q.ok) room.padclips=await q.json(); }catch(e){}
   world=new BK.World(BK.load_model(room.opa,'opa'),room.xlu?BK.load_model(room.xlu,'xlu'):null,BK.load_props(activeProps()),parseInt(m,16));
-  buildRoomMeshes(); buildPoints(); $('spawnSel').value=''; Promise.all([spawnP,exitsP]).then(()=>{ fillSpawns(); drawSpawns(); }); setTimeout(()=>{ renderBest('c'); renderBest('s'); if(version!=='PAL') applyVersionData(); else verNote(null); },0); spot=null; lastRun=null; renderSpot(); clearSim(); target=null; fillTgt(); ['bx','by','bz'].forEach(k=>$(k).value=''); if(typeof drawMarks==='function'){ disposeGroup(searchGroup); segObjs={}; drawMarks(); }
+  buildWater(); buildRoomMeshes(); buildPoints(); $('spawnSel').value=''; Promise.all([spawnP,exitsP]).then(()=>{ fillSpawns(); drawSpawns(); }); setTimeout(()=>{ renderBest('c'); renderBest('s'); if(version!=='PAL') applyVersionData(); else verNote(null); },0); spot=null; lastRun=null; renderSpot(); clearSim(); target=null; fillTgt(); ['bx','by','bz'].forEach(k=>$(k).value=''); if(typeof drawMarks==='function'){ disposeGroup(searchGroup); segObjs={}; drawMarks(); }
   // frame camera
   const box=new THREE.Box3().setFromObject(roomGroup); const c=box.getCenter(new THREE.Vector3()), s=box.getSize(new THREE.Vector3());
   setupSlicer(box);
@@ -1126,6 +1171,9 @@ function renderSpot(){ const el=$('spotInfo'); if(!spot){ $('spotCard').hidden=t
   $('spotTitle').textContent=(spot.kind==='crack'&&spot.info&&spot.info.lower?(String(spot.info.lower[3]).endsWith('/edge')?'Rim crack':'Crack over a lower floor'):kinds[spot.kind])+(spot.kind==='crack'&&spot.info&&spot.info.slope?' (sloped seam)':''); $('spotDot').style.background=css('--'+({crack:'crack',hold:'hold',roof:'roof',slope:'slope',hit5:'hit5',point:'accent',exit:'accent',spawn:'pop',object:'prop'}[spot.kind]));
   if(spot.kind==='object') $('spotTitle').textContent=objName(spot.info.o);
   let rows=`<dt>Position</dt><dd>${fmt(spot.x,4)}, ${fmt(spot.y,3)}, ${fmt(spot.z,4)}</dd>`;
+  if(['crack','hold','slope','hit5'].includes(spot.kind)&&WATER){ const h=wetH(spot.x,spot.y,spot.z), hp=spot.kind==='hold'&&room._pcWater?wetH(spot.x,spot.y,spot.z,room._pcWater):h;
+    if(h) rows+=`<dt>Under water</dt><dd>the water surface is ${Math.round(h)} above this spot, so Banjo would be swimming here. The census does not model swimming (it then misses the floor check), so ${spot.kind==='crack'?'this crack is not a real clip spot':'this spot’s hold and clip results are not real'}.${room._pcWater&&!hp?` ${room._pcWater.card||'The punch-cancel result below was run with that water drained.'}`:''}</dd>`;
+    else if(hp) rows+=`<dt>Under water</dt><dd>the water surface is ${Math.round(hp)} above this spot, so the punch-cancel result is not real.</dd>`; }
   { const zx=spot.x!==0&&Math.abs(spot.x)<1e-6, zz=spot.z!==0&&Math.abs(spot.z)<1e-6;   // zero-line seam spots (zl-v2.js): a tiny distance off a seam on x = 0 / z = 0
     if((zx||zz)&&spot.kind!=='point'&&spot.kind!=='object') rows+=`<dt>Zero line</dt><dd>${zz?'z':'x'} = ${(zz?spot.z:spot.x).toExponential(0)}: the seam lies on ${zz?'z':'x'} = 0, and the crack is only a tiny distance off it (any ${zz?'z':'x'} between about ${zz&&spot.z<0||zx&&spot.x<0?'−0.00001 and 0':'0 and 0.00001'} behaves the same). A small sideways move from a spot exactly on the line, e.g. walking from a load-in point at ${zz?'z':'x'} = 0, gets there.</dd>`; }
   if(spot.kind==='object'){ const o=spot.info.o; rows+=`<dt>Kind</dt><dd>${o[9]===1?'cube prop (setup file)':'actor spawn point (setup file)'} · ${o[9]===1?'asset':'actor id'} 0x${o[8].toString(16).toUpperCase()}</dd><dt>Model</dt><dd>${o[0]>=0?'0x'+o[0].toString(16).toUpperCase():'none (marker)'}</dd><dt>Facing</dt><dd>${o[5]}°${o[6]?`, roll ${o[6]}°`:''}</dd><dt>Scale</dt><dd>${o[7]}${spot.info.os&&spot.info.os.why?' ('+spot.info.os.why+')':''}</dd><dt>Note</dt><dd>${o[9]===2?'Where the map spawns it (enemies move away from here).':'Placed in the map.'} Objects are drawn only; the collision of static and moving objects is under Room.</dd>`; }

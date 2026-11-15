@@ -309,12 +309,12 @@
 "ntsc_lower_through": 0,
 "ntsc_v2": 1,
 "ntsc_pcf": 1,
-"ntsc_pc": 1096,
-"ntsc_pc_clips": 502,
+"ntsc_pc": 805,
+"ntsc_pc_clips": 44,
 "ntsc_pc_scope": "room",
 "pcf": 1,
-"pc": 1382,
-"pc_clips": 1113,
+"pc": 1197,
+"pc_clips": 975,
 "pc_scope": "room"
 },
 {
