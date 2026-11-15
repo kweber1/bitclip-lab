@@ -6,7 +6,10 @@
 #     the census's) and its category is the best one of the summed counts, as site_build.py takes it; cells only the zl run has are new spots
 #   - zl seams are matched to the room's seams by end points and floor triangles; their crack-float counts add up
 #   - room header and index entry: counts, cats, cats_flat, holds, void, cells, shown, crack floats / samples, bytes; "zl": 1
-# usage: python3 trb_zl_patch.py <data repo dir> <map> <zl tc file (.txt / .gz)>     (prints a JSON summary; rooms already patched are refused)
+# usage: python3 trb_zl_patch.py <data repo dir> <map> <tc file (.txt / .gz)> [flag]     (prints a JSON summary; rooms already patched are refused)
+#   flag: zl (default; the zero-line run), zp (the near-zero run: tcensus.cu TC_ZEROPART=3, every float within [-1, 1] on a seam's major
+#   axis down to |m| = 1e-5 plus the tiny-float ladder; Claude 2026-11-15), zpzl (the near-zero run's zero-line pass, TC_ZEROPART=3 TC_ZL=1).
+#   The flag is set in the room header and index entry; the viewer's float list uses it to scan the same floats.
 import sys, os, json, gzip, math
 import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trb')); import trb
@@ -22,11 +25,13 @@ def entry(seam, a):   # a CELL line's tokens -> the spot list site_build.py make
     return [float(r[0]), float(r[1]), float(r[2]), seam, n, cat_of(c[1:]), outs, sum(1 for h in hl if h), max(sits), int(r[7]), round(float(r[8]), 2),
             (jc[0] if jc else -1), (jc[1] if jc else -1), (jc[5] if jc else -1), 1 if ch else 0, c]
 def rep_cat(c): return cat_of(c[1:])   # category of the cell's representative float = the best category with a count
-def main(D, m, zlf):
+NOTE = {'zl': 'with the zero-line run (seams on x = 0 / z = 0, offsets 1-3 x 1e-10 across)', 'zp': 'with the near-zero run (every float within +-1 of 0 along a seam down to +-0.00001, then a few floats of every power-of-two band)',
+        'zpzl': 'with the near-zero run on the zero-line seams (offsets 1-3 x 1e-10 across)'}
+def main(D, m, zlf, flag='zl'):
     f = os.path.join(D, 'data', 'room-%s.gz.wasm' % m); idxf = os.path.join(D, 'data', 'index.json'); idx = json.load(open(idxf))
     e = next(x for x in idx['rooms'] if x['map'] == m); assert not e.get('parts') and not e.get('repo'), 'room in parts / another repo: not handled'
     hdr, C = trb.decode(gzip.decompress(open(f, 'rb').read())); assert hdr.get('every'), 'not an exhaustive room'
-    if hdr.get('zl'): print(json.dumps({'map': m, 'skipped': 'already has the zero-line run'})); return
+    if hdr.get(flag): print(json.dumps({'map': m, 'skipped': 'already has the %s run' % flag})); return
     n0 = hdr['n']; seams = hdr['seams']
     # the zl run
     zh = None; zseams = []; zcells = []
@@ -91,14 +96,14 @@ def main(D, m, zlf):
     for i, S in upd.items(): put(i, S)
     for q, S in enumerate(newspots): put(n0 + q, S)
     h = {k: v for k, v in hdr.items() if k not in ('fmt', 'n', 'cats', 'walks', 'nruns', 'cols')}
-    h['seams'] = seams; h['counts'] = cnt; h['zl'] = 1
-    h['thinned'] = hdr.get('thinned', '') + '; with the zero-line run (seams on x = 0 / z = 0, offsets 1-3 x 1e-10 across)'
+    h['seams'] = seams; h['counts'] = cnt; h[flag] = 1
+    h['thinned'] = hdr.get('thinned', '') + '; ' + NOTE[flag]
     trb.write(f, h, cols)
     e['cats'] = cnt; e['cats_flat'] = cf; e['spots'] += add['spots']; e['holds'] += add['holds']; e['void'] += add['void']
-    e['cells'] = e.get('cells', 0) + len(newspots); e['shown'] += len(newspots); e['seams'] = len(seams); e['zl'] = 1
+    e['cells'] = e.get('cells', 0) + len(newspots); e['shown'] += len(newspots); e['seams'] = len(seams); e[flag] = 1
     e['crack_floats'] += int(zh[7]); e['crack_samples'] += int(zh[5]); e['bytes'] = os.path.getsize(f)
     json.dump(idx, open(idxf, 'w'), indent=1)
     print(json.dumps({'map': m, 'name': e['name'], 'zl_seams': len(zseams), 'new_seams': newseams, 'zl_cells': len(Z), 'merged': merged, 'better': better,
                       'new_spots': len(newspots), 'zl_floats': int(zh[7]), 'zl_cats': {k_: sum(E[15][1 + ci] for E in Z.values()) for k_, ci in CI.items()},
                       'zl_holds': sum(E[15][9] for E in Z.values()), 'zl_void': sum(E[15][2] for E in Z.values()), 'bytes': e['bytes']}))
-if __name__ == '__main__': main(*sys.argv[1:4])
+if __name__ == '__main__': main(*sys.argv[1:5])

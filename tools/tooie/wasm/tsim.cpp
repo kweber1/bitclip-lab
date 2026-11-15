@@ -106,7 +106,7 @@ TD float jump_h(int j) { return 92.0f + (float)j * 2.0f; }
 
 // ---- world, seam, results
 static TModel MODELS[2]; static TWorld W; static TAct ACT[TMAXACT];
-typedef struct { float P[3], Q[3]; int ma, a, mb, b, axis; uint32_t k0, k1, n1, n3, k2; int *cand, ncand; } TSeam;
+typedef struct { float P[3], Q[3]; int ma, a, mb, b, axis; uint32_t k0, k1, n1, n3, k2, n2; int lad0; int *cand, ncand; } TSeam;
 static TSeam SE;
 // result of one float: out/holds/maxhits/upd/sits [9] each, endy[9], jump {clip voids eject stuck other hold sitmax ran}, category, hold
 typedef struct { unsigned char out[NVAR], holds[NVAR], maxhits[NVAR], upd[NVAR], sits[NVAR], j[8], cat, hold, pad[2]; float endy[NVAR]; } TRes1;
@@ -134,13 +134,38 @@ EXPORT("ts_load") int ts_load(int slot, const int *d) {
     TV4[3 * i + 1].z = q[6]; TV4[3 * i + 1].w = q[7]; TV4[3 * i + 2].x = q[8]; TV4[3 * i + 2].y = 0.0f; TV4[3 * i + 2].z = 0.0f; TV4[3 * i + 2].w = 0.0f; }
   M->V = V; M->T = T; M->TF = TF; M->C = C; M->BB = BB; M->TV = TV; M->TB = TB; M->TV4 = TV4;   // no finer index: FOR_QUERY_TRIS uses the cells (same triangles, same order)
   W.m[slot] = M; return M->nt; }
+// near-zero run (Claude 2026-11-15, tcensus.cu TC_ZEROPART=3): within [-1, 1] on the major axis every float with |m| >= 1e-5, and below
+// that the ladder LAD (a few floats of every power-of-two band down to the denormals, and +-0), as tcensus.cu build_ladder / zp3.
+// ts_zp(1) before ts_seam sets the seam up with those floats (j: n1 dense [-1, -1e-5], n2 ladder, n3 dense [1e-5, 1]).
+#define NLADMAX 1200
+static float LAD[NLADMAX]; static int NLAD = 0, ZPM = 0, ZPT = 0;
+static float kbits(uint32_t b) { float f; memcpy(&f, &b, 4); return f; }
+static void build_ladder(void) { static float v[NLADMAX]; int n = 0;
+  for (int i = 0; i <= 22; i++) { uint32_t b = 1u << i, c[4] = { b, b + 1, b + (b >> 1), 2 * b - 1 }; for (int q = 0; q < 4; q++) v[n++] = kbits(c[q]); }
+  for (int e = 1; e < 255; e++) { uint32_t base = (uint32_t)e << 23, c[4] = { base, base + 1, base + (1u << 22), base + 0x7FFFFFu };
+    for (int q = 0; q < 4; q++) { float f = kbits(c[q]); if (f < 1e-5f) v[n++] = f; } }
+  v[n++] = kfloat(fkey(1e-5f) - 1);
+  int np = n; for (int i = 0; i < np; i++) v[n++] = -v[i]; v[n++] = 0.0f; v[n++] = -0.0f;
+  for (int i = 1; i < n; i++) { float t = v[i]; int j = i - 1; while (j >= 0 && fkey(v[j]) > fkey(t)) { v[j + 1] = v[j]; j--; } v[j + 1] = t; }   // by key (no qsort here)
+  NLAD = 0; for (int i = 0; i < n; i++) if (!NLAD || fkey(v[i]) != fkey(LAD[NLAD - 1])) LAD[NLAD++] = v[i]; }
+static void zp3(TSeam *s, float lo, float hi) {
+  if (!NLAD) build_ladder(); s->n1 = s->n2 = s->n3 = 0; if (hi < -1.0f || lo > 1.0f) return;
+  float a1 = lo < -1.0f ? -1.0f : lo, b1 = hi < -1e-5f ? hi : -1e-5f; if (a1 <= b1) { s->k0 = fkey(a1); s->n1 = fkey(b1) - s->k0 + 1; }
+  float a3 = lo > 1e-5f ? lo : 1e-5f, b3 = hi > 1.0f ? 1.0f : hi; if (a3 <= b3) { s->k2 = fkey(a3); s->n3 = fkey(b3) - s->k2 + 1; }
+  int l0 = 0; while (l0 < NLAD && fkey(LAD[l0]) < fkey(lo)) l0++; int l1 = l0; while (l1 < NLAD && fkey(LAD[l1]) <= fkey(hi)) l1++;
+  s->lad0 = l0; s->n2 = (uint32_t)(l1 - l0);
+  if (ZPT > 0) { if (s->n1 > (uint32_t)ZPT) { s->k0 += s->n1 - ZPT; s->n1 = ZPT; } if (s->n3 > (uint32_t)ZPT) s->n3 = ZPT; } }   // tcensus TC_ZPTEST (checks only)
+EXPORT("ts_zptest") int ts_zptest(int n) { ZPT = n; return 0; }
+EXPORT("ts_zp") int ts_zp(int on) { ZPM = on; if (on && !NLAD) build_ladder(); return NLAD; }
+static float seam_m(const TSeam *S, uint32_t j) { return j < S->n1 ? kfloat(S->k0 + j) : j < S->n1 + S->n2 ? LAD[S->lad0 + (int)(j - S->n1)] : kfloat(S->k2 + (j - S->n1 - S->n2)); }
 // the seam (from the room file: P, Q, model:triangle of both floors); phase A floats: every float on the major axis except |m| <= 1
 EXPORT("ts_seam") int ts_seam(float p0, float p1, float p2, float q0, float q1, float q2, int ma, int a, int mb, int b) {
   TSeam *s = &SE; s->P[0] = p0; s->P[1] = p1; s->P[2] = p2; s->Q[0] = q0; s->Q[1] = q1; s->Q[2] = q2; s->ma = ma; s->a = a; s->mb = mb; s->b = b;
   s->axis = fabs((double)s->Q[0] - s->P[0]) >= fabs((double)s->Q[2] - s->P[2]) ? 0 : 2;
   float lo = s->P[s->axis] < s->Q[s->axis] ? s->P[s->axis] : s->Q[s->axis], hi = s->P[s->axis] < s->Q[s->axis] ? s->Q[s->axis] : s->P[s->axis]; s->k0 = fkey(lo); s->k1 = fkey(hi);
-  s->n1 = s->k1 - s->k0 + 1; s->n3 = 0; s->k2 = 0;
-  if (!(hi < -1.0f || lo > 1.0f)) { s->n1 = lo < -1.0f ? fkey(-1.0f) - s->k0 : 0; s->k2 = fkey(1.0f) + 1; s->n3 = hi > 1.0f ? s->k1 - s->k2 + 1 : 0; }
+  s->n1 = s->k1 - s->k0 + 1; s->n3 = 0; s->k2 = 0; s->n2 = 0; s->lad0 = 0;
+  if (ZPM) zp3(s, lo, hi);   // the near-zero run's floats instead (ts_zp)
+  else if (!(hi < -1.0f || lo > 1.0f)) { s->n1 = lo < -1.0f ? fkey(-1.0f) - s->k0 : 0; s->k2 = fkey(1.0f) + 1; s->n3 = hi > 1.0f ? s->k1 - s->k2 + 1 : 0; }
   // candidates: every triangle the floor ray could hit near the seam (filter 0x400005), as tcensus.cu
   float ymin = s->P[1] < s->Q[1] ? s->P[1] : s->Q[1], ymax = s->P[1] < s->Q[1] ? s->Q[1] : s->P[1];
   double bx0 = fmin(s->P[0], s->Q[0]) - 2, bx1 = fmax(s->P[0], s->Q[0]) + 2, bz0 = fmin(s->P[2], s->Q[2]) - 2, bz1 = fmax(s->P[2], s->Q[2]) + 2, by0 = ymin - 6, by1 = ymax + 57;
@@ -150,14 +175,14 @@ EXPORT("ts_seam") int ts_seam(float p0, float p1, float p2, float q0, float q1, 
       for (int j = 0; j < 3; j++) { const short *p = M->V + 3 * M->T[3 * k + j]; if (p[0] < mnx) mnx = p[0]; if (p[0] > mxx) mxx = p[0]; if (p[1] < mny) mny = p[1]; if (p[1] > mxy) mxy = p[1]; if (p[2] < mnz) mnz = p[2]; if (p[2] > mxz) mxz = p[2]; }
       if (mxx < bx0 || mnx > bx1 || mxz < bz0 || mnz > bz1 || mxy < by0 || mny > by1) continue;
       s->cand[s->ncand++] = (mi << 24) | k; } }
-  return (int)(s->n1 + s->n3); }
+  return (int)(s->n1 + s->n2 + s->n3); }
 // zero-line seams (Claude 2026-11-14, tcensus_zl.cu TC_ZL=1): on a seam lying on x = 0 or z = 0 the census's +-3 float steps across are
 // denormals; the zero-line run tests o * 1e-10 instead (o = 0, the line itself, skipped). ts_zl(1) makes ts_scan use those offsets
 // (the page turns it on for such seams of rooms merged with the zero-line run, then scans the cell a second time).
 static int ZLM = 0;
 EXPORT("ts_zl") int ts_zl(int on) { ZLM = on; return 0; }
 static void seam_pt(uint32_t j, int o, float *x, float *y, float *z) {
-  const TSeam *S = &SE; float m = j < S->n1 ? kfloat(S->k0 + j) : kfloat(S->k2 + (j - S->n1));
+  const TSeam *S = &SE; float m = seam_m(S, j);
   int ax = S->axis, ot = 2 - ax; double t = ((double)m - S->P[ax]) / ((double)S->Q[ax] - S->P[ax]); double c = S->P[ot] + t * ((double)S->Q[ot] - S->P[ot]);
   float cf = ZLM ? (float)o * 1e-10f : fstep((float)c, o); float p[3]; p[ax] = m; p[ot] = cf; double yy = plane_y(&W, S->ma, S->a, p[0], p[2]); *x = p[0]; *z = p[2]; *y = (float)yy; }
 static int crack_at(float x, float y, float z) {
@@ -167,7 +192,12 @@ static int crack_at(float x, float y, float z) {
   return 1; }
 // the seam's float indices j whose major coordinate is in 0.25 cell c of the major axis: [*j0, *j1)
 EXPORT("ts_jrange") int ts_jrange(int c, uint32_t *out) {
-  const TSeam *S = &SE; uint32_t a = fkey((float)c * 0.25f), b = fkey((float)(c + 1) * 0.25f);   // keys of the cell's floats: [a, b)
+  const TSeam *S = &SE;
+  if (ZPM) {   // near-zero floats: m(j) rises with j; the cell is [c / 4, (c + 1) / 4) as floor(m / 0.25) == c (so -0 is in cell 0, like tcensus)
+    uint32_t N = S->n1 + S->n2 + S->n3; float A = (float)c * 0.25f, B = (float)(c + 1) * 0.25f; uint32_t lo = 0, hi = N;
+    while (lo < hi) { uint32_t mid = lo + (hi - lo) / 2; if ((double)seam_m(S, mid) / 0.25 >= (double)c) hi = mid; else lo = mid + 1; } uint32_t j0 = lo; hi = N;
+    while (lo < hi) { uint32_t mid = lo + (hi - lo) / 2; if ((double)seam_m(S, mid) / 0.25 >= (double)(c + 1)) hi = mid; else lo = mid + 1; }
+    (void)A; (void)B; out[0] = j0; out[1] = lo; return (int)(lo - j0); } uint32_t a = fkey((float)c * 0.25f), b = fkey((float)(c + 1) * 0.25f);   // keys of the cell's floats: [a, b)
   uint32_t r0 = S->k0, r1 = S->k0 + S->n1, j0 = 0xFFFFFFFFu, j1 = 0;
   uint32_t lo = a > r0 ? a : r0, hi = b < r1 ? b : r1; if (lo < hi) { j0 = lo - S->k0; j1 = hi - S->k0; }
   if (S->n3) { uint32_t s0 = S->k2, s1 = S->k2 + S->n3, lo2 = a > s0 ? a : s0, hi2 = b < s1 ? b : s1;

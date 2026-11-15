@@ -15,7 +15,7 @@
 // Exhaustive mode (env TC_EVERY=1): every crack float gets the fall-in runs and the jump drops (no one-per-cell sampling); results are
 // written as RUN lines: consecutive crack floats (same seam, same across offset) with identical outcomes collapsed into one line.
 // TC_REGION="x y z r": only seams within r of the point. Every float near 0 is scanned (no 1e-5 steps) unless TC_ZEROSTEP=1.
-// TC_ZEROPART=2: every float except those within [-1, 1] on a seam's major axis; TC_ZEROPART=1: only those (the two phases).
+// TC_ZEROPART=2: every float except those within [-1, 1] on a seam's major axis; TC_ZEROPART=1: only those (the two phases). TC_ZEROPART=3: the near-zero part down to |m| = 1e-5, then a ladder of tiny floats (see build_ladder).
 // T-junction seams (a floor edge lying along part of another floor triangle's edge) are scanned too.
 // Output (text): ROOM, SEAM lines, SPOT lines (see write_out). Validated against BizHawk fall-in traces (bt_fallin.lua).
 // Exhaustive mode speed-ups (all checked byte for byte against earlier builds on finished levels): crack floats are found on the card
@@ -44,7 +44,7 @@ static double T0; static double now(void) { return (double)clock() / CLOCKS_PER_
 #endif
 enum { O_LAND = 0, O_VOID = 1, O_EJECT = 2, O_STUCK = 3, O_WATER = 4, O_WALL = 5 };
 
-typedef struct { int a, b; int ma, mb; float P[3], Q[3]; int axis; double nya, nyb; uint32_t k0, k1; uint32_t n1, n2, n3; uint32_t k2; float z0; int candoff, ncand; float ymin, ymax; int ivoff, ivn, ivwater; int boff, nb; double bm0, bstep; double dax, dot; float bm0f, binvf; int zl; } Seam;
+typedef struct { int a, b; int ma, mb; float P[3], Q[3]; int axis; double nya, nyb; uint32_t k0, k1; uint32_t n1, n2, n3; uint32_t k2; float z0; int candoff, ncand; float ymin, ymax; int ivoff, ivn, ivwater; int boff, nb; double bm0, bstep; double dax, dot; float bm0f, binvf; int zl; int lad, lad0; } Seam;
 // samples along the major axis: every float in [lo, -1), then steps of 1e-5 over [-1, 1] (floats are too dense there), then every float in (1, hi]
 typedef struct { int seam; float x, y, z; int width; } Spot;
 typedef struct { unsigned char out[NVAR], holds[NVAR], maxhits[NVAR], upd[NVAR], sits[NVAR]; float endy[NVAR]; } SpotRes;
@@ -58,6 +58,20 @@ TD float fstep(float f, int n) { uint32_t k = fkey(f); return kfloat(k + (uint32
 // edge); the +-3 floats across it that the scan normally tests are denormals there, where the ray still hits. On such seams the across
 // offsets o = -3..3 become o * 1e-10 instead (o = 0, the line itself, is skipped: the census tested it).
 TD float zl_off(int o) { return (float)o * 1e-10f; }
+// near-zero phase with a floor (TC_ZEROPART=3, Claude 2026-11-15, user: "every float to +-0.00001"): within [-1, 1] on a seam's major axis
+// every float with |m| >= 1e-5 is tested (n1: [-1, -1e-5], n3: [1e-5, 1]); below that (where 79% of the near-zero crack floats sit,
+// within 1e-10 of 0, all acting like the same spot) only the ladder LAD: a few floats of every power-of-two band down to the
+// denormals, and +-0 (n2 = the ladder entries inside the seam's range, from lad0). See build_ladder.
+#define NLADMAX 1200
+static float LAD[NLADMAX]; static int NLAD = 0;
+#ifndef TCPU
+__constant__ float dLAD[NLADMAX];
+#endif
+#if defined(__CUDA_ARCH__)
+#define LADV(i) dLAD[i]
+#else
+#define LADV(i) LAD[i]
+#endif
 
 // one triangle of the line test (same code as line_model) -> 1 if the segment s..e hits it
 TD int tri_line_hit(const TWorld *w, int mi, int k, const float *s, const float *e) {
@@ -96,7 +110,7 @@ TD double plane_y(const TWorld *w, int mi, int k, double x, double z) {
 }
 // position of crack-scan sample j (major-axis float index), o (across offset -3..3) on seam S
 TD void seam_point(const TWorld *w, const Seam *S, uint32_t j, int o, float *x, float *y, float *z) {
-  float m; if (j < S->n1) m = kfloat(S->k0 + j); else if (j < S->n1 + S->n2) m = (float)((double)S->z0 + (double)(j - S->n1) * 1e-5); else m = kfloat(S->k2 + (j - S->n1 - S->n2));
+  float m; if (j < S->n1) m = kfloat(S->k0 + j); else if (j < S->n1 + S->n2) m = S->lad ? LADV(S->lad0 + (int)(j - S->n1)) : (float)((double)S->z0 + (double)(j - S->n1) * 1e-5); else m = kfloat(S->k2 + (j - S->n1 - S->n2));
   int ax = S->axis, ot = 2 - ax;   // axis 0 = x major, 2 = z major
   double t = ((double)m - S->P[ax]) / ((double)S->Q[ax] - S->P[ax]); double c = S->P[ot] + t * ((double)S->Q[ot] - S->P[ot]);
   float cf = S->zl ? zl_off(o) : fstep((float)c, o); float p[3]; p[ax] = m; p[ot] = cf;
@@ -118,7 +132,7 @@ TD int crack_at2(const TWorld *w, const Seam *S, const int *bcand, const int *bo
       double py = (mi == S->ma && k == S->a) ? yy : plane_y(w, mi, k, x, z); if (py >= (double)y - 5.0 && py <= (double)y + 56.0) return 0; } }
   return 1; }
 TD float seam_m(const Seam *S, uint32_t j) {
-  if (j < S->n1) return kfloat(S->k0 + j); if (j < S->n1 + S->n2) return (float)((double)S->z0 + (double)(j - S->n1) * 1e-5); return kfloat(S->k2 + (j - S->n1 - S->n2)); }
+  if (j < S->n1) return kfloat(S->k0 + j); if (j < S->n1 + S->n2) return S->lad ? LADV(S->lad0 + (int)(j - S->n1)) : (float)((double)S->z0 + (double)(j - S->n1) * 1e-5); return kfloat(S->k2 + (j - S->n1 - S->n2)); }
 // crack test of samples o = o0..o1 (of -3..3) of float j of seam S -> r[o + 3] (1 = crack); the same numbers as seam_point + crack_at
 TD void crack7(const TWorld *w, const Seam *S, const int *bcand, const int *bofs, uint32_t j, int o0, int o1, uint8_t *r) {
   float m = seam_m(S, j); int ax = S->axis, ot = 2 - ax;
@@ -281,7 +295,7 @@ static void upload(const TWorld *w) {
       cudaMalloc(&p, 4 * (M->bnent[lv] + 1)); cudaMemcpy(p, M->bk[lv], 4 * M->bnent[lv], cudaMemcpyHostToDevice); hm[i].bk[lv] = (const int *)p; }
     if (HPN[i]) { cudaMalloc(&p, 48 * (size_t)M->nt + 48); cudaMemcpy(p, HPN[i], 48 * (size_t)M->nt, cudaMemcpyHostToDevice); const double *pd = (const double *)p; cudaMemcpyToSymbol(dPN, &pd, sizeof pd, sizeof pd * i); }
     hw.m[i] = dmp + i; }
-  cudaMemcpyToSymbol(dM, hm, sizeof hm); cudaMemcpyToSymbol(dW, &hw, sizeof hw);
+  cudaMemcpyToSymbol(dM, hm, sizeof hm); cudaMemcpyToSymbol(dW, &hw, sizeof hw); cudaMemcpyToSymbol(dLAD, LAD, sizeof LAD);
   cudaDeviceSetLimit(cudaLimitStackSize, 32768); }
 #endif
 
@@ -298,7 +312,28 @@ static int same_tri(const TWorld *w, int ma, int a, int mb, int b) {   // same t
   for (int j = 0; j < 3; j++) { int f = 0; for (int l = 0; l < 3; l++) if (va[j][0] == vb[l][0] && va[j][1] == vb[l][1] && va[j][2] == vb[l][2]) f = 1; if (!f) return 0; } return 1; }
 
 static int *BOFS = 0, NBOFS = 0;   // block candidates: (offset, count) per seam block
-static int ZEROSTEP = 0, EVERY = 0, HAVEREG = 0, ZEROPART = 0, CRACKONLY = 0, FALL9TEST = 0, ZL = 0; static long long nfall9bad = 0; static double REG[4];
+static int ZEROSTEP = 0, EVERY = 0, HAVEREG = 0, ZEROPART = 0, CRACKONLY = 0, FALL9TEST = 0, ZL = 0, ZPTEST = 0; static long long nfall9bad = 0; static double REG[4];
+static float kbits(uint32_t b) { float f; memcpy(&f, &b, 4); return f; }
+static int fkcmp(const void *a, const void *b) { uint32_t x = fkey(*(const float *)a), y = fkey(*(const float *)b); return x < y ? -1 : x > y; }
+// the ladder (TC_ZEROPART=3): floats with |f| < 1e-5 -- in every denormal band k * 2^-149 (k in [2^i, 2^(i+1))) and every normal band
+// [2^e, 2^(e+1)): its first, second, middle and last float (only those below 1e-5), the last float below 1e-5, both signs, and +-0
+static void build_ladder(void) { float v[NLADMAX]; int n = 0;
+  for (int i = 0; i <= 22; i++) { uint32_t b = 1u << i, c[4] = { b, b + 1, b + (b >> 1), 2 * b - 1 }; for (int q = 0; q < 4; q++) v[n++] = kbits(c[q]); }
+  for (int e = 1; e < 255; e++) { uint32_t base = (uint32_t)e << 23, c[4] = { base, base + 1, base + (1u << 22), base + 0x7FFFFFu };
+    for (int q = 0; q < 4; q++) { float f = kbits(c[q]); if (f < 1e-5f) v[n++] = f; } }
+  v[n++] = kfloat(fkey(1e-5f) - 1);
+  int np = n; for (int i = 0; i < np; i++) v[n++] = -v[i]; v[n++] = 0.0f; v[n++] = -0.0f;
+  qsort(v, n, sizeof(float), fkcmp); NLAD = 0;
+  for (int i = 0; i < n; i++) if (!NLAD || fkey(v[i]) != fkey(LAD[NLAD - 1])) LAD[NLAD++] = v[i]; }
+// one seam's samples on its major axis [lo, hi] for TC_ZEROPART=3; 0 = nothing to test
+static int zp3(Seam *s, float lo, float hi) {
+  if (hi < -1.0f || lo > 1.0f) return 0;
+  float a1 = lo < -1.0f ? -1.0f : lo, b1 = hi < -1e-5f ? hi : -1e-5f; if (a1 <= b1) { s->k0 = fkey(a1); s->n1 = fkey(b1) - s->k0 + 1; } else s->n1 = 0;
+  float a3 = lo > 1e-5f ? lo : 1e-5f, b3 = hi > 1.0f ? 1.0f : hi; if (a3 <= b3) { s->k2 = fkey(a3); s->n3 = fkey(b3) - s->k2 + 1; } else s->n3 = 0;
+  int l0 = 0; while (l0 < NLAD && fkey(LAD[l0]) < fkey(lo)) l0++; int l1 = l0; while (l1 < NLAD && fkey(LAD[l1]) <= fkey(hi)) l1++;
+  s->lad = 1; s->lad0 = l0; s->n2 = (uint32_t)(l1 - l0); s->z0 = 0;
+  if (ZPTEST > 0) { if (s->n1 > (uint32_t)ZPTEST) { s->k0 += s->n1 - ZPTEST; s->n1 = ZPTEST; } if (s->n3 > (uint32_t)ZPTEST) s->n3 = ZPTEST; }   // GPU = CPU check only: the floats next to +-1e-5 and the ladder
+  return s->n1 + s->n2 + s->n3 > 0; }
 static int in_region(const Seam *s) {   // distance from the region point to the seam segment
   if (!HAVEREG) return 1; double d[3], v[3], L2 = 0, t = 0; for (int c = 0; c < 3; c++) { v[c] = (double)s->Q[c] - s->P[c]; d[c] = REG[c] - s->P[c]; L2 += v[c] * v[c]; t += d[c] * v[c]; }
   t = L2 > 0 ? fmin(1, fmax(0, t / L2)) : 0; double q = 0; for (int c = 0; c < 3; c++) { double e = s->P[c] + t * v[c] - REG[c]; q += e * e; } return sqrt(q) <= REG[3]; }
@@ -581,7 +616,7 @@ int main(int argc, char **argv) {
     if ((e = getenv("TC_CPUTHREADS"))) CPUTHR = atoi(e);
 #endif
     if ((e = getenv("TC_REGION")) && sscanf(e, "%lf %lf %lf %lf", REG, REG + 1, REG + 2, REG + 3) == 4) HAVEREG = 1;
-    ZL = (e = getenv("TC_ZL")) && atoi(e); }
+    ZL = (e = getenv("TC_ZL")) && atoi(e); if ((e = getenv("TC_ZPTEST"))) ZPTEST = atoi(e); if (ZEROPART == 3) { build_ladder(); fprintf(stderr, "near-zero ladder: %d floats below 1e-5 (%g .. %g)\n", NLAD, LAD[0], LAD[NLAD - 1]); } }
   if (argc < 3) { fprintf(stderr, "usage: tcensus room.txt out.txt [maxseams]\n"); return 1; }
   T0 = now(); TWorld w; load_world(argv[1], &w); int maxseams = argc > 3 ? atoi(argv[3]) : 1 << 30;
   for (int mi = 0; mi < 2; mi++) { const TModel *M = w.m[mi]; if (!M) continue; double *pn = (double *)malloc(sizeof(double) * 6 * (M->nt + 1));   // plane table (see plane_y)
@@ -611,7 +646,8 @@ int main(int argc, char **argv) {
       s.P[0] = E[i].x0; s.P[1] = E[i].y0; s.P[2] = E[i].z0; s.Q[0] = E[i].x1; s.Q[1] = E[i].y1; s.Q[2] = E[i].z1;
       s.axis = fabs(s.Q[0] - s.P[0]) >= fabs(s.Q[2] - s.P[2]) ? 0 : 2; if (s.P[s.axis] == s.Q[s.axis]) continue;
       float lo = s.P[s.axis] < s.Q[s.axis] ? s.P[s.axis] : s.Q[s.axis], hi = s.P[s.axis] < s.Q[s.axis] ? s.Q[s.axis] : s.P[s.axis]; s.k0 = fkey(lo); s.k1 = fkey(hi);
-      if (ZEROPART == 1) {   // only the floats within [-1, 1] (the near-zero phase of the exhaustive census)
+      if (ZEROPART == 3) { if (!zp3(&s, lo, hi)) continue; }   // the near-zero phase down to |m| = 1e-5, then the ladder
+      else if (ZEROPART == 1) {   // only the floats within [-1, 1] (the near-zero phase of the exhaustive census)
         if (hi < -1.0f || lo > 1.0f) continue; float a_ = lo < -1.0f ? -1.0f : lo, b_ = hi > 1.0f ? 1.0f : hi; s.k0 = fkey(a_); s.n1 = fkey(b_) - s.k0 + 1; s.n2 = s.n3 = 0; }
       else if (ZEROPART == 2 && !(hi < -1.0f || lo > 1.0f)) {   // every float except those within [-1, 1]
         s.n1 = lo < -1.0f ? fkey(-1.0f) - s.k0 : 0; s.n2 = 0; s.z0 = 0; s.k2 = fkey(1.0f) + 1; s.n3 = hi > 1.0f ? s.k1 - s.k2 + 1 : 0; if (!s.n1 && !s.n3) continue; }
@@ -644,7 +680,8 @@ int main(int argc, char **argv) {
       s.axis = fabs(s.Q[0] - s.P[0]) >= fabs(s.Q[2] - s.P[2]) ? 0 : 2; if (s.P[s.axis] == s.Q[s.axis]) continue;
       float lo = s.P[s.axis] < s.Q[s.axis] ? s.P[s.axis] : s.Q[s.axis], hi = s.P[s.axis] < s.Q[s.axis] ? s.Q[s.axis] : s.P[s.axis]; s.k0 = fkey(lo); s.k1 = fkey(hi);
       s.n1 = s.k1 - s.k0 + 1; s.n2 = s.n3 = 0;
-      if (ZEROPART == 1) { if (hi < -1.0f || lo > 1.0f) continue; float a_ = lo < -1.0f ? -1.0f : lo, b_ = hi > 1.0f ? 1.0f : hi; s.k0 = fkey(a_); s.n1 = fkey(b_) - s.k0 + 1; }
+      if (ZEROPART == 3) { if (!zp3(&s, lo, hi)) continue; }
+      else if (ZEROPART == 1) { if (hi < -1.0f || lo > 1.0f) continue; float a_ = lo < -1.0f ? -1.0f : lo, b_ = hi > 1.0f ? 1.0f : hi; s.k0 = fkey(a_); s.n1 = fkey(b_) - s.k0 + 1; }
       else if (ZEROPART == 2 && !(hi < -1.0f || lo > 1.0f)) { s.n1 = lo < -1.0f ? fkey(-1.0f) - s.k0 : 0; s.k2 = fkey(1.0f) + 1; s.n3 = hi > 1.0f ? s.k1 - s.k2 + 1 : 0; if (!s.n1 && !s.n3) continue; }
       s.nya = tri_ny(&w, s.ma, s.a); s.nyb = tri_ny(&w, s.mb, s.b); s.ymin = s.P[1] < s.Q[1] ? s.P[1] : s.Q[1]; s.ymax = s.P[1] < s.Q[1] ? s.Q[1] : s.P[1];
       { int ot_ = 2 - s.axis; s.zl = ZL && s.P[ot_] == 0.0f && s.Q[ot_] == 0.0f; if (ZL && !s.zl) continue; }   // TC_ZL: zero-line seams only
