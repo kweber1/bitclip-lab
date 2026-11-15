@@ -2037,7 +2037,15 @@
 "ntsc_zl_holds": 1291,
 "ntsc_zl_clips": 28,
 "zl_holds": 1316,
-"zl_clips": 31
+"zl_clips": 31,
+"ntsc_pcf": 1,
+"ntsc_pc": 327576,
+"ntsc_pc_clips": 2803,
+"ntsc_pc_scope": "room",
+"pcf": 1,
+"pc": 329567,
+"pc_clips": 314850,
+"pc_scope": "room"
 },
 {
 "map": "0x44",
@@ -2067,7 +2075,11 @@
 "ntsc_zl_holds": 896,
 "ntsc_zl_clips": 29,
 "zl_holds": 917,
-"zl_clips": 31
+"zl_clips": 31,
+"pcf": 1,
+"pc": 274247,
+"pc_clips": 257720,
+"pc_scope": "room"
 },
 {
 "map": "0x45",
